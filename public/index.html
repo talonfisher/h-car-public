@@ -257,14 +257,37 @@ async function submitConsent() {
 }
 
 async function initSquare() {
+  const payBtn = document.getElementById('pay-btn');
+  payBtn.disabled = true;
+  payBtn.textContent = 'Loading payment form...';
   try {
+    // Wait for Square SDK to load if needed
+    if (typeof Square === 'undefined') {
+      await new Promise((resolve, reject) => {
+        let attempts = 0;
+        const check = setInterval(() => {
+          attempts++;
+          if (typeof Square !== 'undefined') {
+            clearInterval(check);
+            resolve();
+          } else if (attempts > 50) {
+            clearInterval(check);
+            reject(new Error('Square SDK failed to load'));
+          }
+        }, 100);
+      });
+    }
     const config = await apiCall('/config', 'GET', null, false);
     squarePayments = Square.payments(config.squareApplicationId, config.squareLocationId);
     squareCard = await squarePayments.card();
     await squareCard.attach('#card-container');
+    payBtn.disabled = false;
+    payBtn.textContent = 'Subscribe - $5.00/month';
   } catch (e) {
-    document.getElementById('pay-error').textContent = 'Failed to load payment form: ' + e.message;
+    document.getElementById('pay-error').textContent = 'Failed to load payment form: ' + e.message + '. Please refresh the page and try again.';
     document.getElementById('pay-error').classList.remove('hidden');
+    payBtn.disabled = true;
+    payBtn.textContent = 'Payment form failed to load';
   }
 }
 
@@ -273,6 +296,11 @@ async function processPayment() {
   const okEl = document.getElementById('pay-success');
   errEl.classList.add('hidden');
   okEl.classList.add('hidden');
+  if (!squareCard) {
+    errEl.textContent = 'Payment form is not ready yet. Please wait a moment and try again, or refresh the page.';
+    errEl.classList.remove('hidden');
+    return;
+  }
   document.getElementById('pay-btn').disabled = true;
   document.getElementById('pay-btn').textContent = 'Processing...';
   try {
