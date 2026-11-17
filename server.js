@@ -18,6 +18,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://web.squarecdn.com", "https://js.squareup.com"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       connectSrc: ["'self'", "https://connect.squareup.com", "https://web.squarecdn.com"],
       frameSrc: ["https://web.squarecdn.com", "https://js.squareup.com"],
