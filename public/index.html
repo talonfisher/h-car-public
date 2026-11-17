@@ -63,8 +63,8 @@ button.secondary { background: #e0e0e0; color: #333; }
 <div class="price">$5<span>/month CAD</span></div>
 <p style="text-align:center;color:#666;">Cancel anytime. No hidden fees.</p>
 <div class="tabs">
-<div class="tab active" onclick="showTab('signup')">Sign Up</div>
-<div class="tab" onclick="showTab('login')">Sign In</div>
+<div class="tab active" onclick="showTab('signup', this)">Sign Up</div>
+<div class="tab" onclick="showTab('login', this)">Sign In</div>
 </div>
 <div id="signup-form">
 <input type="text" id="su-name" placeholder="Full name" required>
@@ -189,9 +189,9 @@ async function apiCall(endpoint, method, body, useAuth = true) {
   return data;
 }
 
-function showTab(tab) {
+function showTab(tab, element) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
+  element.classList.add('active');
   document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
   document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
 }
