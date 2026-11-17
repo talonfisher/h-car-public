@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: h-car
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SQUARE_APPLICATION_ID
+        value: sq0idp-AjjPPKKmlIAWk17Uf6sQvw
+      - key: SQUARE_LOCATION_ID
+        value: L5A30BMAGNY4E
+      - key: SQUARE_PLAN_VARIATION_ID
+        value: XU5OAQ4SZB4GA4DYN65KZYFD
+      - key: SQUARE_ACCESS_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
