@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H-CAR - Personal Health Baseline Monitoring</title>
+<script src="https://web.squarecdn.com/v1/square.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+header { text-align: center; padding: 40px 0 20px; }
+header h1 { font-size: 2.5em; color: #1a1a2e; }
+header p { color: #666; font-size: 1.1em; }
+.card { background: white; border-radius: 12px; padding: 30px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+h2 { margin-bottom: 15px; color: #1a1a2e; }
+h3 { margin: 20px 0 10px; color: #1a1a2e; }
+input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+button { width: 100%; padding: 14px; background: #1a1a2e; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+button:hover { background: #2a2a4e; }
+button:disabled { background: #ccc; cursor: not-allowed; }
+button.secondary { background: #e0e0e0; color: #333; }
+.tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+.tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab.active { border-bottom-color: #1a1a2e; font-weight: bold; }
+.consent-section { margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #e74c3c; }
+.consent-section h4 { color: #e74c3c; margin-bottom: 8px; }
+.consent-section.normal { border-left-color: #3498db; }
+.consent-section.normal h4 { color: #1a1a2e; }
+.checkbox-group { margin: 10px 0; }
+.checkbox-group label { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; cursor: pointer; }
+.checkbox-group input { margin-top: 4px; width: 18px; height: 18px; flex-shrink: 0; }
+.price { font-size: 2em; font-weight: bold; text-align: center; margin: 20px 0; }
+.price span { font-size: 0.5em; color: #666; }
+.error { background: #fee; color: #c00; padding: 12px; border-radius: 8px; margin: 10px 0; }
+.success { background: #efe; color: #060; padding: 12px; border-radius: 8px; margin: 10px 0; }
+.hidden { display: none; }
+#card-container { margin: 15px 0; }
+.footer { text-align: center; color: #888; font-size: 0.85em; padding: 20px; line-height: 1.5; }
+.step-indicator { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+.step { width: 30px; height: 30px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.step.active { background: #1a1a2e; color: white; }
+.step.done { background: #27ae60; color: white; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>H-CAR</h1>
+<p>Your personal health baseline. We notice change, so you can act.</p>
+</header>
+
+<div id="landing" class="card">
+<h2>What is H-CAR?</h2>
+<p>H-CAR learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
+<p style="margin-top:15px"><strong>How it works:</strong></p>
+<ul style="margin: 10px 0 10px 20px;">
+<li>Wear your Fitbit for 28 days to build your personal baseline</li>
+<li>H-CAR tracks 6 signals: resting heart rate, HRV, blood oxygen, breathing rate, sleep, skin temperature</li>
+<li>When multiple signals move away from your baseline, you get a flag</li>
+<li>Serious flags can alert a person you trust</li>
+</ul>
+<div class="price">$5<span>/month CAD</span></div>
+<p style="text-align:center;color:#666;">Cancel anytime. No hidden fees.</p>
+<div class="tabs">
+<div class="tab active" onclick="showTab('signup')">Sign Up</div>
+<div class="tab" onclick="showTab('login')">Sign In</div>
+</div>
+<div id="signup-form">
+<input type="text" id="su-name" placeholder="Full name" required>
+<input type="email" id="su-email" placeholder="Email address" required>
+<input type="password" id="su-password" placeholder="Password (8+ characters)" required>
+<button onclick="signup()">Create Account</button>
+<div id="su-error" class="error hidden"></div>
+</div>
+<div id="login-form" class="hidden">
+<input type="email" id="li-email" placeholder="Email address" required>
+<input type="password" id="li-password" placeholder="Password" required>
+<button onclick="login()">Sign In</button>
+<div id="li-error" class="error hidden"></div>
+</div>
+</div>
+
+<div id="consent-step" class="card hidden">
+<div class="step-indicator"><div class="step done">1</div><div class="step active">2</div><div class="step">3</div><div class="step">4</div></div>
+<h2>Consent Form</h2>
+<p>Please read carefully. You must check all 10 boxes to continue.</p>
+
+<div class="consent-section">
+<h4>1. NOT A MEDICAL DEVICE - READ THIS FIRST</h4>
+<p>H-CAR is a general wellness tool, NOT a medical device. It is NOT cleared, approved, or authorized by Health Canada, the U.S. Food and Drug Administration (FDA), or any other regulatory body as a medical device. H-CAR does NOT diagnose, predict, treat, monitor, or prevent any disease, condition, illness, or medical event. H-CAR does NOT replace a doctor, nurse, paramedic, or any health care professional. H-CAR does NOT provide medical advice. If you feel unwell, seek professional medical care immediately, whether or not H-CAR has flagged anything.</p>
+</div>
+
+<div class="consent-section normal">
+<h4>2. What H-CAR does</h4>
+<p>H-CAR is an experimental general wellness tool. It learns your personal baseline from a consumer Fitbit and flags sustained multi-signal change over days. It names a change, never a cause. A flag means your numbers moved away from your own baseline. It does not mean you are sick. No flag does not mean you are healthy.</p>
+</div>
+
+<div class="consent-section">
+<h4>3. What H-CAR cannot detect</h4>
+<p>H-CAR CANNOT detect sudden cardiac arrest, stroke, heart attack, severe allergic reaction, sudden collapse, or falls. H-CAR does not monitor you in real time. If you have a medical emergency, call 911 immediately. Do not wait for H-CAR to flag anything.</p>
+</div>
+
+<div class="consent-section normal">
+<h4>4. Use at your own risk</h4>
+<p>H-CAR is provided as-is without warranties of any kind. H-CAR may produce false alarms or miss real changes. Fitbit sensors provide estimates, not clinical measurements. You use H-CAR at your own risk.</p>
+</div>
+
+<div class="consent-section normal">
+<h4>5. Limitation of liability</h4>
+<p>Total liability is capped at the greater of 12 months of fees paid or $60 CAD. This excludes indirect, incidental, consequential, or punitive damages.</p>
+</div>
+
+<div class="consent-section normal">
+<h4>6. Your data</h4>
+<p>H-CAR uses edge-first processing. Your baseline is calculated on your device. Only flag summaries and daily heartbeats reach the server. Your raw Fitbit data stays on your device when possible. Your data is never sold. You can delete your account and data at any time.</p>
+</div>
+
+<div class="consent-section normal">
+<h4>7. Subscription terms</h4>
+<p>$5.00 CAD per month, auto-renewing. Cancel anytime, effective at the end of your paid period. No refunds for partial months. Payment is processed by Square. Your card details are tokenized by Square and never touch our servers.</p>
+</div>
+
+<h3>Your Acknowledgment</h3>
+<p>Check each box to confirm you understand:</p>
+<div class="checkbox-group" id="ack-boxes">
+<label><input type="checkbox" class="ack" data-n="1"> I understand H-CAR is NOT a medical device and is not cleared by any health regulator.</label>
+<label><input type="checkbox" class="ack" data-n="2"> I understand H-CAR does NOT diagnose, predict, treat, or monitor any disease or condition.</label>
+<label><input type="checkbox" class="ack" data-n="3"> I understand H-CAR CANNOT detect sudden medical emergencies (heart attack, stroke, cardiac arrest).</label>
+<label><input type="checkbox" class="ack" data-n="4"> I will seek professional medical care if I feel unwell, regardless of what H-CAR shows.</label>
+<label><input type="checkbox" class="ack" data-n="5"> I understand H-CAR may produce false alarms and may miss real changes.</label>
+<label><input type="checkbox" class="ack" data-n="6"> I understand Fitbit sensors provide estimates, not clinical measurements.</label>
+<label><input type="checkbox" class="ack" data-n="7"> I use H-CAR at my own risk and accept the limitation of liability.</label>
+<label><input type="checkbox" class="ack" data-n="8"> I understand my data handling as described in the privacy notice.</label>
+<label><input type="checkbox" class="ack" data-n="9"> I understand the subscription terms ($5/month, cancel anytime, no partial refunds).</label>
+<label><input type="checkbox" class="ack" data-n="10"> I am 19 years of age or older, or I have guardian consent to use H-CAR.</label>
+</div>
+<button id="consent-btn" onclick="submitConsent()" disabled>I Accept - Continue to Payment</button>
+<div id="consent-error" class="error hidden"></div>
+</div>
+
+<div id="payment-step" class="card hidden">
+<div class="step-indicator"><div class="step done">1</div><div class="step done">2</div><div class="step active">3</div><div class="step">4</div></div>
+<h2>Payment</h2>
+<div class="consent-section">
+<h4>H-CAR is a general wellness tool, not a medical device.</h4>
+<p>By subscribing, you acknowledge you have read the consent form and understand H-CAR does not diagnose, treat, or monitor any disease or condition, cannot detect sudden medical emergencies, and is used at your own risk.</p>
+</div>
+<div class="price">$5<span>/month CAD</span></div>
+<p style="text-align:center;">H-CAR Monthly - Cancel anytime</p>
+<div id="card-container"></div>
+<button id="pay-btn" onclick="processPayment()">Subscribe - $5.00/month</button>
+<div id="pay-error" class="error hidden"></div>
+<div id="pay-success" class="success hidden"></div>
+</div>
+
+<div id="dashboard" class="card hidden">
+<div class="step-indicator"><div class="step done">1</div><div class="step done">2</div><div class="step done">3</div><div class="step done">4</div></div>
+<h2>Welcome to H-CAR, <span id="dash-name"></span></h2>
+<div id="dash-status"></div>
+<p style="margin-top:15px;">Your subscription is active. Here is what happens next:</p>
+<ol style="margin: 10px 0 10px 20px;">
+<li>Connect your Fitbit (coming soon - you will receive instructions by email)</li>
+<li>Wear your Fitbit for 28 days to build your personal baseline</li>
+<li>After 28 days, H-CAR starts flagging sustained changes from your baseline</li>
+</ol>
+<p style="margin-top:15px;color:#666;">Your baseline is being built. H-CAR will not flag anything during the first 28 days while it learns your normal.</p>
+<button class="secondary" onclick="cancelSub()" style="margin-top:20px;">Cancel Subscription</button>
+<button class="secondary" onclick="logout()">Sign Out</button>
+</div>
+
+<div class="footer">
+<p>H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
+<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. This consent form and privacy notice are drafts prepared without a lawyer. They are not legal advice and have not been reviewed by a lawyer.</p>
+</div>
+</div>
+
+<script>
+let authToken = localStorage.getItem('hcar_token');
+let squarePayments = null;
+let squareCard = null;
+
+async function apiCall(endpoint, method, body, useAuth = true) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (useAuth && authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  const res = await fetch('/api' + endpoint, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
+  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+}
+
+function showStep(stepId) {
+  ['landing', 'consent-step', 'payment-step', 'dashboard'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== stepId);
+  });
+}
+
+async function signup() {
+  const name = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const password = document.getElementById('su-password').value;
+  const errEl = document.getElementById('su-error');
+  errEl.classList.add('hidden');
+  try {
+    const data = await apiCall('/signup', 'POST', { name, email, password }, false);
+    authToken = data.token;
+    localStorage.setItem('hcar_token', authToken);
+    showStep('consent-step');
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function login() {
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-password').value;
+  const errEl = document.getElementById('li-error');
+  errEl.classList.add('hidden');
+  try {
+    const data = await apiCall('/login', 'POST', { email, password }, false);
+    authToken = data.token;
+    localStorage.setItem('hcar_token', authToken);
+    await checkStatus();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+document.querySelectorAll('.ack').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const allChecked = [...document.querySelectorAll('.ack')].every(c => c.checked);
+    document.getElementById('consent-btn').disabled = !allChecked;
+  });
+});
+
+async function submitConsent() {
+  const acks = [...document.querySelectorAll('.ack')].map(c => c.checked);
+  const errEl = document.getElementById('consent-error');
+  errEl.classList.add('hidden');
+  try {
+    await apiCall('/consent', 'POST', { acknowledgments: acks });
+    showStep('payment-step');
+    await initSquare();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function initSquare() {
+  try {
+    const config = await apiCall('/config', 'GET', null, false);
+    squarePayments = Square.payments(config.squareApplicationId, config.squareLocationId);
+    squareCard = await squarePayments.card();
+    await squareCard.attach('#card-container');
+  } catch (e) {
+    document.getElementById('pay-error').textContent = 'Failed to load payment form: ' + e.message;
+    document.getElementById('pay-error').classList.remove('hidden');
+  }
+}
+
+async function processPayment() {
+  const errEl = document.getElementById('pay-error');
+  const okEl = document.getElementById('pay-success');
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+  document.getElementById('pay-btn').disabled = true;
+  document.getElementById('pay-btn').textContent = 'Processing...';
+  try {
+    const result = await squareCard.tokenize();
+    if (result.status !== 'OK') {
+      throw new Error(result.errors ? result.errors[0].message : 'Card tokenization failed');
+    }
+    await apiCall('/subscribe', 'POST', { sourceId: result.token });
+    okEl.textContent = 'Payment successful! Welcome to H-CAR.';
+    okEl.classList.remove('hidden');
+    setTimeout(() => checkStatus(), 1500);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+    document.getElementById('pay-btn').disabled = false;
+    document.getElementById('pay-btn').textContent = 'Subscribe - $5.00/month';
+  }
+}
+
+async function checkStatus() {
+  try {
+    const me = await apiCall('/me', 'GET');
+    document.getElementById('dash-name').textContent = me.name;
+    if (!me.consentGiven) {
+      showStep('consent-step');
+    } else if (me.subscriptionStatus !== 'active') {
+      showStep('payment-step');
+      await initSquare();
+    } else {
+      document.getElementById('dash-status').innerHTML = '<div class="success">Subscription active. ' + (me.subscriptionPeriodEnd ? 'Paid through ' + new Date(me.subscriptionPeriodEnd).toLocaleDateString() : '') + '</div>';
+      showStep('dashboard');
+    }
+  } catch (e) {
+    showStep('landing');
+  }
+}
+
+async function cancelSub() {
+  if (!confirm('Cancel your H-CAR subscription? Access continues until the end of your paid period.')) return;
+  try {
+    await apiCall('/cancel', 'POST', {});
+    alert('Subscription canceled.');
+    await checkStatus();
+  } catch (e) {
+    alert('Cancel failed: ' + e.message);
+  }
+}
+
+function logout() {
+  authToken = null;
+  localStorage.removeItem('hcar_token');
+  showStep('landing');
+}
+
+// Check if already logged in
+if (authToken) checkStatus();
+</script>
+</body>
+</html>
