@@ -17,12 +17,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://web.squarecdn.com", "https://js.squareup.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://*.squarecdn.com", "https://js.squareup.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      connectSrc: ["'self'", "https://connect.squareup.com", "https://web.squarecdn.com"],
-      frameSrc: ["https://web.squarecdn.com", "https://js.squareup.com"],
-      imgSrc: ["'self'", "data:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://*.squarecdn.com"],
+      connectSrc: ["'self'", "https://connect.squareup.com", "https://web.squarecdn.com", "https://pci-connect.squareup.com", "https://o160250.ingest.sentry.io"],
+      frameSrc: ["'self'", "https://web.squarecdn.com", "https://js.squareup.com", "https://connect.squareup.com"],
+      imgSrc: ["'self'", "data:", "https://*.squarecdn.com"],
+      fontSrc: ["'self'", "https://*.squarecdn.com", "https://square-fonts-production-f.squarecdn.com", "https://d1g145x70srn7h.cloudfront.net"],
     }
   }
 }));
