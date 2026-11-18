@@ -3,70 +3,100 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
 <title>H-CAR - Personal Health Baseline Monitoring</title>
 <script src="https://web.squarecdn.com/v1/square.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
-.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-header { text-align: center; padding: 40px 0 20px; }
-header h1 { font-size: 2.5em; color: #1a1a2e; }
-header p { color: #666; font-size: 1.1em; }
-.card { background: white; border-radius: 12px; padding: 30px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-h2 { margin-bottom: 15px; color: #1a1a2e; }
-h3 { margin: 20px 0 10px; color: #1a1a2e; }
-input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-button { width: 100%; padding: 14px; background: #1a1a2e; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
-button:hover { background: #2a2a4e; }
-button:disabled { background: #ccc; cursor: not-allowed; }
-button.secondary { background: #e0e0e0; color: #333; }
-.tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #eee; }
-.tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
-.tab.active { border-bottom-color: #1a1a2e; font-weight: bold; }
-.consent-section { margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #e74c3c; }
-.consent-section h4 { color: #e74c3c; margin-bottom: 8px; }
-.consent-section.normal { border-left-color: #3498db; }
-.consent-section.normal h4 { color: #1a1a2e; }
-.checkbox-group { margin: 10px 0; }
-.checkbox-group label { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; cursor: pointer; }
-.checkbox-group input { margin-top: 4px; width: 18px; height: 18px; flex-shrink: 0; }
-.price { font-size: 2em; font-weight: bold; text-align: center; margin: 20px 0; }
-.price span { font-size: 0.5em; color: #666; }
-.error { background: #fee; color: #c00; padding: 12px; border-radius: 8px; margin: 10px 0; }
-.success { background: #efe; color: #060; padding: 12px; border-radius: 8px; margin: 10px 0; }
-.hidden { display: none; }
-#card-container { margin: 15px 0; }
-.footer { text-align: center; color: #888; font-size: 0.85em; padding: 20px; line-height: 1.5; }
-.step-indicator { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
-.step { width: 30px; height: 30px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.step.active { background: #1a1a2e; color: white; }
-.step.done { background: #27ae60; color: white; }
-.progress-bar { background: #eee; border-radius: 8px; height: 18px; overflow: hidden; margin: 8px 0; }
-.progress-fill { background: #27ae60; height: 100%; border-radius: 8px; transition: width 0.3s; }
-.status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9em; }
-.status-learning { background: #e3f2fd; color: #1565c0; }
-.status-monitoring { background: #e8f5e9; color: #2e7d32; }
-.status-watch { background: #fff3e0; color: #e65100; }
-.status-act { background: #fce4ec; color: #c62828; }
-.status-not-connected { background: #f5f5f5; color: #666; }
-.flag-item { padding: 10px 12px; border-radius: 8px; margin: 8px 0; }
-.flag-watch { background: #fff3e0; border-left: 4px solid #e65100; }
-.flag-act { background: #fce4ec; border-left: 4px solid #c62828; }
-table.days { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 10px; }
-table.days th, table.days td { padding: 6px 4px; text-align: right; border-bottom: 1px solid #eee; }
-table.days th:first-child, table.days td:first-child { text-align: left; }
-table.days tr.flag-row { background: #fff3e0; }
-table.days tr.act-row { background: #fce4ec; }
+:root{
+  --bg:#F4F3EE; --bg2:#EDECE6; --surface:#FFFFFF; --surface2:#F9F8F4;
+  --ink:#16211C; --muted:#5C6B62; --line:#DCE0D9;
+  --teal:#0E7A68; --teal2:#0A5E51; --teal-soft:#DDF0E9;
+  --amber:#9A6B12; --amber-bg:#FEF3C7; --amber-ink:#713F12;
+  --red:#B42318; --red-bg:#FEF2F2; --red-ink:#7A271A;
+  --green-bg:#ECFDF3; --shadow:0 18px 50px rgba(20,40,32,.12);
+  --radius:20px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0D1310; --bg2:#111915; --surface:#17211C; --surface2:#1C2821; --ink:#EDF4EF; --muted:#9AB0A3; --line:#2A3A31; --teal:#2EC4A6; --teal-soft:#14332C; --amber-bg:#2E2410; --amber-ink:#FDE68A; --red-bg:#2E1512; --red-ink:#FECACA; --green-bg:#12291E; --shadow:0 18px 50px rgba(0,0,0,.45); }
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;line-height:1.6}
+a{color:var(--teal2)} @media(prefers-color-scheme:dark){a{color:var(--teal)}}
+.container{max-width:680px;margin:0 auto;padding:0 20px}
+header{text-align:center;padding:40px 0 20px}
+header h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(42px,6vw,56px);line-height:.95;letter-spacing:-.02em;margin:0;color:var(--ink)}
+header h1 em{color:var(--teal);font-style:italic}
+header p{color:var(--muted);font-size:1.1em;margin:12px 0 0}
+.logo-mark{width:48px;height:48px;border-radius:12px;background:var(--teal);display:inline-grid;place-items:center;color:white;font-size:24px;font-weight:800;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px;margin:20px 0;box-shadow:var(--shadow)}
+h2{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(26px,3.4vw,32px);line-height:1.1;margin:0 0 12px;color:var(--ink)}
+h3{margin:20px 0 10px;color:var(--ink);font-size:18px;font-weight:800}
+h4{margin:0 0 8px;font-size:15px;font-weight:800}
+input[type="text"], input[type="email"], input[type="password"]{width:100%;padding:13px 14px;margin:8px 0;border:1px solid var(--line);border-radius:12px;font-size:16px;font-family:Manrope,system-ui,sans-serif;background:var(--surface);color:var(--ink)}
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus{outline:3px solid var(--teal);outline-offset:2px;border-color:var(--teal)}
+button{width:100%;padding:14px 18px;background:var(--ink);color:var(--bg);border:0;border-radius:999px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:hover{opacity:.9}
+button:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;opacity:.6}
+button.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+button.secondary:hover{border-color:var(--teal)}
+.tabs{display:flex;margin-bottom:20px;border-bottom:2px solid var(--line)}
+.tab{flex:1;padding:12px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:700;color:var(--muted)}
+.tab.active{border-bottom-color:var(--teal);color:var(--ink);font-weight:800}
+.consent-section{margin:15px 0;padding:16px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;border-left:4px solid var(--red)}
+.consent-section h4{color:var(--red);margin-bottom:8px}
+.consent-section.normal{border-left-color:var(--teal)}
+.consent-section.normal h4{color:var(--ink)}
+.checkbox-group{margin:10px 0}
+.checkbox-group label{display:flex;align-items:flex-start;gap:10px;margin:12px 0;cursor:pointer;font-size:14.5px;line-height:1.5}
+.checkbox-group input{margin-top:4px;width:18px;height:18px;flex-shrink:0;accent-color:var(--teal)}
+.price{font-family:"DM Serif Display",serif;font-size:2.5em;font-weight:400;text-align:center;margin:20px 0;color:var(--ink)}
+.price span{font-size:0.5em;color:var(--muted);font-family:Manrope,system-ui,sans-serif}
+.error{background:var(--red-bg);color:var(--red-ink);padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #FCA5A5;font-size:14.5px}
+.success{background:var(--green-bg);color:#065F46;padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #A7F3D0;font-size:14.5px}
+@media(prefers-color-scheme:dark){.success{color:#A7F3D0}}
+.hidden{display:none}
+#card-container{margin:15px 0}
+.footer{text-align:center;color:var(--muted);font-size:13px;padding:28px 20px 40px;line-height:1.6;border-top:1px solid var(--line);margin-top:20px}
+.step-indicator{display:flex;justify-content:center;gap:10px;margin:20px 0}
+.step{width:36px;height:36px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted)}
+.step.active{background:var(--ink);color:var(--bg)}
+.step.done{background:var(--teal);color:white}
+.progress-bar{background:var(--bg2);border-radius:8px;height:18px;overflow:hidden;margin:8px 0}
+.progress-fill{background:var(--teal);height:100%;border-radius:8px;transition:width 0.3s}
+.status-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:800;font-size:13px}
+.status-learning{background:var(--teal-soft);color:var(--teal2)}
+.status-monitoring{background:var(--green-bg);color:#065F46}
+.status-watch{background:var(--amber-bg);color:var(--amber-ink)}
+.status-act{background:var(--red-bg);color:var(--red-ink)}
+.status-not-connected{background:var(--surface2);color:var(--muted)}
+.flag-item{padding:12px 14px;border-radius:12px;margin:8px 0;border:1px solid var(--line)}
+.flag-watch{background:var(--amber-bg);border-left:4px solid #D97706}
+.flag-act{background:var(--red-bg);border-left:4px solid var(--red)}
+table.days{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+table.days th, table.days td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line)}
+table.days th:first-child, table.days td:first-child{text-align:left}
+table.days th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
+table.days tr.flag-row{background:var(--amber-bg)}
+table.days tr.act-row{background:var(--red-bg)}
+ul{color:var(--muted)}
+ul li{margin:8px 0}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0 0 12px}
+.pill{font-size:13px;font-weight:700;background:var(--surface);border:1px solid var(--line);padding:7px 12px;border-radius:999px;display:inline-block;margin:4px 4px 4px 0}
+@media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}}
 </style>
 </head>
 <body>
 <div class="container">
 <header>
+<div class="logo-mark">H</div>
 <h1>H-CAR</h1>
 <p>Your personal health baseline. We notice change, so you can act.</p>
 </header>
 
 <div id="landing" class="card">
+<p class="eyebrow">General Wellness Tool</p>
 <h2>What is H-CAR?</h2>
 <p>H-CAR learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
 <p style="margin-top:15px"><strong>How it works:</strong></p>
@@ -77,7 +107,12 @@ table.days tr.act-row { background: #fce4ec; }
 <li>Serious flags can alert a person you trust</li>
 </ul>
 <div class="price">$5<span>/month CAD</span></div>
-<p style="text-align:center;color:#666;">Cancel anytime. No hidden fees.</p>
+<p style="text-align:center;color:var(--muted);">Cancel anytime. No hidden fees.</p>
+<div style="text-align:center;margin:16px 0;">
+<span class="pill">28-day baseline</span>
+<span class="pill">6 signals tracked</span>
+<span class="pill">Private by design</span>
+</div>
 <div class="tabs">
 <div class="tab active" onclick="showTab('signup', this)">Sign Up</div>
 <div class="tab" onclick="showTab('login', this)">Sign In</div>
@@ -423,7 +458,7 @@ function renderDetector(det) {
     det.baselineComplete
       ? '<p><strong>Baseline complete.</strong> ' + det.daysSynced + ' days of data synced.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
       : '<p>Day ' + det.baselineDay + ' of 28. ' + det.daysSynced + ' days of data synced.</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
-        '<p style="color:#666;">Wear your Fitbit every day, including while you sleep, so the baseline learns your normal.</p>';
+        '<p style="color:var(--muted);">Wear your Fitbit every day, including while you sleep, so the baseline learns your normal.</p>';
 
   const flagsEl = document.getElementById('flags-section');
   if (!det.recentFlags || det.recentFlags.length === 0) {
@@ -437,7 +472,7 @@ function renderDetector(det) {
         : '';
       return '<div class="flag-item ' + cls + '"><strong>' + kind + '</strong> &middot; ' + f.startDate + ' to ' + f.endDate +
         ' (' + f.days + ' days)' + (f.triggerDate ? ' &middot; triggered ' + f.triggerDate : '') +
-        '<br><span style="color:#555;">' + top + '</span></div>';
+        '<br><span style="color:var(--muted);">' + top + '</span></div>';
     }).join('');
   }
 }
