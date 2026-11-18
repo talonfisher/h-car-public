@@ -1673,12 +1673,13 @@ function renderDays(days) {
     return;
   }
   const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
-  let html = '<table class="days"><tr><th>Date</th><th>RHR</th><th>HRV</th><th>SpO2</th><th>Sleep</th><th>Flag</th></tr>';
+  const fmtTemp = (v) => (v === null || v === undefined ? '&ndash;' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '°');
+  let html = '<table class="days"><tr><th>Date</th><th>RHR</th><th>HRV</th><th>SpO2</th><th>Breath</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
   for (const d of days) {
     const rowCls = d.act ? 'act-row' : (d.watch ? 'flag-row' : '');
     const flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
     const sleepH = d.sleepMinutes !== null && d.sleepMinutes !== undefined ? (d.sleepMinutes / 60).toFixed(1) + 'h' : '&ndash;';
-    html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
+    html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + fmt(d.breathingRate, 1) + '</td><td>' + fmtTemp(d.skinTempDelta) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
   }
   html += '</table>';
   el.innerHTML = html;
