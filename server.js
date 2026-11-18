@@ -84,6 +84,13 @@ async function initDatabase() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Emergency contact fields (added after launch, so ALTER in case
+    // the table already exists in production).
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_email TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_relationship TEXT`);
+
     // Google Health API tokens (Fitbit data). Tokens are AES-256-GCM
     // encrypted before storage; see google-health.js.
     await client.query(`CREATE TABLE IF NOT EXISTS fitbit_tokens (
@@ -161,6 +168,19 @@ async function initDatabase() {
       visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ip_address TEXT,
       user_agent TEXT
+    )`);
+
+    // Emergency contact alerts already sent. One row per (user, Act
+    // trigger date). The detector re-runs from scratch on every sync
+    // and re-creates all episodes, so this table is what stops the
+    // same Act episode from alerting the contact over and over.
+    await client.query(`CREATE TABLE IF NOT EXISTS alerts_sent (
+      user_id INTEGER NOT NULL,
+      trigger_date TEXT NOT NULL,
+      sent_at TEXT NOT NULL,
+      recipient_email TEXT,
+      status TEXT,
+      PRIMARY KEY(user_id, trigger_date)
     )`);
 
     console.log('Database tables initialized');
@@ -432,6 +452,217 @@ app.post('/api/cancel', authenticateToken, async (req, res) => {
   }
 });
 
+// ---- Emergency contact endpoints ----
+// The person H-CAR alerts by email when an Act flag fires. Watch flags
+// never alert anyone; only Act reaches another human.
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+app.get('/api/emergency-contact', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({
+      name: user.emergency_contact_name || null,
+      email: user.emergency_contact_email || null,
+      phone: user.emergency_contact_phone || null,
+      relationship: user.emergency_contact_relationship || null,
+    });
+  } catch (err) {
+    console.error('Emergency contact get error:', err);
+    res.status(500).json({ error: 'Failed to get emergency contact' });
+  }
+});
+
+app.put('/api/emergency-contact', authenticateToken, async (req, res) => {
+  try {
+    const name = (req.body.name || '').trim();
+    const email = (req.body.email || '').trim();
+    const phone = (req.body.phone || '').trim();
+    const relationship = (req.body.relationship || '').trim();
+    // All fields blank clears the contact.
+    if (!name && !email && !phone && !relationship) {
+      await dbRun('UPDATE users SET emergency_contact_name = NULL, emergency_contact_email = NULL, emergency_contact_phone = NULL, emergency_contact_relationship = NULL WHERE id = $1', [req.user.id]);
+      return res.json({ message: 'Emergency contact removed.', contact: { name: null, email: null, phone: null, relationship: null } });
+    }
+    if (!name) return res.status(400).json({ error: 'Please enter your contact\'s name.' });
+    if (!email) return res.status(400).json({ error: 'Please enter your contact\'s email address. Alerts are sent by email.' });
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'That email address does not look valid.' });
+    await dbRun(
+      'UPDATE users SET emergency_contact_name = $1, emergency_contact_email = $2, emergency_contact_phone = $3, emergency_contact_relationship = $4 WHERE id = $5',
+      [name, email, phone || null, relationship || null, req.user.id]
+    );
+    res.json({ message: 'Emergency contact saved.', contact: { name, email, phone: phone || null, relationship: relationship || null } });
+  } catch (err) {
+    console.error('Emergency contact save error:', err);
+    res.status(500).json({ error: 'Failed to save emergency contact' });
+  }
+});
+
+// Sends a test email to the user's emergency contact so they can verify
+// alerts reach them. Does not record anything in alerts_sent.
+app.post('/api/alerts/send-test', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT name, emergency_contact_name, emergency_contact_email FROM users WHERE id = $1', [req.user.id]);
+    if (!user || !user.emergency_contact_email) {
+      return res.status(400).json({ error: 'Add an emergency contact with an email address first.' });
+    }
+    const subject = 'H-CAR test alert for ' + user.name;
+    const text = [
+      'Hi ' + (user.emergency_contact_name || 'there') + ',',
+      '',
+      'This is a test message from H-CAR. ' + user.name + ' listed you as their emergency contact.',
+      '',
+      'If H-CAR detects a serious, sustained change from ' + user.name + '\'s personal health baseline (an "Act" flag), you will get an email like this one. Smaller changes ("Watch" flags) are never sent to you.',
+      '',
+      'No action is needed. This was only a test.',
+      '',
+      'H-CAR (https://h-car.onrender.com)',
+    ].join('\n');
+    const result = await sendEmail(user.emergency_contact_email, subject, text);
+    if (!result.sent) {
+      return res.status(503).json({ error: 'Test alert could not be sent: ' + result.reason });
+    }
+    res.json({ message: 'Test alert sent to ' + user.emergency_contact_email + '.' });
+  } catch (err) {
+    console.error('Test alert error:', err);
+    res.status(500).json({ error: 'Failed to send test alert' });
+  }
+});
+
+// ---- Emergency contact alerts ----
+// When the detector fires an Act flag (a strong, sustained change),
+// H-CAR emails the user's emergency contact. Watch flags never alert
+// anyone; only Act reaches another human.
+//
+// Email goes through plain SMTP via Nodemailer. Configure with:
+//   SMTP_HOST, SMTP_PORT (default 587), SMTP_SECURE ("true" for port 465),
+//   SMTP_USER, SMTP_PASS, SMTP_FROM (optional, defaults to SMTP_USER)
+// If SMTP is not configured, alerts are skipped gracefully and the
+// reason is logged; nothing else breaks.
+
+const SIGNAL_LABELS = {
+  resting_hr: 'Resting heart rate',
+  rmssd: 'Heart rate variability (HRV)',
+  spo2: 'Blood oxygen (SpO2)',
+  nightly_temperature: 'Skin temperature',
+  sleep_duration_h: 'Sleep duration',
+  full_sleep_breathing_rate: 'Breathing rate',
+};
+
+// top_signals is an array of [signalKey, meanZ] pairs, strongest first.
+function describeTopSignals(topSignals) {
+  if (!topSignals || topSignals.length === 0) return 'several signals moved away from baseline';
+  return topSignals.map(([key, z]) => {
+    const label = SIGNAL_LABELS[key] || key.replace(/_/g, ' ');
+    return label + ' (change score ' + z + ')';
+  }).join(', ');
+}
+
+let mailer = null;
+let mailerInitTried = false;
+
+function getMailer() {
+  if (mailerInitTried) return mailer;
+  mailerInitTried = true;
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) {
+    console.log('Email alerts disabled: SMTP_HOST, SMTP_USER and SMTP_PASS are not all set.');
+    return null;
+  }
+  let nodemailer;
+  try {
+    nodemailer = require('nodemailer');
+  } catch (e) {
+    console.error('Email alerts disabled: nodemailer is not installed.', e.message);
+    return null;
+  }
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  mailer = nodemailer.createTransport({
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true' || port === 465,
+    auth: { user, pass },
+  });
+  return mailer;
+}
+
+async function sendEmail(to, subject, text) {
+  const transport = getMailer();
+  if (!transport) return { sent: false, reason: 'email is not configured on the server (SMTP settings missing)' };
+  try {
+    await transport.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      text,
+    });
+    return { sent: true };
+  } catch (e) {
+    console.error('Email send failed:', e.message);
+    return { sent: false, reason: 'email send failed: ' + e.message };
+  }
+}
+
+async function sendActAlert(user, episode) {
+  const contactName = user.emergency_contact_name || 'there';
+  const signals = describeTopSignals(episode.top_signals);
+  const subject = 'H-CAR alert: ' + user.name + ' has a serious baseline change';
+  const text = [
+    'Hi ' + contactName + ',',
+    '',
+    'You are listed as the emergency contact for ' + user.name + ' on H-CAR.',
+    '',
+    'H-CAR detected a serious, sustained change from ' + user.name + '\'s personal health baseline (an "Act" flag).',
+    '',
+    '  Change detected: ' + episode.trigger_date,
+    '  Episode: ' + episode.start + ' to ' + episode.end + ' (' + episode.days + ' days)',
+    '  Signals that moved most: ' + signals,
+    '',
+    'What this means: ' + user.name + '\'s wearable data has moved away from their usual pattern for several days in a row. H-CAR names a change, never a cause. It does not diagnose anything, and it does not monitor in real time.',
+    '',
+    'What to do: check in with ' + user.name + '. If they feel unwell, or you cannot reach them and you are worried, call your local emergency number. Do not wait for the app.',
+    '',
+    'This is an automated message from H-CAR (https://h-car.onrender.com). Please do not reply to this email.',
+  ].join('\n');
+  return sendEmail(user.emergency_contact_email, subject, text);
+}
+
+// Send an alert for each Act episode that has not been alerted yet.
+// Deduplicated by (user, trigger date) in alerts_sent, because the
+// detector re-creates all episodes on every sync. Failures are not
+// recorded, so the next sync retries. Returns { checked, sent }.
+async function maybeSendActAlerts(userId, mergedEpisodes) {
+  const actEpisodes = (mergedEpisodes || []).filter((e) => e.is_act && e.trigger_date);
+  if (actEpisodes.length === 0) return { checked: 0, sent: 0 };
+  const user = await dbGet('SELECT id, name, email, emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship FROM users WHERE id = $1', [userId]);
+  if (!user || !user.emergency_contact_email) {
+    console.log('Act alert skipped for user ' + userId + ': no emergency contact email on file.');
+    return { checked: actEpisodes.length, sent: 0 };
+  }
+  let sent = 0;
+  for (const ep of actEpisodes) {
+    const already = await dbGet('SELECT 1 AS x FROM alerts_sent WHERE user_id = $1 AND trigger_date = $2', [userId, ep.trigger_date]);
+    if (already) continue;
+    const result = await sendActAlert(user, ep);
+    if (result.sent) {
+      await dbRun(
+        'INSERT INTO alerts_sent (user_id, trigger_date, sent_at, recipient_email, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(user_id, trigger_date) DO NOTHING',
+        [userId, ep.trigger_date, new Date().toISOString(), user.emergency_contact_email, 'sent']
+      );
+      sent += 1;
+      console.log('Act alert sent for user ' + userId + ' (trigger ' + ep.trigger_date + ') to ' + user.emergency_contact_email + '.');
+    } else {
+      console.log('Act alert NOT sent for user ' + userId + ' (trigger ' + ep.trigger_date + '): ' + result.reason);
+    }
+  }
+  return { checked: actEpisodes.length, sent };
+}
+
 // ---- Fitbit (Google Health API) integration ----
 
 function dateStrUTC(d) {
@@ -667,6 +898,18 @@ async function syncUser(userId, daysBack = 35) {
   }
 
   const det = await runDetectorForUser(userId);
+
+  // Alert the emergency contact about any new Act episode (deduped by
+  // trigger date in alerts_sent). Never blocks the sync: failures are
+  // logged and retried on the next sync.
+  let alertsSent = 0;
+  try {
+    const alertResult = await maybeSendActAlerts(userId, det.mergedEpisodes);
+    alertsSent = alertResult.sent;
+  } catch (e) {
+    console.error('Act alert check failed for user ' + userId + ':', e.message);
+  }
+
   const syncError = errors.length > 0 ? errors.join('; ') : null;
   await dbRun('UPDATE fitbit_tokens SET last_sync_at = $1, last_sync_error = $2 WHERE user_id = $3',
     [new Date().toISOString(), syncError, userId]);
@@ -679,6 +922,7 @@ async function syncUser(userId, daysBack = 35) {
     baselineComplete: det.baselineDays >= detector.BASELINE_DAYS,
     episodes: det.mergedEpisodes.length,
     actEpisodes: det.mergedEpisodes.filter((e) => e.is_act).length,
+    alertsSent,
     fetchErrors: errors,
   };
 }
