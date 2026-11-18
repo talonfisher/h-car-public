@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "description": "H-CAR public signup and payment app - personal health baseline monitoring",
   "main": "server.js",
-  "engines": { "node": ">=18.0.0" },
-  "scripts": { "start": "node server.js" },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
@@ -16,6 +20,7 @@
     "googleapis": "^144.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.10.1",
     "pg": "^8.11.3",
     "square": "^37.0.0"
   }
