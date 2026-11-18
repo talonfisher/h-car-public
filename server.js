@@ -498,6 +498,40 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
+// Change password (authenticated user changes their own password).
+// POST /api/change-password
+app.post('/api/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || typeof currentPassword !== 'string') {
+    return res.status(400).json({ error: 'Current password is required' });
+  }
+  if (!newPassword || typeof newPassword !== 'string') {
+    return res.status(400).json({ error: 'New password is required' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  }
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ error: 'New password must be different from your current password' });
+  }
+  try {
+    const user = await dbGet('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await dbRun('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.id]);
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 // Record consent (11 acknowledgments: the original 10 plus research use
 // of de-identified data, added when the trial data collection shipped).
 app.post('/api/consent', authenticateToken, async (req, res) => {
