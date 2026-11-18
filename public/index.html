@@ -41,6 +41,22 @@ button.secondary { background: #e0e0e0; color: #333; }
 .step { width: 30px; height: 30px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .step.active { background: #1a1a2e; color: white; }
 .step.done { background: #27ae60; color: white; }
+.progress-bar { background: #eee; border-radius: 8px; height: 18px; overflow: hidden; margin: 8px 0; }
+.progress-fill { background: #27ae60; height: 100%; border-radius: 8px; transition: width 0.3s; }
+.status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9em; }
+.status-learning { background: #e3f2fd; color: #1565c0; }
+.status-monitoring { background: #e8f5e9; color: #2e7d32; }
+.status-watch { background: #fff3e0; color: #e65100; }
+.status-act { background: #fce4ec; color: #c62828; }
+.status-not-connected { background: #f5f5f5; color: #666; }
+.flag-item { padding: 10px 12px; border-radius: 8px; margin: 8px 0; }
+.flag-watch { background: #fff3e0; border-left: 4px solid #e65100; }
+.flag-act { background: #fce4ec; border-left: 4px solid #c62828; }
+table.days { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 10px; }
+table.days th, table.days td { padding: 6px 4px; text-align: right; border-bottom: 1px solid #eee; }
+table.days th:first-child, table.days td:first-child { text-align: left; }
+table.days tr.flag-row { background: #fff3e0; }
+table.days tr.act-row { background: #fce4ec; }
 </style>
 </head>
 <body>
@@ -84,7 +100,7 @@ button.secondary { background: #e0e0e0; color: #333; }
 <div id="consent-step" class="card hidden">
 <div class="step-indicator"><div class="step done">1</div><div class="step active">2</div><div class="step">3</div><div class="step">4</div></div>
 <h2>Consent Form</h2>
-<p>Please read carefully. You must check all 10 boxes to continue.</p>
+<p>Please read carefully. You must check all 11 boxes to continue.</p>
 
 <div class="consent-section">
 <h4>1. NOT A MEDICAL DEVICE - READ THIS FIRST</h4>
@@ -121,6 +137,11 @@ button.secondary { background: #e0e0e0; color: #333; }
 <p>$5.00 CAD per month, auto-renewing. Cancel anytime, effective at the end of your paid period. No refunds for partial months. Payment is processed by Square. Your card details are tokenized by Square and never touch our servers.</p>
 </div>
 
+<div class="consent-section normal">
+<h4>8. Research use of de-identified data</h4>
+<p>H-CAR is being validated in a trial. Your de-identified health summaries (daily signal values, baseline statistics, and flag counts, with your name, email, and account details removed) may be used for research to validate whether H-CAR's detector works. De-identified data may be shared with research partners and published in aggregate form. Your identifiable data is never sold and never shared for research. You can withdraw from the trial at any time by cancelling your subscription and deleting your account; data already de-identified and pooled cannot be pulled back out.</p>
+</div>
+
 <h3>Your Acknowledgment</h3>
 <p>Check each box to confirm you understand:</p>
 <div class="checkbox-group" id="ack-boxes">
@@ -134,6 +155,7 @@ button.secondary { background: #e0e0e0; color: #333; }
 <label><input type="checkbox" class="ack" data-n="8"> I understand my data handling as described in the privacy notice.</label>
 <label><input type="checkbox" class="ack" data-n="9"> I understand the subscription terms ($5/month, cancel anytime, no partial refunds).</label>
 <label><input type="checkbox" class="ack" data-n="10"> I am 19 years of age or older, or I have guardian consent to use H-CAR.</label>
+<label><input type="checkbox" class="ack" data-n="11"> I understand my de-identified health data may be used for research to validate H-CAR's effectiveness, as described in section 8.</label>
 </div>
 <button id="consent-btn" onclick="submitConsent()" disabled>I Accept - Continue to Payment</button>
 <div id="consent-error" class="error hidden"></div>
@@ -158,13 +180,24 @@ button.secondary { background: #e0e0e0; color: #333; }
 <div class="step-indicator"><div class="step done">1</div><div class="step done">2</div><div class="step done">3</div><div class="step done">4</div></div>
 <h2>Welcome to H-CAR, <span id="dash-name"></span></h2>
 <div id="dash-status"></div>
-<p style="margin-top:15px;">Your subscription is active. Here is what happens next:</p>
-<ol style="margin: 10px 0 10px 20px;">
-<li>Connect your Fitbit (coming soon - you will receive instructions by email)</li>
-<li>Wear your Fitbit for 28 days to build your personal baseline</li>
-<li>After 28 days, H-CAR starts flagging sustained changes from your baseline</li>
-</ol>
-<p style="margin-top:15px;color:#666;">Your baseline is being built. H-CAR will not flag anything during the first 28 days while it learns your normal.</p>
+<div id="fitbit-notice" class="success hidden"></div>
+<div id="fitbit-error" class="error hidden"></div>
+
+<h3>Your Fitbit</h3>
+<div id="fitbit-section"><p>Loading Fitbit status...</p></div>
+
+<h3>Your baseline</h3>
+<div id="baseline-section"><p>Loading baseline...</p></div>
+
+<h3>Status</h3>
+<div id="detector-status"><p>Loading status...</p></div>
+
+<h3>Recent flags</h3>
+<div id="flags-section"><p>No flags yet.</p></div>
+
+<h3>Recent days</h3>
+<div id="days-section"><p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p></div>
+
 <button class="secondary" onclick="cancelSub()" style="margin-top:20px;">Cancel Subscription</button>
 <button class="secondary" onclick="logout()">Sign Out</button>
 </div>
@@ -332,11 +365,168 @@ async function checkStatus() {
     } else {
       document.getElementById('dash-status').innerHTML = '<div class="success">Subscription active. ' + (me.subscriptionPeriodEnd ? 'Paid through ' + new Date(me.subscriptionPeriodEnd).toLocaleDateString() : '') + '</div>';
       showStep('dashboard');
+      await loadDashboard();
     }
   } catch (e) {
     showStep('landing');
   }
 }
+
+async function loadDashboard() {
+  try {
+    const [fitbit, det] = await Promise.all([
+      apiCall('/fitbit/status', 'GET'),
+      apiCall('/detector/status', 'GET'),
+    ]);
+    renderFitbit(fitbit);
+    renderDetector(det);
+    const days = await apiCall('/days?limit=7', 'GET');
+    renderDays(days.days);
+  } catch (e) {
+    document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
+  }
+}
+
+function renderFitbit(f) {
+  const el = document.getElementById('fitbit-section');
+  if (!f.googleConfigured) {
+    el.innerHTML = '<p>Fitbit connection is not set up yet. The operator is still configuring the Google Health connection. Check back soon.</p>';
+    return;
+  }
+  if (!f.connected) {
+    el.innerHTML = '<p>Your Fitbit is not connected yet. Connect it so H-CAR can read your daily summaries and build your baseline.</p>' +
+      '<button onclick="connectFitbit()">Connect Fitbit</button>';
+    return;
+  }
+  let html = '<p><strong>Connected</strong>' + (f.connectedAt ? ' since ' + new Date(f.connectedAt).toLocaleDateString() : '') + '.</p>';
+  if (f.lastSyncAt) html += '<p>Last synced ' + new Date(f.lastSyncAt).toLocaleString() + '.</p>';
+  if (f.lastSyncError) html += '<div class="error">Last sync had an issue: ' + f.lastSyncError + '</div>';
+  html += '<button onclick="syncNow()">Sync Now</button>' +
+    '<button class="secondary" onclick="disconnectFitbit()">Disconnect Fitbit</button>';
+  el.innerHTML = html;
+}
+
+function renderDetector(det) {
+  const statusLabels = {
+    not_connected: ['Not connected', 'status-not-connected', 'Connect your Fitbit to start building your baseline.'],
+    learning: ['Learning your baseline', 'status-learning', 'H-CAR is learning what is normal for you. No flags during the first 28 days.'],
+    monitoring: ['Monitoring', 'status-monitoring', 'Your baseline is set. H-CAR is watching for sustained changes.'],
+    watch_active: ['Watch flag active', 'status-watch', 'Your numbers have moved away from your baseline for 2 or more days. This is a change worth noticing, not a diagnosis.'],
+    act_active: ['Act flag active', 'status-act', 'A strong sustained change has been flagged. Consider checking in with someone you trust or a health care professional if you feel unwell.'],
+  };
+  const [label, cls, desc] = statusLabels[det.status] || statusLabels['not_connected'];
+  document.getElementById('detector-status').innerHTML =
+    '<span class="status-badge ' + cls + '">' + label + '</span><p style="margin-top:8px;">' + desc + '</p>';
+
+  const pct = Math.round((det.baselineDay / 28) * 100);
+  document.getElementById('baseline-section').innerHTML =
+    det.baselineComplete
+      ? '<p><strong>Baseline complete.</strong> ' + det.daysSynced + ' days of data synced.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
+      : '<p>Day ' + det.baselineDay + ' of 28. ' + det.daysSynced + ' days of data synced.</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+        '<p style="color:#666;">Wear your Fitbit every day, including while you sleep, so the baseline learns your normal.</p>';
+
+  const flagsEl = document.getElementById('flags-section');
+  if (!det.recentFlags || det.recentFlags.length === 0) {
+    flagsEl.innerHTML = '<p>No flags yet.</p>';
+  } else {
+    flagsEl.innerHTML = det.recentFlags.map((f) => {
+      const kind = f.isAct ? 'Act' : 'Watch';
+      const cls = f.isAct ? 'flag-act' : 'flag-watch';
+      const top = f.topSignals && f.topSignals.length > 0
+        ? 'Strongest signals: ' + f.topSignals.map((t) => t[0].replace(/_/g, ' ') + ' (z ' + t[1] + ')').join(', ')
+        : '';
+      return '<div class="flag-item ' + cls + '"><strong>' + kind + '</strong> &middot; ' + f.startDate + ' to ' + f.endDate +
+        ' (' + f.days + ' days)' + (f.triggerDate ? ' &middot; triggered ' + f.triggerDate : '') +
+        '<br><span style="color:#555;">' + top + '</span></div>';
+    }).join('');
+  }
+}
+
+function renderDays(days) {
+  const el = document.getElementById('days-section');
+  if (!days || days.length === 0) {
+    el.innerHTML = '<p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p>';
+    return;
+  }
+  const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
+  let html = '<table class="days"><tr><th>Date</th><th>RHR</th><th>HRV</th><th>SpO2</th><th>Sleep</th><th>Flag</th></tr>';
+  for (const d of days) {
+    const rowCls = d.act ? 'act-row' : (d.watch ? 'flag-row' : '');
+    const flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
+    const sleepH = d.sleepMinutes !== null && d.sleepMinutes !== undefined ? (d.sleepMinutes / 60).toFixed(1) + 'h' : '&ndash;';
+    html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
+  }
+  html += '</table>';
+  el.innerHTML = html;
+}
+
+async function connectFitbit() {
+  try {
+    const data = await apiCall('/fitbit/connect', 'GET');
+    window.location = data.url;
+  } catch (e) {
+    const errEl = document.getElementById('fitbit-error');
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function disconnectFitbit() {
+  if (!confirm('Disconnect your Fitbit? H-CAR will stop syncing new data. Your stored history is kept.')) return;
+  try {
+    await apiCall('/fitbit/disconnect', 'POST', {});
+    await loadDashboard();
+  } catch (e) {
+    alert('Disconnect failed: ' + e.message);
+  }
+}
+
+async function syncNow() {
+  const el = document.getElementById('fitbit-section');
+  el.innerHTML = '<p>Syncing your Fitbit data...</p>';
+  try {
+    const res = await apiCall('/fitbit/sync', 'POST', {});
+    const notice = document.getElementById('fitbit-notice');
+    notice.textContent = 'Sync complete: ' + res.daysStored + ' days stored' +
+      (res.episodes > 0 ? ', ' + res.episodes + ' flag episode(s) on record' : ', no flags') + '.';
+    notice.classList.remove('hidden');
+    await loadDashboard();
+  } catch (e) {
+    if (e.message && e.message.indexOf('reconnect') !== -1) {
+      el.innerHTML = '<div class="error">Your Fitbit connection expired. Please reconnect.</div><button onclick="connectFitbit()">Reconnect Fitbit</button>';
+    } else {
+      el.innerHTML = '<div class="error">Sync failed: ' + e.message + '</div><button onclick="syncNow()">Try Again</button>';
+    }
+  }
+}
+
+// Handle the return from Google OAuth.
+(function handleFitbitReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const fitbit = params.get('fitbit');
+  if (!fitbit) return;
+  window.history.replaceState({}, '', window.location.pathname);
+  if (fitbit === 'connected') {
+    const notice = document.getElementById('fitbit-notice');
+    if (notice) {
+      notice.textContent = 'Fitbit connected. Syncing your data now...';
+      notice.classList.remove('hidden');
+    }
+    // Auto-sync right after connecting, once logged in.
+    setTimeout(async () => {
+      if (authToken) {
+        try { await apiCall('/fitbit/sync', 'POST', {}); } catch (e) { /* shown on dashboard */ }
+        await loadDashboard();
+      }
+    }, 1000);
+  } else if (fitbit === 'error') {
+    const errEl = document.getElementById('fitbit-error');
+    if (errEl) {
+      errEl.textContent = params.get('message') || 'Fitbit connection failed.';
+      errEl.classList.remove('hidden');
+    }
+  }
+})();
 
 async function cancelSub() {
   if (!confirm('Cancel your H-CAR subscription? Access continues until the end of your paid period.')) return;
