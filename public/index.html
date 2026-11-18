@@ -1044,6 +1044,17 @@ ul li{margin:8px 0}
 <h3>Recent days</h3>
 <div id="days-section"><p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p></div>
 
+<h3 style="margin-top:30px;">Emergency Contact</h3>
+<p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), we will alert this person by email. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
+<div id="emergency-contact-msg"></div>
+<input type="text" id="ec-name" placeholder="Contact name (for example, Meagan Fisher)" autocomplete="name">
+<input type="text" id="ec-relationship" placeholder="Relationship (for example, Wife)" autocomplete="off">
+<input type="email" id="ec-email" placeholder="Contact email address" autocomplete="email">
+<input type="text" id="ec-phone" placeholder="Contact phone (optional)" inputmode="tel" autocomplete="tel">
+<button onclick="saveEmergencyContact()">Save Contact</button>
+<button class="secondary" onclick="sendTestAlert()">Send Test Alert</button>
+<p style="color:var(--muted);font-size:13px;margin-top:8px;">To remove your emergency contact, clear all four fields and press Save Contact.</p>
+
 <h3 style="margin-top:30px;">Learn More About H-CAR</h3>
 <p style="color:var(--muted);font-size:14px;">Explore the full guide, research results, and how H-CAR works.</p>
 <div class="nav-tabs" style="flex-wrap:wrap;">
@@ -1281,8 +1292,54 @@ async function loadDashboard() {
     renderDetector(det);
     const days = await apiCall('/days?limit=7', 'GET');
     renderDays(days.days);
+    // Emergency contact is non-critical; never let it break the dashboard.
+    loadEmergencyContact();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
+  }
+}
+
+// Emergency contact: load, save, and test alert. Values are set via
+// .value (never innerHTML) so contact names cannot inject markup.
+async function loadEmergencyContact() {
+  try {
+    const c = await apiCall('/emergency-contact', 'GET');
+    document.getElementById('ec-name').value = c.name || '';
+    document.getElementById('ec-relationship').value = c.relationship || '';
+    document.getElementById('ec-email').value = c.email || '';
+    document.getElementById('ec-phone').value = c.phone || '';
+  } catch (e) {
+    // Non-critical; leave the fields blank.
+  }
+}
+
+function showContactMsg(text, isError) {
+  document.getElementById('emergency-contact-msg').innerHTML =
+    '<div class="' + (isError ? 'error' : 'success') + '">' + text + '</div>';
+}
+
+async function saveEmergencyContact() {
+  const body = {
+    name: document.getElementById('ec-name').value.trim(),
+    relationship: document.getElementById('ec-relationship').value.trim(),
+    email: document.getElementById('ec-email').value.trim(),
+    phone: document.getElementById('ec-phone').value.trim(),
+  };
+  try {
+    const res = await apiCall('/emergency-contact', 'PUT', body);
+    showContactMsg(res.message, false);
+  } catch (e) {
+    showContactMsg(e.message, true);
+  }
+}
+
+async function sendTestAlert() {
+  showContactMsg('Sending test alert...', false);
+  try {
+    const res = await apiCall('/alerts/send-test', 'POST', {});
+    showContactMsg(res.message, false);
+  } catch (e) {
+    showContactMsg(e.message, true);
   }
 }
 
