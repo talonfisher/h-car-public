@@ -119,6 +119,34 @@ ul li{margin:8px 0}
 <p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
 <p style="margin-top:12px">Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
 
+
+<div class="price">$5<span>/month CAD</span></div>
+<p style="text-align:center;color:var(--muted);">Cancel anytime. No hidden fees.</p>
+<div style="text-align:center;margin:16px 0;">
+<span class="pill">28-day baseline</span>
+<span class="pill">6 signals tracked</span>
+<span class="pill">Private by design</span>
+</div>
+<div class="tabs">
+<div class="tab active" onclick="showTab('signup', this)">Sign Up</div>
+<div class="tab" onclick="showTab('login', this)">Sign In</div>
+</div>
+<div id="signup-form">
+<input type="text" id="su-name" placeholder="Full name" required>
+<input type="email" id="su-email" placeholder="Email address" required>
+<input type="password" id="su-password" placeholder="Password (8+ characters)" required>
+<button onclick="signup()">Create Account</button>
+<div id="su-error" class="error hidden"></div>
+</div>
+<div id="login-form" class="hidden">
+<input type="email" id="li-email" placeholder="Email address" required>
+<input type="password" id="li-password" placeholder="Password" required>
+<button onclick="login()">Sign In</button>
+<div id="li-error" class="error hidden"></div>
+</div>
+</div>
+
+<div id="learn-container" class="card">
 <div class="nav-tabs" style="flex-wrap:wrap;">
 <div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
 <div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
@@ -913,31 +941,6 @@ ul li{margin:8px 0}
 <p style="margin-top:10px"><strong>Talk to your clinician about what thresholds make sense for your own health conditions and medications.</strong></p>
 </div>
 </div>
-
-<div class="price">$5<span>/month CAD</span></div>
-<p style="text-align:center;color:var(--muted);">Cancel anytime. No hidden fees.</p>
-<div style="text-align:center;margin:16px 0;">
-<span class="pill">28-day baseline</span>
-<span class="pill">6 signals tracked</span>
-<span class="pill">Private by design</span>
-</div>
-<div class="tabs">
-<div class="tab active" onclick="showTab('signup', this)">Sign Up</div>
-<div class="tab" onclick="showTab('login', this)">Sign In</div>
-</div>
-<div id="signup-form">
-<input type="text" id="su-name" placeholder="Full name" required>
-<input type="email" id="su-email" placeholder="Email address" required>
-<input type="password" id="su-password" placeholder="Password (8+ characters)" required>
-<button onclick="signup()">Create Account</button>
-<div id="su-error" class="error hidden"></div>
-</div>
-<div id="login-form" class="hidden">
-<input type="email" id="li-email" placeholder="Email address" required>
-<input type="password" id="li-password" placeholder="Password" required>
-<button onclick="login()">Sign In</button>
-<div id="li-error" class="error hidden"></div>
-</div>
 </div>
 
 <div id="consent-step" class="card hidden">
@@ -1041,6 +1044,24 @@ ul li{margin:8px 0}
 <h3>Recent days</h3>
 <div id="days-section"><p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p></div>
 
+<h3 style="margin-top:30px;">Learn More About H-CAR</h3>
+<p style="color:var(--muted);font-size:14px;">Explore the full guide, research results, and how H-CAR works.</p>
+<div class="nav-tabs" style="flex-wrap:wrap;">
+<div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
+<div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
+<div class="nav-tab" onclick="showLearnTab('demo', this)">Live Demo</div>
+<div class="nav-tab" onclick="showLearnTab('baseline', this)">Baseline</div>
+<div class="nav-tab" onclick="showLearnTab('changes', this)">Watch &amp; Act</div>
+<div class="nav-tab" onclick="showLearnTab('spec', this)">Detection Spec</div>
+<div class="nav-tab" onclick="showLearnTab('timeline', this)">Timeline</div>
+<div class="nav-tab" onclick="showLearnTab('sensors', this)">Sensors</div>
+<div class="nav-tab" onclick="showLearnTab('assistant', this)">Assistant</div>
+<div class="nav-tab" onclick="showLearnTab('report', this)">Clinician Report</div>
+<div class="nav-tab" onclick="showLearnTab('results', this)">Blind Tests</div>
+<div class="nav-tab" onclick="showLearnTab('plan', this)">Build Plan</div>
+<div class="nav-tab" onclick="showLearnTab('privacy', this)">Privacy</div>
+</div>
+
 <button class="secondary" onclick="showSettings()">Settings</button>
 <button class="secondary" onclick="logout()">Sign Out</button>
 </div>
@@ -1080,19 +1101,34 @@ function showTab(tab, element) {
 }
 
 function showLearnTab(tab, element) {
+  // Remove active from all nav tabs, then add to all tabs matching this tab name (syncs both landing and dashboard tab sets)
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  element.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + tab + "'")) {
+      t.classList.add('active');
+    }
+  });
   const tabs = ['overview','how-it-works','demo','baseline','changes','spec','timeline','sensors','assistant','report','results','plan','privacy'];
   tabs.forEach(t => {
     const el = document.getElementById('learn-' + t);
     if (el) el.classList.toggle('hidden', t !== tab);
   });
+  // Scroll to learn container if on dashboard
+  const learnContainer = document.getElementById('learn-container');
+  if (learnContainer && !document.getElementById('dashboard').classList.contains('hidden')) {
+    learnContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function showStep(stepId) {
   ['landing', 'consent-step', 'payment-step', 'dashboard'].forEach(id => {
     document.getElementById(id).classList.toggle('hidden', id !== stepId);
   });
+  // Show learn container on landing and dashboard, hide on consent/payment
+  const learnContainer = document.getElementById('learn-container');
+  if (learnContainer) {
+    learnContainer.classList.toggle('hidden', stepId !== 'landing' && stepId !== 'dashboard');
+  }
 }
 
 async function signup() {
