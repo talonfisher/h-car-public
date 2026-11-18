@@ -1141,14 +1141,26 @@ ul li{margin:8px 0}
 <button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
 <button class="secondary" onclick="cancelSub()" style="background:#B42318;color:white;border-color:#B42318;margin-top:10px;">Cancel Subscription</button>
 <p style="font-size:0.85em;color:var(--muted);margin-top:10px;">Cancelling stops future charges. You keep access until the end of your current billing period. No partial refunds.</p>
+
+<h3 style="margin-top:24px;">Change Password</h3>
+<div style="display:grid;gap:10px;max-width:400px;">
+<label style="display:block;">Current Password
+<input type="password" id="current-password" placeholder="Enter your current password" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;margin-top:4px;">
+</label>
+<label style="display:block;">New Password
+<input type="password" id="new-password" placeholder="At least 8 characters" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;margin-top:4px;">
+</label>
+<label style="display:block;">Confirm New Password
+<input type="password" id="confirm-password" placeholder="Re-enter your new password" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;margin-top:4px;">
+</label>
+</div>
+<button onclick="changePassword()" style="margin-top:12px;">Change Password</button>
+<div id="change-password-msg" style="margin-top:10px;font-size:14px;"></div>
 </div>
 
 <div class="footer">
 <p>H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
 <p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. This consent form and privacy notice are drafts prepared without a lawyer. They are not legal advice and have not been reviewed by a lawyer.</p>
-<div id="visitor-counter" style="text-align:center;color:var(--muted);font-size:13px;margin-top:16px;">
-<span id="visitor-count">...</span> people have visited this page
-</div>
 </div>
 </div>
 
@@ -1772,40 +1784,59 @@ function showSettings() {
   }
 }
 
+async function changePassword() {
+  const currentPassword = document.getElementById('current-password').value;
+  const newPassword = document.getElementById('new-password').value;
+  const confirmPassword = document.getElementById('confirm-password').value;
+  const msgEl = document.getElementById('change-password-msg');
+  
+  // Validate on frontend before submitting
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    msgEl.textContent = 'Please fill in all three fields.';
+    msgEl.style.color = '#B42318';
+    return;
+  }
+  if (newPassword.length < 8) {
+    msgEl.textContent = 'New password must be at least 8 characters.';
+    msgEl.style.color = '#B42318';
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    msgEl.textContent = 'New passwords do not match.';
+    msgEl.style.color = '#B42318';
+    return;
+  }
+  if (currentPassword === newPassword) {
+    msgEl.textContent = 'New password must be different from your current password.';
+    msgEl.style.color = '#B42318';
+    return;
+  }
+  
+  msgEl.textContent = 'Changing password...';
+  msgEl.style.color = 'var(--muted)';
+  
+  try {
+    const data = await apiCall('/change-password', 'POST', { currentPassword, newPassword });
+    msgEl.textContent = data.message || 'Password changed successfully.';
+    msgEl.style.color = '#0E7A68';
+    // Clear the fields on success
+    document.getElementById('current-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+  } catch (e) {
+    msgEl.textContent = e.message || 'Failed to change password.';
+    msgEl.style.color = '#B42318';
+  }
+}
+
 function logout() {
   authToken = null;
   localStorage.removeItem('hcar_token');
   showStep('landing');
 }
 
-// Visitor counter: record this visit and fetch the total count.
-// Only runs once on page load (not on tab switches).
-async function initVisitorCounter() {
-  try {
-    // Record the visit (server deduplicates by IP per hour)
-    await fetch('/api/visit', { method: 'POST' });
-  } catch (e) {
-    // Counter is non-critical; ignore failures silently
-  }
-  try {
-    const res = await fetch('/api/visits/count');
-    const data = await res.json();
-    const el = document.getElementById('visitor-count');
-    if (el && typeof data.count === 'number') {
-      el.textContent = data.count.toLocaleString();
-    }
-  } catch (e) {
-    // Hide the counter if it fails to load
-    const counter = document.getElementById('visitor-counter');
-    if (counter) counter.style.display = 'none';
-  }
-}
-
 // Check if already logged in
 if (authToken) checkStatus();
-
-// Initialize visitor counter on page load
-initVisitorCounter();
 </script>
 </body>
 </html>
