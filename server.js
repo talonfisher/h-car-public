@@ -48,6 +48,14 @@ const signupLimiter = rateLimit({
   message: 'Too many signup attempts, please try again later.'
 });
 
+// Capitalize each word in a name (e.g., "talon james fisher" -> "Talon James Fisher")
+function capitalizeName(name) {
+  return name
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 // Database - Neon Postgres (persistent, survives deploys)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -217,10 +225,11 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
   try {
+    const capitalizedName = capitalizeName(name.trim());
     const hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
-      [name, email.toLowerCase(), hash]
+      [capitalizedName, email.toLowerCase(), hash]
     );
     const userId = result.rows[0].id;
     const token = jwt.sign({ id: userId, email: email.toLowerCase() }, JWT_SECRET, { expiresIn: '7d' });
