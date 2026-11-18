@@ -91,6 +91,11 @@ async function initDatabase() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone TEXT`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_relationship TEXT`);
 
+    // Sensitivity setting (gentle, balanced, sensitive). Default balanced.
+    // The detector currently runs in Balanced mode only; this preference
+    // is saved for future use and does not change detector behavior yet.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sensitivity TEXT DEFAULT 'balanced'`);
+
     // Google Health API tokens (Fitbit data). Tokens are AES-256-GCM
     // encrypted before storage; see google-health.js.
     await client.query(`CREATE TABLE IF NOT EXISTS fitbit_tokens (
@@ -181,6 +186,18 @@ async function initDatabase() {
       recipient_email TEXT,
       status TEXT,
       PRIMARY KEY(user_id, trigger_date)
+    )`);
+
+    // Symptom logs. One row per user per day. Symptoms are stored as
+    // a comma-separated string (e.g., "Tired / poor sleep,Dizzy").
+    await client.query(`CREATE TABLE IF NOT EXISTS symptom_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      logged_date TEXT NOT NULL,
+      symptoms TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, logged_date)
     )`);
 
     console.log('Database tables initialized');
@@ -1117,6 +1134,425 @@ app.get('/api/admin/trial-summary', requireAdminKey, async (req, res) => {
   } catch (err) {
     console.error('Trial summary error:', err);
     res.status(500).json({ error: 'Failed to get trial summary' });
+  }
+});
+
+// Symptom logging
+// POST /api/symptoms - Save symptoms for today (or a specific date).
+// Accepts: { symptoms: ["Tired / poor sleep", "Dizzy"], notes: "...", date: "2026-11-17" (optional, defaults to today) }
+app.post('/api/symptoms', authenticateToken, async (req, res) => {
+  try {
+    const { symptoms, notes, date } = req.body;
+    if (!symptoms || !Array.isArray(symptoms) || symptoms.length === 0) {
+      return res.status(400).json({ error: 'At least one symptom is required' });
+    }
+    // Validate symptoms against allowed list
+    const allowedSymptoms = [
+      'I feel fine',
+      'Tired / poor sleep',
+      'Dizzy',
+      'Short of breath',
+      'Chest tightness',
+      'Feverish / chills',
+      'Nauseous'
+    ];
+    for (const s of symptoms) {
+      if (!allowedSymptoms.includes(s)) {
+        return res.status(400).json({ error: `Invalid symptom: ${s}` });
+      }
+    }
+    const loggedDate = date || new Date().toISOString().split('T')[0];
+    const symptomsStr = symptoms.join(',');
+    const notesStr = notes ? String(notes).slice(0, 500) : '';
+    // Upsert: if a log already exists for this date, update it
+    await dbRun(
+      `INSERT INTO symptom_logs (user_id, logged_date, symptoms, notes)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, logged_date)
+       DO UPDATE SET symptoms = EXCLUDED.symptoms, notes = EXCLUDED.notes`,
+      [req.user.id, loggedDate, symptomsStr, notesStr]
+    );
+    res.json({ ok: true, date: loggedDate, symptoms });
+  } catch (err) {
+    console.error('Save symptoms error:', err);
+    res.status(500).json({ error: 'Failed to save symptoms' });
+  }
+});
+
+// GET /api/symptoms?days=7 - Get recent symptom logs
+app.get('/api/symptoms', authenticateToken, async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days, 10) || 7, 90);
+    const logs = await dbAll(
+      `SELECT logged_date, symptoms, notes, created_at
+       FROM symptom_logs
+       WHERE user_id = $1
+       ORDER BY logged_date DESC
+       LIMIT $2`,
+      [req.user.id, days]
+    );
+    // Parse symptoms back into arrays
+    const parsed = logs.map(log => ({
+      date: log.logged_date,
+      symptoms: log.symptoms ? log.symptoms.split(',') : [],
+      notes: log.notes || '',
+      created_at: log.created_at
+    }));
+    res.json({ logs: parsed });
+  } catch (err) {
+    console.error('Get symptoms error:', err);
+    res.status(500).json({ error: 'Failed to get symptoms' });
+  }
+});
+
+// Clinician report download
+// GET /api/report - Generate a text report for sharing with a clinician
+app.get('/api/report', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT name, email, created_at FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Get baseline values
+    const baselines = await dbAll(
+      'SELECT signal, centre, sigma, n FROM baselines WHERE user_id = $1 ORDER BY signal',
+      [req.user.id]
+    );
+
+    // Get last 30 days of daily summaries
+    const days = await dbAll(
+      `SELECT date, rhr, hrv, spo2_avg, spo2_min, breathing_rate, sleep_minutes, sleep_efficiency, skin_temp_delta, signals_present
+       FROM daily_summaries
+       WHERE user_id = $1
+       ORDER BY date DESC
+       LIMIT 30`,
+      [req.user.id]
+    );
+
+    // Get episodes
+    const episodes = await dbAll(
+      `SELECT start_date, end_date, days, is_act, peak_composite, top_signals
+       FROM episodes
+       WHERE user_id = $1
+       ORDER BY start_date DESC
+       LIMIT 20`,
+      [req.user.id]
+    );
+
+    // Get symptom logs (last 30 days)
+    const symptoms = await dbAll(
+      `SELECT logged_date, symptoms, notes
+       FROM symptom_logs
+       WHERE user_id = $1
+       ORDER BY logged_date DESC
+       LIMIT 30`,
+      [req.user.id]
+    );
+
+    // Calculate data completeness
+    const totalDays = days.length;
+    const daysWithData = days.filter(d => d.signals_present >= 3).length;
+    const completeness = totalDays > 0 ? Math.round((daysWithData / totalDays) * 100) : 0;
+
+    // Build the report
+    const lines = [];
+    lines.push('H-CAR CLINICIAN REPORT');
+    lines.push('========================');
+    lines.push('');
+    lines.push(`Patient: ${user.name}`);
+    lines.push(`Email: ${user.email}`);
+    lines.push(`Report generated: ${new Date().toISOString().split('T')[0]}`);
+    lines.push(`Account created: ${user.created_at ? user.created_at.split('T')[0] : 'Unknown'}`);
+    lines.push('');
+    lines.push('IMPORTANT: This report is prepared for discussion with a healthcare professional.');
+    lines.push('H-CAR is a general wellness tool, not a medical device. It does not diagnose,');
+    lines.push('treat, or monitor any disease or condition. It names changes in wearable data,');
+    lines.push('never causes. All interpretations should be made by a qualified clinician.');
+    lines.push('');
+    lines.push('BASELINE VALUES (Personal Normal)');
+    lines.push('----------------------------------');
+    if (baselines.length === 0) {
+      lines.push('Baseline still learning. A 28-day baseline is required before detection begins.');
+    } else {
+      for (const b of baselines) {
+        const signalNames = {
+          rhr: 'Resting Heart Rate',
+          hrv: 'Heart Rate Variability (RMSSD)',
+          spo2: 'Blood Oxygen (SpO2)',
+          breathing: 'Breathing Rate',
+          sleep: 'Sleep Duration',
+          temp: 'Skin Temperature'
+        };
+        const name = signalNames[b.signal] || b.signal;
+        lines.push(`${name}: ${b.centre.toFixed(1)} (sigma ${b.sigma.toFixed(1)}, n=${b.n} days)`);
+      }
+    }
+    lines.push('');
+    lines.push(`DATA COMPLETENESS: ${completeness}% (${daysWithData} of ${totalDays} days with 3+ signals)`);
+    lines.push('');
+    lines.push('RECENT DAILY SUMMARIES (Last 30 Days)');
+    lines.push('---------------------------------------');
+    if (days.length === 0) {
+      lines.push('No data yet. Connect a Fitbit and sync to see daily summaries.');
+    } else {
+      for (const d of days) {
+        const parts = [`${d.date}:`];
+        if (d.rhr) parts.push(`RHR ${d.rhr.toFixed(0)} bpm`);
+        if (d.hrv) parts.push(`HRV ${d.hrv.toFixed(1)} ms`);
+        if (d.spo2_avg) parts.push(`SpO2 ${d.spo2_avg.toFixed(1)}%`);
+        if (d.breathing_rate) parts.push(`Breathing ${d.breathing_rate.toFixed(1)}/min`);
+        if (d.sleep_minutes) parts.push(`Sleep ${(d.sleep_minutes / 60).toFixed(1)}h`);
+        if (d.skin_temp_delta !== null && d.skin_temp_delta !== undefined) parts.push(`Temp ${d.skin_temp_delta >= 0 ? '+' : ''}${d.skin_temp_delta.toFixed(2)}C`);
+        parts.push(`(${d.signals_present || 0} signals)`);
+        lines.push(parts.join(' '));
+      }
+    }
+    lines.push('');
+    lines.push('EPISODES (Watch and Act Flags)');
+    lines.push('-------------------------------');
+    if (episodes.length === 0) {
+      lines.push('No episodes detected yet.');
+    } else {
+      for (const e of episodes) {
+        const type = e.is_act ? 'ACT' : 'Watch';
+        lines.push(`${type}: ${e.start_date} to ${e.end_date} (${e.days} days, peak composite ${e.peak_composite ? e.peak_composite.toFixed(2) : 'N/A'})`);
+        if (e.top_signals) {
+          try {
+            const signals = JSON.parse(e.top_signals);
+            if (Array.isArray(signals) && signals.length > 0) {
+              lines.push(`  Top signals: ${signals.join(', ')}`);
+            }
+          } catch (err) {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+    lines.push('');
+    lines.push('SYMPTOM LOGS (Last 30 Days)');
+    lines.push('----------------------------');
+    if (symptoms.length === 0) {
+      lines.push('No symptoms logged yet.');
+    } else {
+      for (const s of symptoms) {
+        lines.push(`${s.logged_date}: ${s.symptoms}`);
+        if (s.notes) lines.push(`  Notes: ${s.notes}`);
+      }
+    }
+    lines.push('');
+    lines.push('END OF REPORT');
+    lines.push('');
+    lines.push('This report was generated by H-CAR (Human Condition Analysis & Risk Platform).');
+    lines.push('H-CAR is a general wellness tool. It is not a medical device and does not');
+    lines.push('provide medical advice, diagnosis, or treatment. Consult a healthcare');
+    lines.push('professional for medical advice.');
+
+    const reportText = lines.join('\n');
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="h-car-report-${new Date().toISOString().split('T')[0]}.txt"`);
+    res.send(reportText);
+  } catch (err) {
+    console.error('Generate report error:', err);
+    res.status(500).json({ error: 'Failed to generate report' });
+  }
+});
+
+// Data export
+// GET /api/export - Export all user data as JSON
+app.get('/api/export', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT id, name, email, consent_given, consent_date, subscription_status, created_at FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const dailySummaries = await dbAll(
+      'SELECT * FROM daily_summaries WHERE user_id = $1 ORDER BY date',
+      [req.user.id]
+    );
+    const detectorResults = await dbAll(
+      'SELECT * FROM detector_results WHERE user_id = $1 ORDER BY date',
+      [req.user.id]
+    );
+    const episodes = await dbAll(
+      'SELECT * FROM episodes WHERE user_id = $1 ORDER BY start_date',
+      [req.user.id]
+    );
+    const baselines = await dbAll(
+      'SELECT * FROM baselines WHERE user_id = $1 ORDER BY signal',
+      [req.user.id]
+    );
+    const symptomLogs = await dbAll(
+      'SELECT * FROM symptom_logs WHERE user_id = $1 ORDER BY logged_date',
+      [req.user.id]
+    );
+
+    const exportData = {
+      exported_at: new Date().toISOString(),
+      app: 'H-CAR',
+      version: '1.2.0',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        consent_given: user.consent_given,
+        consent_date: user.consent_date,
+        subscription_status: user.subscription_status,
+        created_at: user.created_at
+      },
+      daily_summaries: dailySummaries,
+      detector_results: detectorResults,
+      episodes: episodes,
+      baselines: baselines,
+      symptom_logs: symptomLogs
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="h-car-data-export-${new Date().toISOString().split('T')[0]}.json"`);
+    res.json(exportData);
+  } catch (err) {
+    console.error('Export data error:', err);
+    res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// Settings
+// GET /api/settings - Get user settings
+app.get('/api/settings', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT sensitivity FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ sensitivity: user.sensitivity || 'balanced' });
+  } catch (err) {
+    console.error('Get settings error:', err);
+    res.status(500).json({ error: 'Failed to get settings' });
+  }
+});
+
+// PUT /api/settings - Update user settings
+app.put('/api/settings', authenticateToken, async (req, res) => {
+  try {
+    const { sensitivity } = req.body;
+    if (sensitivity !== undefined) {
+      const allowed = ['gentle', 'balanced', 'sensitive'];
+      if (!allowed.includes(sensitivity)) {
+        return res.status(400).json({ error: 'Sensitivity must be gentle, balanced, or sensitive' });
+      }
+      await dbRun('UPDATE users SET sensitivity = $1 WHERE id = $2', [sensitivity, req.user.id]);
+    }
+    res.json({ ok: true, sensitivity: sensitivity || 'balanced' });
+  } catch (err) {
+    console.error('Update settings error:', err);
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// AI Assistant (simple rule-based version)
+// POST /api/assistant/ask - Answer questions about the user's data
+app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question || typeof question !== 'string' || question.trim().length === 0) {
+      return res.status(400).json({ error: 'A question is required' });
+    }
+    const q = question.toLowerCase().trim();
+
+    // Get user's recent data
+    const latestEpisode = await dbGet(
+      `SELECT start_date, end_date, days, is_act, peak_composite, top_signals
+       FROM episodes WHERE user_id = $1 ORDER BY start_date DESC LIMIT 1`,
+      [req.user.id]
+    );
+    const recentDays = await dbAll(
+      `SELECT date, rhr, hrv, spo2_avg, breathing_rate, sleep_minutes, signals_present
+       FROM daily_summaries WHERE user_id = $1 ORDER BY date DESC LIMIT 7`,
+      [req.user.id]
+    );
+    const baselines = await dbAll(
+      'SELECT signal, centre FROM baselines WHERE user_id = $1',
+      [req.user.id]
+    );
+    const baselineMap = {};
+    for (const b of baselines) {
+      baselineMap[b.signal] = b.centre;
+    }
+
+    let answer = '';
+
+    // Rule-based responses
+    if (q.includes('alert') || q.includes('flag') || q.includes('why')) {
+      if (!latestEpisode) {
+        answer = 'You have no alerts yet. H-CAR has not detected any sustained changes from your baseline. This is good news, it means your signals have stayed within your normal range.';
+      } else {
+        const type = latestEpisode.is_act ? 'Act' : 'Watch';
+        const startDate = latestEpisode.start_date;
+        const endDate = latestEpisode.end_date;
+        const days = latestEpisode.days;
+        let signalsText = '';
+        if (latestEpisode.top_signals) {
+          try {
+            const signals = JSON.parse(latestEpisode.top_signals);
+            if (Array.isArray(signals) && signals.length > 0) {
+              signalsText = ` The signals that moved most were: ${signals.join(', ')}.`;
+            }
+          } catch (err) {
+            // Ignore parse errors
+          }
+        }
+        answer = `Your most recent ${type} flag was from ${startDate} to ${endDate} (${days} days). This means multiple signals moved away from your baseline at the same time and stayed there.${signalsText} H-CAR names a change, never a cause, so it cannot tell you why this happened, only that it did.`;
+      }
+    } else if (q.includes('when') && (q.includes('begin') || q.includes('start'))) {
+      if (!latestEpisode) {
+        answer = 'You have no episodes yet, so there is no start date to report. Your signals have stayed within your normal baseline range.';
+      } else {
+        answer = `Your most recent episode began on ${latestEpisode.start_date} and lasted ${latestEpisode.days} days, ending on ${latestEpisode.end_date}.`;
+      }
+    } else if (q.includes('what should') || q.includes('what do') || q.includes('next')) {
+      if (!latestEpisode) {
+        answer = 'You have no active alerts. Keep wearing your Fitbit, keep logging symptoms if you notice anything, and H-CAR will keep watching. If you feel unwell, seek professional medical care, do not wait for an app.';
+      } else if (latestEpisode.is_act) {
+        answer = 'You have a recent Act flag. This is a sustained change that H-CAR considers significant. Consider resting, logging your symptoms, and contacting your clinician if you feel unwell. If you have severe symptoms like chest pain, severe breathlessness, fainting, or confusion, call emergency services immediately. Your emergency contact has been alerted by email.';
+      } else {
+        answer = 'You have a recent Watch flag. This is a change worth noticing, but not an emergency. Rest, hydrate, log your symptoms, and re-check tomorrow. If it continues or worsens, consider contacting your clinician.';
+      }
+    } else if (q.includes('don\'t know') || q.includes('dont know') || q.includes('missing') || q.includes('gap')) {
+      const daysWithGaps = recentDays.filter(d => (d.signals_present || 0) < 3).length;
+      const totalDays = recentDays.length;
+      if (totalDays === 0) {
+        answer = 'I don\'t have any data yet. Connect your Fitbit and sync to start building your baseline. H-CAR needs 28 days of data to learn what is normal for you.';
+      } else if (daysWithGaps === 0) {
+        answer = `Your recent data is complete. All ${totalDays} of the last ${totalDays} days have 3 or more signals. H-CAR can score your data reliably.`;
+      } else {
+        answer = `In the last ${totalDays} days, ${daysWithGaps} days had fewer than 3 signals. On those days, H-CAR could not score your data because there was not enough information. This is usually because your Fitbit was not worn, did not sync, or the battery died. Missing data is never filled in, H-CAR only works with what it actually measured.`;
+      }
+    } else if (q.includes('baseline') || q.includes('normal')) {
+      if (baselines.length === 0) {
+        answer = 'Your baseline is still learning. H-CAR needs 28 days of Fitbit data to establish what is normal for you. During this time, it watches but does not flag changes.';
+      } else {
+        const parts = ['Your baseline values are:'];
+        const signalNames = {
+          rhr: 'Resting heart rate',
+          hrv: 'HRV',
+          spo2: 'Blood oxygen',
+          breathing: 'Breathing rate',
+          sleep: 'Sleep',
+          temp: 'Skin temperature'
+        };
+        for (const b of baselines) {
+          const name = signalNames[b.signal] || b.signal;
+          parts.push(`${name}: ${b.centre.toFixed(1)}`);
+        }
+        answer = parts.join(' ');
+      }
+    } else {
+      // Default response
+      answer = 'I can help you understand your H-CAR data. Try asking about your alerts, when an episode began, what to do next, or what data is missing. I can only answer from your actual measurements, and I am not a medical professional. For medical advice, consult your clinician.';
+    }
+
+    // Always add disclaimer
+    answer += '\n\nThis is not medical advice. H-CAR is a general wellness tool, not a medical device. It does not diagnose or treat any condition. If you feel unwell, seek professional medical care.';
+
+    res.json({ answer });
+  } catch (err) {
+    console.error('Assistant error:', err);
+    res.status(500).json({ error: 'Failed to answer question' });
   }
 });
 
