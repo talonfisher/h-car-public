@@ -147,6 +147,14 @@ ul li{margin:8px 0}
 <input type="password" id="li-password" placeholder="Password" required>
 <button onclick="login()">Sign In</button>
 <div id="li-error" class="error hidden"></div>
+<p style="margin-top:12px;text-align:center"><a href="#" onclick="showForgotPassword(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Forgot password?</a></p>
+</div>
+<div id="forgot-form" class="hidden">
+<p style="margin-bottom:12px;font-size:14px;color:var(--muted)">Enter your email address and we will send you a link to reset your password.</p>
+<input type="email" id="fp-email" placeholder="Email address" required>
+<button onclick="forgotPassword()">Send Reset Link</button>
+<div id="fp-message" class="hidden" style="margin-top:12px;padding:12px;border-radius:12px;font-size:14px"></div>
+<p style="margin-top:12px;text-align:center"><a href="#" onclick="showLoginForm(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Back to Sign In</a></p>
 </div>
 </div>
 
@@ -1163,6 +1171,44 @@ function showTab(tab, element) {
   element.classList.add('active');
   document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
   document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('forgot-form').classList.add('hidden');
+}
+
+function showForgotPassword() {
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('forgot-form').classList.remove('hidden');
+  document.getElementById('fp-message').classList.add('hidden');
+}
+
+function showLoginForm() {
+  document.getElementById('forgot-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('fp-email').value.trim();
+  const msgEl = document.getElementById('fp-message');
+  msgEl.classList.add('hidden');
+  if (!email) {
+    msgEl.textContent = 'Please enter your email address.';
+    msgEl.style.background = '#fde8e8';
+    msgEl.style.color = '#b42318';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+  try {
+    const data = await apiCall('/forgot-password', 'POST', { email }, false);
+    msgEl.textContent = data.message;
+    msgEl.style.background = '#e6f4ea';
+    msgEl.style.color = '#137333';
+    msgEl.classList.remove('hidden');
+    document.getElementById('fp-email').value = '';
+  } catch (e) {
+    msgEl.textContent = e.message;
+    msgEl.style.background = '#fde8e8';
+    msgEl.style.color = '#b42318';
+    msgEl.classList.remove('hidden');
+  }
 }
 
 function showLearnTab(tab, element) {
