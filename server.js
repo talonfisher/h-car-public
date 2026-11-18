@@ -201,6 +201,20 @@ async function initDatabase() {
       UNIQUE(user_id, logged_date)
     )`);
 
+    // Morning sleep check-ins. One per user per day (upsert on conflict).
+    // Q1 rested 1-5, Q2 body 1-5, Q3 sore 0-3, Q4 yesterday factors comma-separated.
+    await client.query(`CREATE TABLE IF NOT EXISTS sleep_checkins (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      checkin_date DATE NOT NULL,
+      rested INTEGER NOT NULL,
+      body INTEGER NOT NULL,
+      sore INTEGER NOT NULL,
+      yesterday_factors TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, checkin_date)
+    )`);
+
     // Password reset tokens. Single-use, expire after 1 hour.
     // A token is created when a user requests a password reset and
     // is marked used after the password is changed.
@@ -1378,6 +1392,97 @@ app.get('/api/symptoms', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Get symptoms error:', err);
     res.status(500).json({ error: 'Failed to get symptoms' });
+  }
+});
+
+// Morning sleep check-in
+// POST /api/sleep-checkin - Save today's 4-question check-in (upsert by user and date).
+// Accepts: { rested: 1-5, body: 1-5, sore: 0-3, yesterday_factors: ["alcohol", "none"] or "alcohol,none" }
+app.post('/api/sleep-checkin', authenticateToken, async (req, res) => {
+  try {
+    const { rested, body, sore, yesterday_factors } = req.body;
+    const restedInt = parseInt(rested, 10);
+    const bodyInt = parseInt(body, 10);
+    const soreInt = parseInt(sore, 10);
+    if (!Number.isInteger(restedInt) || restedInt < 1 || restedInt > 5) {
+      return res.status(400).json({ error: 'rested must be an integer from 1 to 5' });
+    }
+    if (!Number.isInteger(bodyInt) || bodyInt < 1 || bodyInt > 5) {
+      return res.status(400).json({ error: 'body must be an integer from 1 to 5' });
+    }
+    if (!Number.isInteger(soreInt) || soreInt < 0 || soreInt > 3) {
+      return res.status(400).json({ error: 'sore must be an integer from 0 to 3' });
+    }
+    const allowedFactors = [
+      'alcohol',
+      'hard exertion',
+      'felt unwell',
+      'slept somewhere else',
+      'sick people around me',
+      'none'
+    ];
+    let factors = [];
+    if (Array.isArray(yesterday_factors)) {
+      factors = yesterday_factors.map(f => String(f).trim()).filter(Boolean);
+    } else if (typeof yesterday_factors === 'string' && yesterday_factors.trim()) {
+      factors = yesterday_factors.split(',').map(f => f.trim()).filter(Boolean);
+    }
+    for (const f of factors) {
+      if (!allowedFactors.includes(f)) {
+        return res.status(400).json({ error: `Invalid yesterday factor: ${f}` });
+      }
+    }
+    const checkinDate = new Date().toISOString().split('T')[0];
+    const factorsStr = factors.join(',');
+    const row = await dbGet(
+      `INSERT INTO sleep_checkins (user_id, checkin_date, rested, body, sore, yesterday_factors)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id, checkin_date)
+       DO UPDATE SET rested = EXCLUDED.rested, body = EXCLUDED.body, sore = EXCLUDED.sore, yesterday_factors = EXCLUDED.yesterday_factors
+       RETURNING checkin_date, rested, body, sore, yesterday_factors, created_at`,
+      [req.user.id, checkinDate, restedInt, bodyInt, soreInt, factorsStr]
+    );
+    res.json({
+      ok: true,
+      checkin: {
+        date: row.checkin_date instanceof Date ? row.checkin_date.toISOString().split('T')[0] : String(row.checkin_date).split('T')[0],
+        rested: row.rested,
+        body: row.body,
+        sore: row.sore,
+        yesterday_factors: row.yesterday_factors ? row.yesterday_factors.split(',') : [],
+        created_at: row.created_at
+      }
+    });
+  } catch (err) {
+    console.error('Save sleep check-in error:', err);
+    res.status(500).json({ error: 'Failed to save sleep check-in' });
+  }
+});
+
+// GET /api/sleep-checkin?days=7 - Get recent sleep check-ins
+app.get('/api/sleep-checkin', authenticateToken, async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days, 10) || 7, 30);
+    const rows = await dbAll(
+      `SELECT checkin_date, rested, body, sore, yesterday_factors, created_at
+       FROM sleep_checkins
+       WHERE user_id = $1
+       ORDER BY checkin_date DESC
+       LIMIT $2`,
+      [req.user.id, days]
+    );
+    const checkins = rows.map(row => ({
+      date: row.checkin_date instanceof Date ? row.checkin_date.toISOString().split('T')[0] : String(row.checkin_date).split('T')[0],
+      rested: row.rested,
+      body: row.body,
+      sore: row.sore,
+      yesterday_factors: row.yesterday_factors ? row.yesterday_factors.split(',') : [],
+      created_at: row.created_at
+    }));
+    res.json({ checkins });
+  } catch (err) {
+    console.error('Get sleep check-ins error:', err);
+    res.status(500).json({ error: 'Failed to get sleep check-ins' });
   }
 });
 
