@@ -84,7 +84,23 @@ ul{color:var(--muted)}
 ul li{margin:8px 0}
 .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0 0 12px}
 .pill{font-size:13px;font-weight:700;background:var(--surface);border:1px solid var(--line);padding:7px 12px;border-radius:999px;display:inline-block;margin:4px 4px 4px 0}
-@media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}}
+.learn-section{margin:24px 0;padding:24px;background:var(--surface2);border:1px solid var(--line);border-radius:16px}
+.learn-section h3{margin:0 0 12px;font-family:"DM Serif Display",serif;font-weight:400;font-size:22px}
+.signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.signal-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.signal-card strong{display:block;font-size:15px;margin-bottom:4px}
+.signal-card span{font-size:13px;color:var(--muted);line-height:1.4}
+.chart-container{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+.chart-container h4{margin:0 0 12px;font-size:15px;font-weight:800}
+.chart-container p{font-size:13px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.stat-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.stat-card .stat-num{font-family:"DM Serif Display",serif;font-size:32px;color:var(--teal);line-height:1}
+.stat-card .stat-label{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+.nav-tabs{display:flex;gap:8px;margin:20px 0;justify-content:center}
+.nav-tab{padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
+.nav-tab.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}.signal-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -98,14 +114,131 @@ ul li{margin:8px 0}
 <div id="landing" class="card">
 <p class="eyebrow">General Wellness Tool</p>
 <h2>What is H-CAR?</h2>
-<p>H-CAR learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
-<p style="margin-top:15px"><strong>How it works:</strong></p>
-<ul style="margin: 10px 0 10px 20px;">
-<li>Wear your Fitbit for 28 days to build your personal baseline</li>
-<li>H-CAR tracks 6 signals: resting heart rate, HRV, blood oxygen, breathing rate, sleep, skin temperature</li>
-<li>When multiple signals move away from your baseline, you get a flag</li>
-<li>Serious flags can alert a person you trust</li>
+<p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
+<p style="margin-top:12px">Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
+
+<div class="nav-tabs">
+<div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
+<div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
+<div class="nav-tab" onclick="showLearnTab('results', this)">Results</div>
+</div>
+
+<div id="learn-overview">
+<div class="learn-section">
+<h3>The Smoke Detector for Your Body</h3>
+<p>Your body sends signals every day. Resting heart rate, heart rate variability, blood oxygen, breathing rate, sleep, and skin temperature all shift with your health. H-CAR watches these signals together, looking for patterns that matter.</p>
+<p style="margin-top:10px">A single bad night means nothing. A single high heart rate means nothing. But when three or more signals move away from your baseline for days in a row, that is worth noticing. H-CAR notices it, so you can act.</p>
+</div>
+
+<div class="learn-section">
+<h3>Your 6 Signals</h3>
+<p>H-CAR tracks six signals from your Fitbit, every day:</p>
+<div class="signal-grid">
+<div class="signal-card"><strong>Resting Heart Rate</strong><span>Your heart rate at rest, measured in beats per minute. A sustained rise can signal strain.</span></div>
+<div class="signal-card"><strong>Heart Rate Variability</strong><span>The variation between heartbeats, measured in milliseconds. Lower HRV often means your body is under stress.</span></div>
+<div class="signal-card"><strong>Blood Oxygen (SpO2)</strong><span>Your blood oxygen saturation, measured as a percentage. Sustained drops are worth noticing.</span></div>
+<div class="signal-card"><strong>Breathing Rate</strong><span>Your breaths per minute while sleeping. Changes can reflect respiratory or systemic strain.</span></div>
+<div class="signal-card"><strong>Sleep Duration</strong><span>How long you sleep each night, in minutes. Shorter or disrupted sleep affects recovery.</span></div>
+<div class="signal-card"><strong>Skin Temperature</strong><span>Your skin temperature while sleeping, relative to your baseline. Deviations can signal change.</span></div>
+</div>
+</div>
+</div>
+
+<div id="learn-how-it-works" class="hidden">
+<div class="learn-section">
+<h3>28 Days to Learn Your Baseline</h3>
+<p>When you first connect your Fitbit, H-CAR spends 28 days learning what is normal for you. It calculates your personal median and typical variation for each signal. This is your baseline.</p>
+<p style="margin-top:10px">During these 28 days, H-CAR raises no flags. It is still learning. After day 28, monitoring begins. Your baseline continues to update slowly over time, adapting as your normal changes.</p>
+<div class="chart-container">
+<h4>Your Baseline: Normal Variation</h4>
+<svg viewBox="0 0 600 200" style="width:100%;height:auto;">
+<defs><linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#DDF0E9;stop-opacity:0.3"/><stop offset="100%" style="stop-color:#DDF0E9;stop-opacity:0"/></linearGradient></defs>
+<rect x="0" y="0" width="600" height="200" fill="url(#bgGrad)"/>
+<line x1="50" y1="100" x2="550" y2="100" stroke="#0E7A68" stroke-width="2" stroke-dasharray="5,5"/>
+<text x="55" y="90" font-family="Manrope, sans-serif" font-size="12" fill="#0E7A68" font-weight="700">Your baseline (median)</text>
+<path d="M 50 105 L 100 95 L 150 110 L 200 98 L 250 102 L 300 96 L 350 108 L 400 100 L 450 94 L 500 106 L 550 100" stroke="#0E7A68" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="50" cy="105" r="3" fill="#0E7A68"/><circle cx="150" cy="110" r="3" fill="#0E7A68"/><circle cx="250" cy="102" r="3" fill="#0E7A68"/><circle cx="350" cy="108" r="3" fill="#0E7A68"/><circle cx="450" cy="94" r="3" fill="#0E7A68"/><circle cx="550" cy="100" r="3" fill="#0E7A68"/>
+<text x="50" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 1</text><text x="280" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 14</text><text x="520" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 28</text>
+</svg>
+<p>Normal variation around your baseline. Small ups and downs are expected. H-CAR learns how much variation is normal for you.</p>
+</div>
+</div>
+
+<div class="learn-section">
+<h3>Watch: A Change Worth Noticing</h3>
+<p>When 3 or more signals move away from your baseline for 2 days in a row, H-CAR raises a Watch flag. This is a quiet log entry with a morning check-in. It does not alert anyone else. It is a note to pay attention.</p>
+<div class="chart-container">
+<h4>Watch Flag Example</h4>
+<svg viewBox="0 0 600 200" style="width:100%;height:auto;">
+<rect x="350" y="0" width="200" height="200" fill="#FEF3C7" opacity="0.5"/>
+<line x1="50" y1="100" x2="550" y2="100" stroke="#0E7A68" stroke-width="2" stroke-dasharray="5,5"/>
+<text x="55" y="90" font-family="Manrope, sans-serif" font-size="12" fill="#0E7A68" font-weight="700">Baseline</text>
+<path d="M 50 102 L 100 98 L 150 104 L 200 100 L 250 96 L 300 102 L 350 125 L 400 132 L 450 128 L 500 135 L 550 130" stroke="#0E7A68" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 350 125 L 400 132 L 450 128 L 500 135 L 550 130" stroke="#9A6B12" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="350" cy="125" r="4" fill="#9A6B12"/><circle cx="450" cy="128" r="4" fill="#9A6B12"/><circle cx="550" cy="130" r="4" fill="#9A6B12"/>
+<text x="380" y="30" font-family="Manrope, sans-serif" font-size="12" fill="#9A6B12" font-weight="800">WATCH</text>
+<text x="380" y="48" font-family="Manrope, sans-serif" font-size="11" fill="#713F12">3+ signals deviating</text>
+<text x="50" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 1</text><text x="280" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 14</text><text x="520" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 28</text>
+</svg>
+<p>Multiple signals rising together for 2 days triggers a Watch. H-CAR logs it and asks you a few questions in the morning.</p>
+</div>
+</div>
+
+<div class="learn-section">
+<h3>Act: A Strong, Sustained Change</h3>
+<p>When a Watch continues for 3 days and gets stronger, with 4 or more signals deviating or one signal moving sharply, H-CAR raises an Act flag. This is the signal that reaches another human, a person you trust, so they can check in on you.</p>
+<div class="chart-container">
+<h4>Act Flag Example</h4>
+<svg viewBox="0 0 600 200" style="width:100%;height:auto;">
+<rect x="300" y="0" width="250" height="200" fill="#FEF2F2" opacity="0.6"/>
+<line x1="50" y1="120" x2="550" y2="120" stroke="#0E7A68" stroke-width="2" stroke-dasharray="5,5"/>
+<text x="55" y="110" font-family="Manrope, sans-serif" font-size="12" fill="#0E7A68" font-weight="700">Baseline</text>
+<path d="M 50 118 L 100 122 L 150 116 L 200 120 L 250 118 L 300 145 L 350 158 L 400 165 L 450 172 L 500 168 L 550 175" stroke="#0E7A68" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 300 145 L 350 158 L 400 165 L 450 172 L 500 168 L 550 175" stroke="#B42318" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="300" cy="145" r="4" fill="#B42318"/><circle cx="400" cy="165" r="4" fill="#B42318"/><circle cx="500" cy="168" r="4" fill="#B42318"/><circle cx="550" cy="175" r="4" fill="#B42318"/>
+<text x="320" y="30" font-family="Manrope, sans-serif" font-size="12" fill="#B42318" font-weight="800">ACT</text>
+<text x="320" y="48" font-family="Manrope, sans-serif" font-size="11" fill="#7A271A">Strong sustained change</text>
+<text x="50" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 1</text><text x="280" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 14</text><text x="520" y="185" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 28</text>
+</svg>
+<p>A strong, sustained change over 3 days triggers an Act flag. This is when H-CAR alerts your trusted contact.</p>
+</div>
+</div>
+
+<div class="learn-section">
+<h3>Privacy by Design</h3>
+<p>H-CAR uses edge-first processing. Your baseline is calculated on your device. Your raw Fitbit data stays on your phone when possible. Only flag summaries and daily heartbeats reach the server.</p>
+<p style="margin-top:10px">Your data is never sold. You can delete your account and data at any time.</p>
+</div>
+</div>
+
+<div id="learn-results" class="hidden">
+<div class="learn-section">
+<h3>Blind Validation Trial</h3>
+<p>In November 2026, H-CAR detector v2 was tested in a blind validation trial on 12,000 synthetic people with fresh data it had never seen. The trial passed all four pre-set gates.</p>
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-num">99.37%</div><div class="stat-label">Fast declines caught at Watch</div></div>
+<div class="stat-card"><div class="stat-num">87.7%</div><div class="stat-label">Fast declines caught at Act</div></div>
+<div class="stat-card"><div class="stat-num">100%</div><div class="stat-label">Slow declines caught at Watch</div></div>
+<div class="stat-card"><div class="stat-num">99.97%</div><div class="stat-label">Slow declines caught at Act</div></div>
+<div class="stat-card"><div class="stat-num">8 days</div><div class="stat-label">Median lead time for fast declines</div></div>
+<div class="stat-card"><div class="stat-num">60 days</div><div class="stat-label">Median lead time for slow declines</div></div>
+<div class="stat-card"><div class="stat-num">3</div><div class="stat-label">False Watch flags in 3,000 healthy person-years</div></div>
+<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">False Act flags in 3,000 healthy person-years</div></div>
+</div>
+<p style="font-size:13px;color:var(--muted);margin-top:12px;">These are synthetic results. They prove the detector machinery works as designed. They do not prove it works on real bodies. Real-world validation is the purpose of the 40-person trial.</p>
+</div>
+
+<div class="learn-section">
+<h3>Real Data Replays</h3>
+<p>H-CAR was also tested on real wearable data from public research datasets:</p>
+<ul style="margin:10px 0 10px 20px;">
+<li><strong>LifeSnaps (52 people, 5.17 person-years):</strong> 3 unexplained Watch flags, about 0.6 per person-year. One genuine Act flag that fired correctly.</li>
+<li><strong>PMData (15 people, 4.04 person-years):</strong> 6 Watch flags, about 1.5 per person-year. Zero Act flags.</li>
 </ul>
+<p style="margin-top:10px">These replays show H-CAR rarely cries wolf on real data, while still catching genuine changes.</p>
+</div>
+</div>
+
 <div class="price">$5<span>/month CAD</span></div>
 <p style="text-align:center;color:var(--muted);">Cancel anytime. No hidden fees.</p>
 <div style="text-align:center;margin:16px 0;">
@@ -262,6 +395,14 @@ function showTab(tab, element) {
   element.classList.add('active');
   document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
   document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+}
+
+function showLearnTab(tab, element) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  element.classList.add('active');
+  document.getElementById('learn-overview').classList.toggle('hidden', tab !== 'overview');
+  document.getElementById('learn-how-it-works').classList.toggle('hidden', tab !== 'how-it-works');
+  document.getElementById('learn-results').classList.toggle('hidden', tab !== 'results');
 }
 
 function showStep(stepId) {
