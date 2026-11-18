@@ -155,6 +155,14 @@ async function initDatabase() {
       PRIMARY KEY(user_id, signal)
     )`);
 
+    // Page visit counter. One row per visit (deduplicated by IP per hour).
+    await client.query(`CREATE TABLE IF NOT EXISTS page_visits (
+      id SERIAL PRIMARY KEY,
+      visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ip_address TEXT,
+      user_agent TEXT
+    )`);
+
     console.log('Database tables initialized');
   } finally {
     client.release();
@@ -203,6 +211,46 @@ function authenticateToken(req, res, next) {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'H-CAR', version: '1.2.0', googleHealthConfigured: googleHealth.isConfigured(), database: 'postgres' });
+});
+
+// Page visitor counter (public, no auth required)
+// POST /api/visit - Records a visit. Deduplicates by IP: only one visit
+// per IP per hour is counted, so refreshes do not inflate the number.
+app.post('/api/visit', async (req, res) => {
+  try {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || '';
+    // Only count if this IP has not visited in the last hour
+    const recent = await dbGet(
+      `SELECT id FROM page_visits
+       WHERE ip_address = $1
+       AND visited_at > NOW() - INTERVAL '1 hour'
+       LIMIT 1`,
+      [ip]
+    );
+    if (!recent) {
+      await dbRun(
+        'INSERT INTO page_visits (ip_address, user_agent) VALUES ($1, $2)',
+        [ip, userAgent]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Visit record error:', err);
+    // Do not fail the page load if the counter breaks
+    res.json({ ok: false });
+  }
+});
+
+// GET /api/visits/count - Returns the total visit count (public).
+app.get('/api/visits/count', async (req, res) => {
+  try {
+    const row = await dbGet('SELECT COUNT(*) AS count FROM page_visits');
+    res.json({ count: parseInt(row.count, 10) });
+  } catch (err) {
+    console.error('Visit count error:', err);
+    res.status(500).json({ error: 'Failed to get visit count' });
+  }
 });
 
 // Get Square config (public keys only)
