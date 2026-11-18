@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { Client, Environment } = require('square');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -200,6 +201,19 @@ async function initDatabase() {
       UNIQUE(user_id, logged_date)
     )`);
 
+    // Password reset tokens. Single-use, expire after 1 hour.
+    // A token is created when a user requests a password reset and
+    // is marked used after the password is changed.
+    await client.query(`CREATE TABLE IF NOT EXISTS password_resets (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )`);
+
     console.log('Database tables initialized');
   } finally {
     client.release();
@@ -357,6 +371,130 @@ app.post('/api/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Forgot password - request a reset link
+// POST /api/forgot-password
+// Always returns success, even if the email does not exist (security:
+// do not reveal whether an email is registered).
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Email address is required' });
+  }
+  const emailLower = email.toLowerCase().trim();
+  if (!isValidEmail(emailLower)) {
+    return res.status(400).json({ error: 'Please enter a valid email address' });
+  }
+  try {
+    const user = await dbGet('SELECT id, name, email FROM users WHERE email = $1', [emailLower]);
+    // Always return success, even if the user does not exist.
+    if (!user) {
+      return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+    }
+    // Generate a random token (32 bytes = 64 hex characters)
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    // Invalidate any existing unused tokens for this user
+    await dbRun('UPDATE password_resets SET used = TRUE WHERE user_id = $1 AND used = FALSE', [user.id]);
+    // Save the new token
+    await dbRun(
+      'INSERT INTO password_resets (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [user.id, token, expiresAt]
+    );
+    // Send the reset email
+    const baseUrl = process.env.BASE_URL || 'https://h-car.onrender.com';
+    const resetLink = `${baseUrl}/reset-password.html?token=${token}`;
+    const subject = 'Reset your H-CAR password';
+    const text = [
+      `Hi ${user.name},`,
+      '',
+      'You requested a password reset for your H-CAR account.',
+      '',
+      'Click this link to reset your password:',
+      resetLink,
+      '',
+      'This link expires in 1 hour. If you did not request a password reset, you can ignore this email.',
+      '',
+      'H-CAR (https://h-car.onrender.com)',
+    ].join('\n');
+    const result = await sendEmail(user.email, subject, text);
+    if (!result.sent) {
+      // SMTP not configured: log the token so the operator can help manually
+      console.log(`Password reset requested for ${user.email}. SMTP not configured. Reset link: ${resetLink}`);
+    }
+    res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+// Verify a reset token (used by the reset page to check if the token is valid)
+// GET /api/verify-reset-token?token=XXX
+app.get('/api/verify-reset-token', async (req, res) => {
+  const { token } = req.query;
+  if (!token || typeof token !== 'string') {
+    return res.json({ valid: false, error: 'Token is required' });
+  }
+  try {
+    const reset = await dbGet(
+      'SELECT * FROM password_resets WHERE token = $1',
+      [token]
+    );
+    if (!reset) {
+      return res.json({ valid: false, error: 'Invalid reset link' });
+    }
+    if (reset.used) {
+      return res.json({ valid: false, error: 'This reset link has already been used' });
+    }
+    if (new Date(reset.expires_at) < new Date()) {
+      return res.json({ valid: false, error: 'This reset link has expired. Please request a new one.' });
+    }
+    res.json({ valid: true });
+  } catch (err) {
+    console.error('Verify reset token error:', err);
+    res.status(500).json({ valid: false, error: 'Failed to verify reset link' });
+  }
+});
+
+// Reset password - set a new password using a valid token
+// POST /api/reset-password
+app.post('/api/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Reset token is required' });
+  }
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'New password is required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const reset = await dbGet(
+      'SELECT * FROM password_resets WHERE token = $1',
+      [token]
+    );
+    if (!reset) {
+      return res.status(400).json({ error: 'Invalid reset link' });
+    }
+    if (reset.used) {
+      return res.status(400).json({ error: 'This reset link has already been used' });
+    }
+    if (new Date(reset.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'This reset link has expired. Please request a new one.' });
+    }
+    // Hash the new password and update the user
+    const hash = await bcrypt.hash(password, 10);
+    await dbRun('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, reset.user_id]);
+    // Mark the token as used
+    await dbRun('UPDATE password_resets SET used = TRUE WHERE id = $1', [reset.id]);
+    res.json({ message: 'Password has been reset. You can now sign in with your new password.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 
