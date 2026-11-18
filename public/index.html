@@ -1039,8 +1039,15 @@ ul li{margin:8px 0}
 <h3>Recent days</h3>
 <div id="days-section"><p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p></div>
 
-<button class="secondary" onclick="cancelSub()" style="margin-top:20px;">Cancel Subscription</button>
+<button class="secondary" onclick="showSettings()">Settings</button>
 <button class="secondary" onclick="logout()">Sign Out</button>
+</div>
+
+<div id="settings-section" class="card hidden" style="margin-top:20px;">
+<h3>Account Settings</h3>
+<p>Manage your subscription and account.</p>
+<button class="secondary" onclick="cancelSub()" style="background:#B42318;color:white;border-color:#B42318;">Cancel Subscription</button>
+<p style="font-size:0.85em;color:var(--muted);margin-top:10px;">Cancelling stops future charges. You keep access until the end of your current billing period. No partial refunds.</p>
 </div>
 
 <div class="footer">
@@ -1387,6 +1394,14 @@ async function cancelSub() {
     await checkStatus();
   } catch (e) {
     alert('Cancel failed: ' + e.message);
+  }
+}
+
+function showSettings() {
+  const settings = document.getElementById('settings-section');
+  settings.classList.toggle('hidden');
+  if (!settings.classList.contains('hidden')) {
+    settings.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
 
