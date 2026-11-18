@@ -84,6 +84,8 @@ ul{color:var(--muted)}
 ul li{margin:8px 0}
 .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0 0 12px}
 .pill{font-size:13px;font-weight:700;background:var(--surface);border:1px solid var(--line);padding:7px 12px;border-radius:999px;display:inline-block;margin:4px 4px 4px 0}
+.learn-tab-content{display:block}
+.learn-tab-content.hidden{display:none}
 .learn-section{margin:24px 0;padding:24px;background:var(--surface2);border:1px solid var(--line);border-radius:16px}
 .learn-section h3{margin:0 0 12px;font-family:"DM Serif Display",serif;font-weight:400;font-size:22px}
 .signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
@@ -133,7 +135,7 @@ ul li{margin:8px 0}
 <div class="nav-tab" onclick="showLearnTab('privacy', this)">Privacy</div>
 </div>
 
-<div id="learn-overview">
+<div id="learn-overview" class="learn-tab-content">
 <div class="learn-section">
 <h3>The Smoke Detector for Your Body</h3>
 <p>Your body has a normal. H-CAR helps you act when it shifts. It is a smoke detector for the body, not a diagnosis machine. It learns from heart rate, HRV, oxygen, temperature, breathing, sleep and movement, and it names a change, never a cause.</p>
@@ -200,7 +202,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-how-it-works" class="hidden">
+<div id="learn-how-it-works" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>It Learns You, Not an Average</h3>
 <p>The core question H-CAR asks every day: did your numbers change more than the situation explains? Six steps:</p>
@@ -324,7 +326,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-demo" class="hidden">
+<div id="learn-demo" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Live Demo: Six Scenarios (Simulated, Demo Only)</h3>
 <p>These scenarios use simulated Fitbit-style data. They are not detector v2 output. Baseline reference (Days 1-28): resting heart rate 64 bpm, HRV 48 ms, SpO2 98%, temp +/-0.3, breathing 14/min, sleep score 84.</p>
@@ -363,7 +365,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-baseline" class="hidden">
+<div id="learn-baseline" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>180 Days of Learning Jordan, Not an Average Person</h3>
 <p>Jordan is a fictional 42-year-old. The demo shows 180 days of synthetic data. H-CAR builds an anchored statistical profile: median plus typical range per signal, by time of day. The 28-day reference window never rolls or forgets. Episode lockout pauses learning during a deviation.</p>
@@ -421,7 +423,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-changes" class="hidden">
+<div id="learn-changes" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>One Bad Night Is Noise. Four Signals Moving Together for 5 Days Is a Change.</h3>
 <p>Detection evidence is synthetic only. These are NOT clinical cut-offs.</p>
@@ -476,7 +478,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-spec" class="hidden">
+<div id="learn-spec" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Detection Spec Summary (H-CAR-DET-SPEC v0.9, Experimental)</h3>
 <p>This page shows the model, not the recipe. The full formal spec with exact tuning constants stays in private trial and patent files. The model is described here so you can discuss it with a clinician.</p>
@@ -560,7 +562,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-timeline" class="hidden">
+<div id="learn-timeline" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Measurements, Symptoms and Changes, in Order (Jordan, Synthetic)</h3>
 </div>
@@ -601,7 +603,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-sensors" class="hidden">
+<div id="learn-sensors" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>The Proposed Sensor Platform (Demonstrated, Not Built Yet)</h3>
 <p><strong>SIMULATED HARDWARE.</strong> Readings are generated in the browser. No real sensor is connected.</p>
@@ -659,7 +661,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-assistant" class="hidden">
+<div id="learn-assistant" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Ask About Your Data, With Its Limits Stated</h3>
 <p>The demo assistant uses canned logic answering only from Jordan's synthetic data. A production version needs a grounded model citing actual measurements and refusing when data is missing.</p>
@@ -691,7 +693,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-report" class="hidden">
+<div id="learn-report" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>A Summary Worth Handing to a Clinician</h3>
 <p><strong>30-day trend summary (synthetic):</strong> Period Days 151-180. Baseline reference window Days 1-28 (RHR 64, HRV 48 ms, sleep 7h 28m). Last 7 days: RHR 71, HRV 31 ms, sleep 6h 12m. Detected gradual multisignal drift Days 168-180, joint deviation detected Day 176, lasted 5 days, moderate. Data completeness 93%. Symptoms logged: tired, headache (Day 180).</p>
@@ -715,7 +717,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-results" class="hidden">
+<div id="learn-results" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Tested Blind on Invented People, Then Checked Against Real Ones</h3>
 <p>Synthetic studies 2026-11-03, real-data replay added 2026-11-10. Detection is synthetic only; false alarms were also measured on real data.</p>
@@ -805,7 +807,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-plan" class="hidden">
+<div id="learn-plan" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>What It Would Actually Take to Build This</h3>
 <p>Figures are rough planning ranges (CAD), not quotes. Low-cost path is deliberate: spend on validation before hardware.</p>
@@ -870,7 +872,7 @@ ul li{margin:8px 0}
 </div>
 </div>
 
-<div id="learn-privacy" class="hidden">
+<div id="learn-privacy" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Consent, Export, Deletion, in Plain Language</h3>
 </div>
