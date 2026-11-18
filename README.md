@@ -22,13 +22,12 @@ a Fitbit, and their de-identified data validates the detector.
 - **Human escalation (Act paging)**: The detector flags Act episodes, but
   no alert is sent to a trusted contact yet. The dashboard shows the flag;
   paging is a follow-up feature.
-- **Persistent database**: SQLite on Render Free is ephemeral (see below).
-  Migrate to Neon Postgres before the trial starts collecting real data.
+- **Persistent database**: Now uses Neon Postgres (free tier, persistent across deploys). See NEON_SETUP.md for setup instructions.
 
 ## Architecture
 
 - **Server**: Express.js (Node.js 18+)
-- **Database**: SQLite (file-based, `hcar.db`). For production with persistent data across deploys, migrate to Neon Postgres (free tier) or Render Postgres.
+- **Database**: Neon Postgres (free tier, persistent across deploys). See NEON_SETUP.md.
 - **Auth**: JWT tokens (7-day expiry), PBKDF2 password hashing (bcryptjs)
 - **Payments**: Square Web Payments SDK (browser) + Square Subscriptions API (server)
 - **Wearables**: Google Health API (health.googleapis.com/v4) via OAuth 2.0.
@@ -66,6 +65,7 @@ a Fitbit, and their de-identified data validates the detector.
 
 | Variable | Description | Example |
 |----------|-------------|---------|
+| `DATABASE_URL` | Neon Postgres connection string (see NEON_SETUP.md) | `postgresql://user:pass@host.neon.tech/hcar?sslmode=require` |
 | `SQUARE_ACCESS_TOKEN` | Square Production Access Token (from developer.squareup.com) | `sq0atp-...` |
 | `SQUARE_APPLICATION_ID` | Square Application ID (public) | `sq0idp-AjjPPKKmlIAWk17Uf6sQvw` |
 | `SQUARE_LOCATION_ID` | Square Location ID | `L5A30BMAGNY4E` |
@@ -90,6 +90,7 @@ a Fitbit, and their de-identified data validates the detector.
    - Start Command: `node server.js`
    - Plan: **Free**
 5. Add environment variables in the Render dashboard:
+   - `DATABASE_URL` (paste from Neon, see NEON_SETUP.md)
    - `SQUARE_ACCESS_TOKEN` (paste from developer.squareup.com)
    - `JWT_SECRET` (generate a random string)
    - The other Square IDs are already in `render.yaml` but can be set manually.
@@ -106,10 +107,7 @@ a Fitbit, and their de-identified data validates the detector.
 
 - **Spins down after 15 minutes idle.** First request after idle takes ~30-60 seconds to wake. This is acceptable for a launch, but upgrade to Starter ($7/month) when traffic grows.
 - **750 hours/month.** Enough for one app running continuously.
-- **No persistent disk.** The SQLite database file (`hcar.db`) is stored on the ephemeral filesystem and **will be lost on every deploy and restart**. For production:
-  - Option 1: Migrate to Neon Postgres (free tier, 3GB storage, never sleeps).
-  - Option 2: Upgrade to Render Starter ($7/month) + Render Postgres ($6/month).
-  - Option 3: Accept data loss on deploys during the trial phase (not recommended for paying customers).
+- **Database**: Now uses Neon Postgres (free tier, persistent). User accounts and subscriptions survive deploys. See NEON_SETUP.md.
 
 ## After Deployment
 
@@ -125,10 +123,7 @@ a Fitbit, and their de-identified data validates the detector.
    `https://h-car.onrender.com/api/admin/sync-all` every morning with header
    `x-admin-key: <ADMIN_SYNC_KEY>`. Without this, users must tap
    "Sync Now" themselves.
-5. **Migrate the database** to Neon Postgres before the trial starts
-   collecting real data (SQLite data loss on redeploy is unacceptable
-   for trial data).
-6. **Set up a custom domain** (optional): Buy a domain (e.g., hcar.ca,
+5. **Set up a custom domain** (optional): Buy a domain (e.g., hcar.ca,
    ~$15/year from Namecheap or Cloudflare) and point it to your Render
    URL. This is not required for launch.
 
@@ -147,11 +142,10 @@ npm start
 | Item | Cost |
 |------|------|
 | Render Free web service | $0/month |
-| SQLite database (ephemeral) | $0 |
+| Neon Postgres Free (persistent) | $0/month |
 | Square payment processing | 2.9% + $0.30 per transaction ($0.45 on $5) |
 | **Total to launch** | **$0/month** (plus Square fees on payments) |
 
 When ready to scale:
 - Render Starter: $7/month (always-on, no sleep)
-- Neon Postgres Free: $0 (3GB, persistent)
 - Custom domain: ~$15/year
