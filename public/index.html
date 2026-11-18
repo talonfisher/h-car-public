@@ -102,6 +102,10 @@ ul li{margin:8px 0}
 .nav-tabs{display:flex;gap:8px;margin:20px 0;justify-content:center}
 .nav-tab{padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
 .nav-tab.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.symptom-chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:13px;color:var(--muted)}
+.symptom-chip.selected{background:var(--teal);color:white;border-color:var(--teal)}
+.sensitivity-btn{padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
+.sensitivity-btn.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 @media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}.signal-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -1044,6 +1048,52 @@ ul li{margin:8px 0}
 <h3>Recent days</h3>
 <div id="days-section"><p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p></div>
 
+<h3 style="margin-top:30px;">Log Symptoms</h3>
+<p style="color:var(--muted);font-size:14px;">How are you feeling today? Tap the symptoms that apply, add notes if you want, and save.</p>
+<div id="symptom-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
+<button type="button" class="symptom-chip" data-symptom="I feel fine" onclick="toggleSymptom(this)">I feel fine</button>
+<button type="button" class="symptom-chip" data-symptom="Tired / poor sleep" onclick="toggleSymptom(this)">Tired / poor sleep</button>
+<button type="button" class="symptom-chip" data-symptom="Dizzy" onclick="toggleSymptom(this)">Dizzy</button>
+<button type="button" class="symptom-chip" data-symptom="Short of breath" onclick="toggleSymptom(this)">Short of breath</button>
+<button type="button" class="symptom-chip" data-symptom="Chest tightness" onclick="toggleSymptom(this)">Chest tightness</button>
+<button type="button" class="symptom-chip" data-symptom="Feverish / chills" onclick="toggleSymptom(this)">Feverish / chills</button>
+<button type="button" class="symptom-chip" data-symptom="Nauseous" onclick="toggleSymptom(this)">Nauseous</button>
+</div>
+<textarea id="symptom-notes" placeholder="Notes (optional, e.g., what you were doing, how long it lasted)" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;min-height:60px;resize:vertical;"></textarea>
+<button onclick="saveSymptoms()" style="margin-top:10px;">Save Symptoms</button>
+<div id="symptom-msg" style="margin-top:10px;"></div>
+<div id="symptom-history" style="margin-top:16px;"><p style="color:var(--muted);font-size:14px;">Loading recent symptoms...</p></div>
+
+<h3 style="margin-top:30px;">Sensitivity</h3>
+<p style="color:var(--muted);font-size:14px;">How sensitive should H-CAR be to changes? <strong>Balanced is the only tested mode.</strong> Gentle and Sensitive are experimental presets, never replayed, no test claims.</p>
+<div style="display:flex;gap:8px;margin:12px 0;">
+<button type="button" id="sens-gentle" class="sensitivity-btn" onclick="setSensitivity('gentle')">Gentle</button>
+<button type="button" id="sens-balanced" class="sensitivity-btn active" onclick="setSensitivity('balanced')">Balanced</button>
+<button type="button" id="sens-sensitive" class="sensitivity-btn" onclick="setSensitivity('sensitive')">Sensitive</button>
+</div>
+<div id="sensitivity-msg" style="margin-top:8px;"></div>
+
+<h3 style="margin-top:30px;">Ask About Your Data</h3>
+<p style="color:var(--muted);font-size:14px;">Ask questions about your H-CAR data. The assistant answers only from your actual measurements.</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
+<button type="button" class="secondary" onclick="askAssistant('Why did I get this alert?')" style="font-size:13px;">Why did I get this alert?</button>
+<button type="button" class="secondary" onclick="askAssistant('When did it begin?')" style="font-size:13px;">When did it begin?</button>
+<button type="button" class="secondary" onclick="askAssistant('What should I do next?')" style="font-size:13px;">What should I do next?</button>
+<button type="button" class="secondary" onclick="askAssistant('What don\'t you know?')" style="font-size:13px;">What don't you know?</button>
+</div>
+<div id="assistant-chat" style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:80px;max-height:300px;overflow-y:auto;margin-bottom:12px;">
+<p style="color:var(--muted);font-size:14px;">Hi, I can explain your H-CAR data. Try a question above, or type your own below.</p>
+</div>
+<div style="display:flex;gap:8px;">
+<input type="text" id="assistant-input" placeholder="Ask about your data..." style="flex:1;" onkeypress="if(event.key==='Enter')askAssistantFromInput()">
+<button onclick="askAssistantFromInput()">Ask</button>
+</div>
+
+<h3 style="margin-top:30px;">Reports &amp; Data</h3>
+<p style="color:var(--muted);font-size:14px;">Download your data to share with your clinician or keep for your records.</p>
+<button class="secondary" onclick="downloadReport()">Download Clinician Report</button>
+<button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
+
 <h3 style="margin-top:30px;">Emergency Contact</h3>
 <p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), we will alert this person by email. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
 <div id="emergency-contact-msg"></div>
@@ -1080,7 +1130,8 @@ ul li{margin:8px 0}
 <div id="settings-section" class="card hidden" style="margin-top:20px;">
 <h3>Account Settings</h3>
 <p>Manage your subscription and account.</p>
-<button class="secondary" onclick="cancelSub()" style="background:#B42318;color:white;border-color:#B42318;">Cancel Subscription</button>
+<button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
+<button class="secondary" onclick="cancelSub()" style="background:#B42318;color:white;border-color:#B42318;margin-top:10px;">Cancel Subscription</button>
 <p style="font-size:0.85em;color:var(--muted);margin-top:10px;">Cancelling stops future charges. You keep access until the end of your current billing period. No partial refunds.</p>
 </div>
 
@@ -1292,11 +1343,182 @@ async function loadDashboard() {
     renderDetector(det);
     const days = await apiCall('/days?limit=7', 'GET');
     renderDays(days.days);
-    // Emergency contact is non-critical; never let it break the dashboard.
+    // Emergency contact, symptoms, and settings are non-critical; never let them break the dashboard.
     loadEmergencyContact();
+    loadSymptoms();
+    loadSettings();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
   }
+}
+
+// Symptom logging
+let selectedSymptoms = new Set();
+
+function toggleSymptom(button) {
+  const symptom = button.dataset.symptom;
+  if (selectedSymptoms.has(symptom)) {
+    selectedSymptoms.delete(symptom);
+    button.classList.remove('selected');
+  } else {
+    // If "I feel fine" is selected, clear other symptoms
+    if (symptom === 'I feel fine') {
+      selectedSymptoms.clear();
+      document.querySelectorAll('.symptom-chip').forEach(c => c.classList.remove('selected'));
+    } else {
+      // If selecting a symptom, remove "I feel fine"
+      selectedSymptoms.delete('I feel fine');
+      const fineBtn = document.querySelector('[data-symptom="I feel fine"]');
+      if (fineBtn) fineBtn.classList.remove('selected');
+    }
+    selectedSymptoms.add(symptom);
+    button.classList.add('selected');
+  }
+}
+
+async function saveSymptoms() {
+  const msgEl = document.getElementById('symptom-msg');
+  if (selectedSymptoms.size === 0) {
+    msgEl.innerHTML = '<div class="error">Please select at least one symptom.</div>';
+    return;
+  }
+  const notes = document.getElementById('symptom-notes').value.trim();
+  try {
+    await apiCall('/symptoms', 'POST', {
+      symptoms: Array.from(selectedSymptoms),
+      notes: notes
+    });
+    msgEl.innerHTML = '<div class="success">Symptoms saved.</div>';
+    // Clear selection
+    selectedSymptoms.clear();
+    document.querySelectorAll('.symptom-chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('symptom-notes').value = '';
+    // Reload history
+    loadSymptoms();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Failed to save: ' + e.message + '</div>';
+  }
+}
+
+async function loadSymptoms() {
+  const historyEl = document.getElementById('symptom-history');
+  try {
+    const data = await apiCall('/symptoms?days=7', 'GET');
+    if (!data.logs || data.logs.length === 0) {
+      historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No symptoms logged yet. Your recent logs will appear here.</p>';
+      return;
+    }
+    let html = '<h4 style="margin-top:16px;">Recent Symptoms</h4>';
+    for (const log of data.logs) {
+      html += '<div style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;">';
+      html += '<strong>' + log.date + ':</strong> ' + log.symptoms.join(', ');
+      if (log.notes) html += '<br><span style="color:var(--muted);font-size:13px;">' + log.notes + '</span>';
+      html += '</div>';
+    }
+    historyEl.innerHTML = html;
+  } catch (e) {
+    historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load symptoms.</p>';
+  }
+}
+
+// Sensitivity settings
+async function loadSettings() {
+  try {
+    const data = await apiCall('/settings', 'GET');
+    const sensitivity = data.sensitivity || 'balanced';
+    document.querySelectorAll('.sensitivity-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById('sens-' + sensitivity);
+    if (activeBtn) activeBtn.classList.add('active');
+  } catch (e) {
+    // Non-critical; leave default
+  }
+}
+
+async function setSensitivity(level) {
+  const msgEl = document.getElementById('sensitivity-msg');
+  try {
+    await apiCall('/settings', 'PUT', { sensitivity: level });
+    document.querySelectorAll('.sensitivity-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.getElementById('sens-' + level).classList.add('active');
+    msgEl.innerHTML = '<div class="success">Sensitivity set to ' + level + '. Note: The detector currently runs in Balanced mode only. This preference is saved for future use.</div>';
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Failed to update: ' + e.message + '</div>';
+  }
+}
+
+// Clinician report download
+async function downloadReport() {
+  try {
+    const response = await fetch('/api/report', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) throw new Error('Failed to generate report');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'h-car-report-' + new Date().toISOString().split('T')[0] + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Failed to download report: ' + e.message);
+  }
+}
+
+// Data export
+async function exportData() {
+  try {
+    const response = await fetch('/api/export', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) throw new Error('Failed to export data');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'h-car-data-export-' + new Date().toISOString().split('T')[0] + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Failed to export data: ' + e.message);
+  }
+}
+
+// AI Assistant
+async function askAssistant(question) {
+  const chatEl = document.getElementById('assistant-chat');
+  // Add user question to chat
+  chatEl.innerHTML += '<div style="margin:12px 0;"><strong>You:</strong> ' + question + '</div>';
+  chatEl.innerHTML += '<div id="assistant-thinking" style="margin:12px 0;color:var(--muted);">Thinking...</div>';
+  chatEl.scrollTop = chatEl.scrollHeight;
+  try {
+    const data = await apiCall('/assistant/ask', 'POST', { question });
+    document.getElementById('assistant-thinking').remove();
+    // Format answer with line breaks
+    const formattedAnswer = data.answer.replace(/\n/g, '<br>');
+    chatEl.innerHTML += '<div style="margin:12px 0;"><strong>H-CAR Assistant:</strong><br>' + formattedAnswer + '</div>';
+  } catch (e) {
+    const thinking = document.getElementById('assistant-thinking');
+    if (thinking) thinking.remove();
+    chatEl.innerHTML += '<div style="margin:12px 0;color:#B42318;">Sorry, I could not answer that question. Please try again.</div>';
+  }
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function askAssistantFromInput() {
+  const input = document.getElementById('assistant-input');
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = '';
+  askAssistant(question);
 }
 
 // Emergency contact: load, save, and test alert. Values are set via
