@@ -6,15 +6,24 @@ Standalone public signup and payment app for H-CAR (Human Condition Analysis & R
 
 A self-contained Node.js/Express app that lets customers:
 1. Sign up with name, email, password
-2. Read and accept the 14-section consent form (10 acknowledgment checkboxes)
+2. Read and accept the consent form (8 sections, 11 acknowledgment checkboxes, including research use of de-identified data)
 3. Pay $5.00 CAD/month via Square Web Payments SDK
-4. Access their subscription dashboard
+4. Connect their Fitbit via the Google Health API
+5. Get a daily sync of 6 wearable signals and detector v2 flags (Watch/Act) on their dashboard
+
+This app runs the 40-person paid trial: participants pay $5/month, connect
+a Fitbit, and their de-identified data validates the detector.
 
 ## What this is NOT (yet)
 
-- **Fitbit integration**: Not included. The Muse artifact (h-car-multi-user-trial) has the full Fitbit connection via Google Health API and detector v2. This standalone app collects signups and payments; Fitbit connection and health monitoring happen in the Muse app.
-- **Detector**: Not included. The detector runs in the Muse artifact.
-- **Operator dashboard**: Not included. User management happens via the Muse artifact or direct database access.
+- **Operator dashboard UI**: Not included. Trial monitoring is via the
+  admin API endpoints (`/api/admin/trial-summary`, `/api/admin/sync-all`)
+  with the `ADMIN_SYNC_KEY`, or direct database access.
+- **Human escalation (Act paging)**: The detector flags Act episodes, but
+  no alert is sent to a trusted contact yet. The dashboard shows the flag;
+  paging is a follow-up feature.
+- **Persistent database**: SQLite on Render Free is ephemeral (see below).
+  Migrate to Neon Postgres before the trial starts collecting real data.
 
 ## Architecture
 
@@ -22,7 +31,36 @@ A self-contained Node.js/Express app that lets customers:
 - **Database**: SQLite (file-based, `hcar.db`). For production with persistent data across deploys, migrate to Neon Postgres (free tier) or Render Postgres.
 - **Auth**: JWT tokens (7-day expiry), PBKDF2 password hashing (bcryptjs)
 - **Payments**: Square Web Payments SDK (browser) + Square Subscriptions API (server)
-- **Security**: Helmet headers, CORS, rate limiting (100 req/15min, 5 signups/hour)
+- **Wearables**: Google Health API (health.googleapis.com/v4) via OAuth 2.0.
+  Reads 6 daily data types (resting heart rate, HRV, SpO2, respiratory
+  rate, sleep temperature derivations, sleep). Tokens are AES-256-GCM
+  encrypted at rest. See `GOOGLE_SETUP.md`.
+- **Detector**: `detector.js`, a faithful port of detector v2 (median + MAD
+  baselines, z-scores capped ±4, Watch/Act rules, 14-day lockout and
+  episode merging). Verified against the Python reference on identical
+  synthetic data; run `node test-detector.js` to re-verify.
+- **Security**: Helmet headers (CSP allows the Square SDK and inline
+  handlers), CORS, rate limiting (100 req/15min, 5 signups/hour)
+
+## API endpoints
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `POST /api/signup` | no | Create account |
+| `POST /api/login` | no | Sign in, returns JWT |
+| `POST /api/consent` | JWT | Record 11 acknowledgments |
+| `POST /api/subscribe` | JWT | Create Square subscription |
+| `GET /api/me` | JWT | Current user + subscription status |
+| `POST /api/cancel` | JWT | Cancel subscription |
+| `GET /api/fitbit/connect` | JWT | Start Google OAuth, returns consent URL |
+| `GET /api/fitbit/callback` | state JWT | OAuth return, stores encrypted tokens |
+| `GET /api/fitbit/status` | JWT | Fitbit connection status |
+| `POST /api/fitbit/disconnect` | JWT | Revoke + delete Fitbit connection |
+| `POST /api/fitbit/sync` | JWT | Pull latest summaries, re-run detector |
+| `GET /api/detector/status` | JWT | Baseline progress, status, recent flags |
+| `GET /api/days?limit=30` | JWT | Recent daily summaries + detector results |
+| `POST /api/admin/sync-all` | `x-admin-key` | Sync all connected users (cron) |
+| `GET /api/admin/trial-summary` | `x-admin-key` | Trial totals + per-user progress (IDs only) |
 
 ## Environment Variables
 
@@ -33,6 +71,11 @@ A self-contained Node.js/Express app that lets customers:
 | `SQUARE_LOCATION_ID` | Square Location ID | `L5A30BMAGNY4E` |
 | `SQUARE_PLAN_VARIATION_ID` | H-CAR Monthly plan variation | `XU5OAQ4SZB4GA4DYN65KZYFD` |
 | `JWT_SECRET` | Random string for JWT signing | Generate with `openssl rand -hex 32` |
+| `GOOGLE_CLIENT_ID` | Google Cloud OAuth client ID (see GOOGLE_SETUP.md) | `...apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth client secret | `GOCSPX-...` |
+| `BASE_URL` | Public URL of the app (used for the OAuth redirect) | `https://h-car.onrender.com` |
+| `TOKEN_ENCRYPTION_KEY` | 64 hex chars; encrypts stored Google tokens | Generate with `openssl rand -hex 32` |
+| `ADMIN_SYNC_KEY` | Random string guarding /api/admin/* (daily sync cron) | Generate with `openssl rand -hex 32` |
 | `PORT` | Server port (Render sets this) | `3000` |
 
 ## Deploy to Render (Free Tier)
@@ -71,9 +114,23 @@ A self-contained Node.js/Express app that lets customers:
 ## After Deployment
 
 1. **Test signup**: Create a test account, complete consent, and test the $5 payment with a real card (then refund in Square Dashboard).
-2. **Set up a custom domain** (optional): Buy a domain (e.g., hcar.ca, ~$15/year from Namecheap or Cloudflare) and point it to your Render URL. This is not required for launch.
-3. **Migrate the database** to Neon Postgres before you have real paying customers (SQLite data loss on redeploy is unacceptable for production).
-4. **Add Fitbit integration**: The detector and Fitbit connection live in the Muse artifact. To bring them into this standalone app, you need to port the Google Health API integration and detector v2 logic. This is a separate project.
+2. **Set up Google Health API**: Follow `GOOGLE_SETUP.md` to create the
+   Google Cloud project, enable the Google Health API, and set
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BASE_URL`,
+   `TOKEN_ENCRYPTION_KEY`, and `ADMIN_SYNC_KEY` in Render.
+3. **Test Fitbit connect**: Connect a Fitbit, run a sync, and confirm
+   daily summaries and baseline progress appear on the dashboard.
+4. **Set up the daily sync cron**: Create a Render Cron Job (or a
+   cron-job.org job) that POSTs to
+   `https://h-car.onrender.com/api/admin/sync-all` every morning with header
+   `x-admin-key: <ADMIN_SYNC_KEY>`. Without this, users must tap
+   "Sync Now" themselves.
+5. **Migrate the database** to Neon Postgres before the trial starts
+   collecting real data (SQLite data loss on redeploy is unacceptable
+   for trial data).
+6. **Set up a custom domain** (optional): Buy a domain (e.g., hcar.ca,
+   ~$15/year from Namecheap or Cloudflare) and point it to your Render
+   URL. This is not required for launch.
 
 ## Local Development
 
