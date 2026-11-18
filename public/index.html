@@ -117,17 +117,34 @@ ul li{margin:8px 0}
 <p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
 <p style="margin-top:12px">Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
 
-<div class="nav-tabs">
+<div class="nav-tabs" style="flex-wrap:wrap;">
 <div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
 <div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
-<div class="nav-tab" onclick="showLearnTab('results', this)">Results</div>
+<div class="nav-tab" onclick="showLearnTab('demo', this)">Live Demo</div>
+<div class="nav-tab" onclick="showLearnTab('baseline', this)">Baseline</div>
+<div class="nav-tab" onclick="showLearnTab('changes', this)">Watch &amp; Act</div>
+<div class="nav-tab" onclick="showLearnTab('spec', this)">Detection Spec</div>
+<div class="nav-tab" onclick="showLearnTab('timeline', this)">Timeline</div>
+<div class="nav-tab" onclick="showLearnTab('sensors', this)">Sensors</div>
+<div class="nav-tab" onclick="showLearnTab('assistant', this)">Assistant</div>
+<div class="nav-tab" onclick="showLearnTab('report', this)">Clinician Report</div>
+<div class="nav-tab" onclick="showLearnTab('results', this)">Blind Tests</div>
+<div class="nav-tab" onclick="showLearnTab('plan', this)">Build Plan</div>
+<div class="nav-tab" onclick="showLearnTab('privacy', this)">Privacy</div>
 </div>
 
 <div id="learn-overview">
 <div class="learn-section">
 <h3>The Smoke Detector for Your Body</h3>
-<p>Your body sends signals every day. Resting heart rate, heart rate variability, blood oxygen, breathing rate, sleep, and skin temperature all shift with your health. H-CAR watches these signals together, looking for patterns that matter.</p>
+<p>Your body has a normal. H-CAR helps you act when it shifts. It is a smoke detector for the body, not a diagnosis machine. It learns from heart rate, HRV, oxygen, temperature, breathing, sleep and movement, and it names a change, never a cause.</p>
+<p style="margin-top:10px">The mission: be the smoke detector that saves lives. Three jobs: warn early, rarely cry wolf, and be heard by someone who can act.</p>
 <p style="margin-top:10px">A single bad night means nothing. A single high heart rate means nothing. But when three or more signals move away from your baseline for days in a row, that is worth noticing. H-CAR notices it, so you can act.</p>
+<div class="stats-grid" style="margin-top:16px;">
+<div class="stat-card"><div class="stat-num">180</div><div class="stat-label">Days of synthetic history in the demo (Jordan, fictional 42-year-old)</div></div>
+<div class="stat-card"><div class="stat-num">6</div><div class="stat-label">Signals interpreted together, never one alone</div></div>
+<div class="stat-card"><div class="stat-num">0</div><div class="stat-label">Diagnoses. H-CAR never tells you what is wrong.</div></div>
+<div class="stat-card"><div class="stat-num">Exp.</div><div class="stat-label">Experimental. All thresholds unvalidated.</div></div>
+</div>
 </div>
 
 <div class="learn-section">
@@ -142,13 +159,65 @@ ul li{margin:8px 0}
 <div class="signal-card"><strong>Skin Temperature</strong><span>Your skin temperature while sleeping, relative to your baseline. Deviations can signal change.</span></div>
 </div>
 </div>
+
+<div class="learn-section">
+<h3>Today: An Example Dashboard (Day 180, Jordan, Synthetic Data)</h3>
+<p>Gradual drift has been building since Day 168. Three signals crossed the sustained-change rule on Day 176. This is day 5, worth acting on today. Status: Deviation, Day 5 of 5, Moderate.</p>
+<div class="chart-container">
+<h4>Recovery Score</h4>
+<svg viewBox="0 0 200 120" style="width:100%;max-width:220px;height:auto;display:block;margin:0 auto;">
+<path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#DCE0D9" stroke-width="14" fill="none" stroke-linecap="round"/>
+<path d="M 20 100 A 80 80 0 0 1 133 28" stroke="#9A6B12" stroke-width="14" fill="none" stroke-linecap="round"/>
+<text x="100" y="95" text-anchor="middle" font-family="DM Serif Display, serif" font-size="34" fill="#16211C">58</text>
+<text x="100" y="112" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">usual 84</text>
+</svg>
+<p>Recovery score 58 out of 100, vs usual 84. Sleep, HRV and resting heart rate are all pulling it down together.</p>
+</div>
+<p><strong>Signals vs. baseline:</strong></p>
+<ul style="margin:10px 0 10px 20px;">
+<li><strong>Resting heart rate:</strong> 75 bpm (usual 64, +11)</li>
+<li><strong>HRV:</strong> 26 ms (usual 48, -46%)</li>
+<li><strong>Sleep:</strong> 6h 12m, score 49 (usual 7h 28m, score 84)</li>
+<li><strong>Skin temp:</strong> +0.8 degrees (usual +/-0.3)</li>
+<li><strong>SpO2:</strong> 97% (usual 98%, in range)</li>
+</ul>
+<p><strong>Confidence:</strong> Moderate. 168 of 180 days usable (93%). Baseline learning is paused during a deviation and for 14 clean days after (episode lockout).</p>
+<p style="margin-top:10px"><strong>What to do today:</strong> (1) Rest. (2) Log symptoms (tired, headache already logged). (3) Tell someone. (4) Act fast if chest pain, severe breathlessness, fainting or confusion, call emergency services.</p>
+<p style="margin-top:10px"><strong>Agreement, not a single spike:</strong> heart rate up, HRV down, sleep down, for 5 days. A Day 88 workout spike was correctly ignored because it normalised in 24 hours.</p>
+</div>
+
+<div class="learn-section">
+<h3>Real Bodies Are Messier Than Simulations (LifeSnaps Update, 10 Nov 2026)</h3>
+<p>When H-CAR was replayed on real Fitbit data from the LifeSnaps dataset (52 distinct people, 5.2 person-years, no illness labels, so it measures false alarms only), Watch stopped being an alarm.</p>
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-num">0.31%</div><div class="stat-label">Per year: simulation promise for Watch</div></div>
+<div class="stat-card"><div class="stat-num">1.35</div><div class="stat-label">Per person-year: Watch rate at first on real data (7 episodes)</div></div>
+<div class="stat-card"><div class="stat-num">0.6</div><div class="stat-label">Per person-year: after fixes (3 unexplained of 5 total)</div></div>
+<div class="stat-card"><div class="stat-num">1</div><div class="stat-label">Act kept: a genuine 5-day December stretch, HRV collapsed, temperature high</div></div>
+</div>
+<p style="margin-top:12px"><strong>What changed:</strong> (1) Watch is a log, not a page. It shows in a morning check-in (illness, alcohol, travel, hard work). Act is the only tier reaching another human. (2) A robust ruler: median + MAD, per-signal deviation capped around 4, minimum spread floor. (3) Evidence must match data present: thin-data days can log Watch but never reach Act; a re-flag within 14 days is the same episode. (4) Context files it as explained: step count plus check-in answers.</p>
+<p style="margin-top:10px"><strong>What we did not do:</strong> just raise thresholds. In simulation that collapsed half-strength detection from over 90% to single digits.</p>
+</div>
 </div>
 
 <div id="learn-how-it-works" class="hidden">
 <div class="learn-section">
+<h3>It Learns You, Not an Average</h3>
+<p>The core question H-CAR asks every day: did your numbers change more than the situation explains? Six steps:</p>
+<ol style="margin:10px 0 10px 20px;color:var(--muted);line-height:1.7;">
+<li><strong>Days 1-28 learn your normal.</strong> A 15-day baseline roughly tripled false alarms (about 1.1% vs 0.32%), so 28 days it is.</li>
+<li><strong>Anchor it, never rolling.</strong> A rolling 90-day baseline caught only 3.1% of slow declines at Act. An anchored baseline caught about 100%.</li>
+<li><strong>Context classifies, never rewrites the score.</strong> Scores are computed first. Then context (steps, check-in answers) can file a flag as explained. No check-in answer means Unknown, which escalates like Unexplained.</li>
+<li><strong>Judge the unexplained remainder with a robust ruler.</strong> Six signals, each in its deterioration direction. Median plus MAD, deviation capped around 4, minimum spread floor so one wild night cannot drag the baseline around.</li>
+<li><strong>Two tiers, only Act is an alarm.</strong> Watch: 3 or more of 6 signals off, 2 consecutive days, silent log plus check-in. Act: 3 consecutive qualifying days, still worsening, at least one strong signal.</li>
+<li><strong>A human confirms any new normal.</strong> Automatic re-baselining was tested and rejected. If your normal genuinely changes, a person confirms it.</li>
+</ol>
+</div>
+
+<div class="learn-section">
 <h3>28 Days to Learn Your Baseline</h3>
 <p>When you first connect your Fitbit, H-CAR spends 28 days learning what is normal for you. It calculates your personal median and typical variation for each signal. This is your baseline.</p>
-<p style="margin-top:10px">During these 28 days, H-CAR raises no flags. It is still learning. After day 28, monitoring begins. Your baseline continues to update slowly over time, adapting as your normal changes.</p>
+<p style="margin-top:10px">During these 28 days, H-CAR raises no flags. It is still learning. After day 28, monitoring begins. Your baseline continues to update slowly over time, adapting as your normal changes. Overnight is when baseline speaks clearest.</p>
 <div class="chart-container">
 <h4>Your Baseline: Normal Variation</h4>
 <svg viewBox="0 0 600 200" style="width:100%;height:auto;">
@@ -209,12 +278,481 @@ ul li{margin:8px 0}
 <p>H-CAR uses edge-first processing. Your baseline is calculated on your device. Your raw Fitbit data stays on your phone when possible. Only flag summaries and daily heartbeats reach the server.</p>
 <p style="margin-top:10px">Your data is never sold. You can delete your account and data at any time.</p>
 </div>
+
+<div class="learn-section">
+<h3>The Six Rules</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Rule 1: Anchored baseline.</strong> 99.5-100% of slow declines caught, vs 50.1% (rolling 90-day) and 3.1% at Act.</li>
+<li><strong>Rule 2: Episode lockout.</strong> No learning during an episode plus 14 clean days after. Clean-days-only learning inflated false alerts to about 16%, rejected.</li>
+<li><strong>Rule 3: Two tiers, one alarm.</strong> Synthetic healthy false alerts: 0.32% Watch, 0.002% Act. LifeSnaps first Watch rate: 1.35 per person-year.</li>
+<li><strong>Rule 4: Context-adjusted detection.</strong> Altitude 2,100 m: Watch alerts fell from 97.4% to 0.4% with context. Training block: 62.2% to 0.03%. (Simulation-tested design intent, not built in detector v2, which classifies after scoring.)</li>
+<li><strong>Rule 5: Human-confirmed re-baselining.</strong> No automatic new normal.</li>
+<li><strong>Rule 6: Real-data hardening (Nov 2026).</strong> Median + MAD, cap around 4, spread floors, no Act on thin data, 14-day merging, explained context. LifeSnaps Watch fell from 7 to 5 episodes, 3 unexplained, 0.6 per person-year, Act preserved.</li>
+</ul>
+</div>
+
+<div class="learn-section">
+<h3>Three Response Levels</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Level 1: Watch and check.</strong> Silent log. Two days drifting. Morning summary, check-in, rest, hydrate, log.</li>
+<li><strong>Level 2: Reach out.</strong> Message a trusted contact, share location, call a clinician with your data, show Medical ID and medications.</li>
+<li><strong>Level 3: Act now.</strong> One-tap emergency call, auto-alert care circle plus location, SOS screen, pre-set countdown only if enabled.</li>
+</ul>
+</div>
+
+<div class="learn-section" style="border-left:4px solid var(--red);">
+<h3>What H-CAR Cannot Detect</h3>
+<p>H-CAR cannot detect sudden cardiac arrest, stroke as it happens, any acute event unfolding in minutes, or any event with no preceding wearable-visible change (flagged at chance level in blind tests). It cannot determine any cause or diagnosis.</p>
+<p style="margin-top:10px">The limit is structural: one score per day from daily summaries. H-CAR is built for slow sustained change over days. Quiet means no sustained drift was detected, never "nothing is wrong."</p>
+<p style="margin-top:10px"><strong>Do not wait for H-CAR. Call 911.</strong></p>
+</div>
+
+<div class="learn-section">
+<h3>How H-CAR Differs from Apple, Google, and Garmin</h3>
+<p>Native watch ecosystems focus on the individual wearer. H-CAR focuses on who hears about a change and what happens before paging: a Context Check and ask-before-paging step, a user-chosen care circle, and a design where only Act reaches another human.</p>
+<p style="margin-top:10px">One platform first; cross-platform is post-proof roadmap.</p>
+</div>
+
+<div class="learn-section">
+<h3>Your Care Circle (You Choose Who Hears About It)</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Partner (e.g. Meagan):</strong> Level 2 and 3 alerts plus location on SOS. Sees alert text and location only on SOS, NOT daily sleep or activity history.</li>
+<li><strong>Emergency contact (family):</strong> Level 3 SOS only.</li>
+<li><strong>Clinician (optional):</strong> Weekly summary, no live alerts, reviewed before sending.</li>
+</ul>
+<p style="margin-top:10px">Care-circle membership only with explicit, revocable consent. Nothing on this page sends anything; alerts are configured by you.</p>
+</div>
+</div>
+
+<div id="learn-demo" class="hidden">
+<div class="learn-section">
+<h3>Live Demo: Six Scenarios (Simulated, Demo Only)</h3>
+<p>These scenarios use simulated Fitbit-style data. They are not detector v2 output. Baseline reference (Days 1-28): resting heart rate 64 bpm, HRV 48 ms, SpO2 98%, temp +/-0.3, breathing 14/min, sleep score 84.</p>
+<p style="margin-top:10px"><strong>Sensitivity:</strong> Balanced is the only tested mode (exact blind-trial parameters). Gentle and Sensitive are experimental presets, never replayed, no test claims.</p>
+</div>
+
+<div class="learn-section">
+<h3>Scenario 1: Morning, All Good</h3>
+<p>RHR 62, HRV 51, SpO2 98%, temp +0.1, breathing 14, sleep 7h 42m score 86. Nothing to do. Your watch shows a readiness note and a "you are in your baseline" message.</p>
+</div>
+
+<div class="learn-section">
+<h3>Scenario 2: Poor Sleep + Stress Drift (Watch, Silent Log)</h3>
+<p>RHR 73 (+9), HRV 30 (-38%), SpO2 97%, temp +0.4, breathing 16, sleep 5h 10m score 54. H-CAR logs a Watch and asks you a few questions in the morning. No one else is alerted.</p>
+</div>
+
+<div class="learn-section">
+<h3>Scenario 3: Rough Patch, Explained, No Alarm</h3>
+<p>RHR 71 (+7), HRV 33 (-31%), steps yesterday 21,400 (baseline 8,400), check-in "Hard work, drank little" at 7:10 AM, SpO2 98%. Episode status: Explained. Zero unexplained alarms. Context filed it.</p>
+</div>
+
+<div class="learn-section">
+<h3>Scenario 4: Fever Trend, Getting Sick (Act)</h3>
+<p>RHR 82 (+18), HRV 22 (-54%), SpO2 96%, temp +1.2, breathing 18, sleep 6h 05m score 41. This is an Act flag. Options: rest and see a summary, let a trusted contact know, call a clinician or nurse line, re-measure temperature and SpO2.</p>
+</div>
+
+<div class="learn-section">
+<h3>Scenario 5: Low Oxygen + Breathing Change (Act)</h3>
+<p>RHR 96 (+32), HRV 18 (-62%), SpO2 91% (rechecked twice), temp +0.6, breathing 23/min, resting now (not exercise-related). Options: call emergency services, alert care circle with live location, sit and slow breathing, re-check SpO2 in 60 seconds.</p>
+</div>
+
+<div class="learn-section">
+<h3>Scenario 6: Irregular Rhythm + Fall (Urgent, Demo-Only Device Layer)</h3>
+<p>This scenario shows watch-platform safety features, NOT detector v2. Rhythm irregular (AFib-type notification), heart rate 118 to 54, hard fall with no movement for 60 seconds, SpO2 93%, location Home, countdown 0:45 of 60 seconds. Options: "I am okay" to cancel, call emergency services, alert care circle immediately, show Medical ID (sample: Jordan F., O+, allergies Penicillin, contact Meagan).</p>
+<p style="margin-top:10px">Symptom check-ins include: I feel fine, Tired/poor sleep, Dizzy, Short of breath, Chest tightness, Feverish/chills, Nauseous. Chest tightness or breathlessness routes to Level 2/3.</p>
+</div>
+</div>
+
+<div id="learn-baseline" class="hidden">
+<div class="learn-section">
+<h3>180 Days of Learning Jordan, Not an Average Person</h3>
+<p>Jordan is a fictional 42-year-old. The demo shows 180 days of synthetic data. H-CAR builds an anchored statistical profile: median plus typical range per signal, by time of day. The 28-day reference window never rolls or forgets. Episode lockout pauses learning during a deviation.</p>
+<div class="chart-container">
+<h4>180-Day Resting Heart Rate</h4>
+<svg viewBox="0 0 600 220" style="width:100%;height:auto;">
+<rect x="50" y="60" width="500" height="60" fill="#DDF0E9" opacity="0.5"/>
+<text x="55" y="55" font-family="Manrope, sans-serif" font-size="11" fill="#0E7A68" font-weight="700">Baseline band 61-67 bpm</text>
+<path d="M 50 95 L 80 92 L 110 98 L 140 90 L 170 96 L 200 93 L 230 97 L 260 91 L 290 95 L 320 94 L 350 92 L 380 96 L 410 93 L 440 95 L 470 120 L 500 135 L 530 142 L 550 145" stroke="#0E7A68" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 470 120 L 500 135 L 530 142 L 550 145" stroke="#B42318" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="170" cy="96" r="4" fill="#9A6B12"/>
+<text x="150" y="140" font-family="Manrope, sans-serif" font-size="11" fill="#9A6B12" font-weight="700">Day 88 blip</text>
+<text x="140" y="155" font-family="Manrope, sans-serif" font-size="10" fill="#5C6B62">Hard workout, 1 day only</text>
+<text x="430" y="160" font-family="Manrope, sans-serif" font-size="11" fill="#B42318" font-weight="700">Days 168-180 drift</text>
+<text x="430" y="175" font-family="Manrope, sans-serif" font-size="10" fill="#5C6B62">RHR +11, HRV -46%</text>
+<circle cx="550" cy="145" r="5" fill="#B42318"/>
+<text x="50" y="205" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 1</text>
+<text x="280" y="205" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 90</text>
+<text x="520" y="205" font-family="Manrope, sans-serif" font-size="11" fill="#5C6B62">Day 180</text>
+</svg>
+<p>Resting heart rate over 180 days. The shaded band is the baseline (61-67 bpm). Day 88 shows a one-day blip from a hard workout. Days 168-180 show a sustained drift that triggered detection.</p>
+</div>
+</div>
+
+<div class="learn-section">
+<h3>Current vs. Usual</h3>
+<table class="days">
+<tr><th>Signal</th><th>Usual</th><th>Last 7 Days</th><th>Reading</th></tr>
+<tr><td>Resting HR</td><td>64 (61-67)</td><td>71</td><td>Sustained rise</td></tr>
+<tr><td>HRV</td><td>48 ms (42-55)</td><td>31 ms</td><td>Recovery down</td></tr>
+<tr><td>Sleep</td><td>7h 28m, score 84</td><td>6h 12m, score 58</td><td>Deteriorating</td></tr>
+<tr><td>SpO2</td><td>98% (97-99)</td><td>97%</td><td>Within range</td></tr>
+<tr><td>Skin temp</td><td>+/-0.3</td><td>+0.5</td><td>Mildly up</td></tr>
+<tr><td>Steps</td><td>8,400/day</td><td>6,100/day</td><td>Down, context matters</td></tr>
+</table>
+<p style="margin-top:12px">This week vs last month: RHR +7, HRV -35%, sleep -1h 16m. Last month vs prior: essentially flat (+/-1 bpm, HRV +/-3%).</p>
+<p style="margin-top:10px"><strong>Confidence:</strong> Moderate. 168 of 180 days usable (93%), 12 missing or low-quality.</p>
+</div>
+
+<div class="learn-section">
+<h3>What Is a Digital Twin?</h3>
+<p>A statistical profile: ranges, trends, correlations (for example, HRV drops after less than 6 hours of sleep), symptom log, data-quality flags. It is NOT a simulation of organs. It cannot determine cause or disease.</p>
+</div>
+
+<div class="learn-section">
+<h3>Anchored vs. Rolling Baseline (600,000 Synthetic People, Full Year)</h3>
+<table class="days">
+<tr><th>Baseline Type</th><th>Slow Declines Caught</th><th>Healthy False Alerts</th></tr>
+<tr><td>Anchored (all history)</td><td>99.5-100%</td><td>0.24%</td></tr>
+<tr><td>Fixed 28-day</td><td>~100%</td><td>0.95%</td></tr>
+<tr><td>Rolling 90-day</td><td>50.1% / 3.1% Act</td><td>0.27%</td></tr>
+</table>
+<p style="margin-top:12px">Anchored plus episode lockout: 99.8% Watch, about 100% Act, median 64/48 days early, 0.32%/about 0% false alerts (Study 4).</p>
+<p style="margin-top:10px"><strong>Caveat:</strong> simulation never legitimately changed a person's true normal outside designed scenarios, which flatters the anchored baseline.</p>
+</div>
+</div>
+
+<div id="learn-changes" class="hidden">
+<div class="learn-section">
+<h3>One Bad Night Is Noise. Four Signals Moving Together for 5 Days Is a Change.</h3>
+<p>Detection evidence is synthetic only. These are NOT clinical cut-offs.</p>
+</div>
+
+<div class="learn-section">
+<h3>Watch Tier: A Silent Log, Not an Alarm</h3>
+<p><strong>Rule:</strong> 3 or more of 6 signals directionally off baseline, plus a combined-deviation threshold, for 2 consecutive days. Uses median + MAD, deviation capped around 4, spread floor.</p>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li>No buzz, no page. It appears in a morning check-in.</li>
+<li>A check-in answer plus step count can file it as explained.</li>
+<li>Thin-data days can log Watch but never reach Act.</li>
+<li>A re-flag within 14 days is the same episode.</li>
+<li>LifeSnaps: 1.35 down to 0.6 unexplained per person-year after fixes.</li>
+<li>Simulation: 99.1% of strong drifts caught, 41.0% of half-strength.</li>
+</ul>
+</div>
+
+<div class="learn-section">
+<h3>Act Tier: The Only Human Alert</h3>
+<p><strong>Rule:</strong> 3 consecutive qualifying days, still worsening, at least one strong signal, enough signals present.</p>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li>92.5% of strong drifts caught, about 100% of slow 120-day declines in synthetic testing.</li>
+<li>Synthetic healthy false alerts: 0.002% over about 4 months.</li>
+<li>LifeSnaps: 1 Act in 5.2 person-years, a genuine 5-day HRV collapse with high temperature, still fires.</li>
+<li>Numeric oxygen floor not yet set or active.</li>
+</ul>
+</div>
+
+<div class="learn-section">
+<h3>Detected Deviation: Days 168-180</h3>
+<p>Multisignal drift, joint deviation detected Day 176, lasted 5 days, moderate and still progressing (about 2.5x typical weekly swing). RHR 64 to 75, HRV 48 to 26 ms, sleep score 84 to 49, temp +0.8. Data reliability good (nightly wear 5 of 5).</p>
+<p style="margin-top:10px"><strong>Next steps:</strong> rest, hydrate, log symptoms, consider a clinician if it continues or worsens, especially with breathlessness, chest symptoms, fever, or feeling seriously unwell.</p>
+<p style="margin-top:10px"><strong>Observed change is not a diagnosis.</strong> Infection, stress, overtraining, poor sleep, alcohol, medication changes, and many other causes can produce the same pattern.</p>
+</div>
+
+<div class="learn-section">
+<h3>Correctly Ignored: Day 88</h3>
+<p>A single-day spike: RHR +9 after a hard workout plus a late night. It normalised in 24 hours. H-CAR correctly ignored it because a one-day change is not a sustained drift.</p>
+</div>
+
+<div class="learn-section">
+<h3>How Detection Works, in Plain English</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li>Compare each signal to your personal band.</li>
+<li>Smooth with a 3-day rolling average.</li>
+<li>Count how many signals agree.</li>
+<li>Grade by duration and distance from baseline.</li>
+<li>Freeze baseline updates during a deviation.</li>
+<li>Always show which signals contributed.</li>
+</ol>
+</div>
+</div>
+
+<div id="learn-spec" class="hidden">
+<div class="learn-section">
+<h3>Detection Spec Summary (H-CAR-DET-SPEC v0.9, Experimental)</h3>
+<p>This page shows the model, not the recipe. The full formal spec with exact tuning constants stays in private trial and patent files. The model is described here so you can discuss it with a clinician.</p>
+</div>
+
+<div class="learn-section">
+<h3>Three Layers</h3>
+<table class="days">
+<tr><th>Layer</th><th>What</th><th>Status</th></tr>
+<tr><td>1. Daily detector (v2)</td><td>One score per day</td><td>Built, blind-tested on synthetic data</td></tr>
+<tr><td>2. Context layer</td><td>Per-episode classification</td><td>Partly built (exertion tagging in detector; full classification specified for next build)</td></tr>
+<tr><td>3. Device safety layer</td><td>Fall, irregular rhythm, SOS (minutes)</td><td>Demo-only watch-platform functions, NOT detector v2</td></tr>
+</table>
+</div>
+
+<div class="learn-section">
+<h3>Scoring Model</h3>
+<p>Six daily signals: resting heart rate, HRV, SpO2, nightly temperature deviation, sleep duration, full-sleep breathing rate. Each has one deterioration direction.</p>
+<p style="margin-top:10px">Per-signal deviation score vs your own baseline median plus MAD, with a minimum spread floor, capped around 4. Needs enough baseline observations to be reliable.</p>
+<p style="margin-top:10px">Joint score: count of signals off plus a combined-deviation measure. No per-signal weights (weighting was tried in a later version, changed no outcome on real data, not adopted). Healthy-direction movement pulls the combined measure down.</p>
+<p style="margin-top:10px"><strong>Worked example:</strong> +18 bpm vs +0.4 degrees score differently per person, depending on their own spread. A very steady baseline flags smaller absolute changes, hence the spread floor.</p>
+</div>
+
+<div class="learn-section">
+<h3>One Temporal Model</h3>
+<p>Exactly one scoring grain: one score per day, computed each morning from daily summaries. Two windows:</p>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Acute:</strong> Watch after a short run, Act after a longer still-worsening run.</li>
+<li><strong>Sustained/episode:</strong> 14-day lockout freezes baseline learning only. Episodes separated by 14 days or less merge for paging counts.</li>
+</ul>
+<p style="margin-top:10px">Hour-level durations in demo scenarios are narrative illustration, retired as detector rules.</p>
+</div>
+
+<div class="learn-section">
+<h3>Sensitivity Modes</h3>
+<p><strong>Balanced</strong> is the exact blind-trial parameter set, the only mode the 40-person trial will run, frozen. <strong>Gentle</strong> and <strong>Sensitive</strong> are defined but experimental, never replayed, must be labelled experimental. Switching mid-episode does not rescore.</p>
+</div>
+
+<div class="learn-section">
+<h3>Missing-Data Policy</h3>
+<p>No imputation. Too few signals means a gap day (not healthy), which breaks a Watch run. Thin days can log Watch but never trigger Act. Intermittent SpO2 contributes only when valid. Silence is a gap, never an all-clear.</p>
+<p style="margin-top:10px">Edge-first: the server gets only episode summaries, gap counts, and a daily heartbeat. A missed heartbeat means a gap. A short baseline extends the learning window by the shortfall.</p>
+<p style="margin-top:10px"><strong>Honest limit:</strong> the blind-trial generator had no missing-data patterns, so the policy carries no synthetic detection numbers. It is first tested in the 40-person trial.</p>
+</div>
+
+<div class="learn-section">
+<h3>Context and the New Default</h3>
+<p>Scores first, context second. No check-in answer means Unknown, which escalates exactly like Unexplained. Ask-before-paging: a direct contact attempt with the wearer first at Act.</p>
+<p style="margin-top:10px"><strong>Correction:</strong> the built detector does NOT pre-correct for altitude or training (that is simulation and design intent). The absolute oxygen floor is specified in structure, but the numeric value is not set and it is not in the built detector.</p>
+</div>
+
+<div class="learn-section">
+<h3>Layer 3 Rules (Device Safety, Demo Only)</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li>Fall and rhythm accepted only from the watch platform's own cleared or validated features.</li>
+<li>No SOS from a single rhythm notification (at most a prompt to sit down and repeat the device's guided reading).</li>
+<li>Fall path stands alone: visible countdown, nothing sent if the wearer responds, auto-escalation only if enabled in advance.</li>
+<li>Rhythm plus fall is NOT a combined rule.</li>
+<li>A deliberate SOS tap needs no threshold.</li>
+<li>All device safety events are logged separately from Watch and Act episodes.</li>
+</ul>
+</div>
+
+<div class="learn-section">
+<h3>Allowed and Not Allowed Claims</h3>
+<p><strong>Allowed:</strong> Balanced (detector v2) passed all four pre-set gates of the blind validation trial on fresh seed, 12,000 synthetic people, with the confounder weakness (about 29% reaching Act) reported plainly.</p>
+<p style="margin-top:10px"><strong>Not allowed:</strong> Gentle/Sensitive tested claims, clinical detection claims, claims built on demo scenario durations, or suggestions that synthetic results prove real-body performance.</p>
+</div>
+
+<div class="learn-section">
+<h3>Seven Open Questions</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li>Numeric oxygen floor value.</li>
+<li>Baseline adaptation to medication, ageing, and life shifts.</li>
+<li>Real false-alarm rates on multi-week real data (about 9 person-years so far).</li>
+<li>Data access and signal quality per platform.</li>
+<li>On-device vs cloud split and battery cost.</li>
+<li>Regulatory boundary in Canada and the US, and clinical adjudication pathway.</li>
+<li>Gentle/Sensitive validation and naming a fall/rhythm platform.</li>
+</ol>
+</div>
+</div>
+
+<div id="learn-timeline" class="hidden">
+<div class="learn-section">
+<h3>Measurements, Symptoms and Changes, in Order (Jordan, Synthetic)</h3>
+</div>
+
+<div class="learn-section">
+<h3>Day 180: Today</h3>
+<p>Joint deviation day 5 of 5, Days 176-180. Heart rate 75, HRV 26, temp +0.8. Logged "tired, headache." Options: rest, contact clinician, log symptoms.</p>
+</div>
+
+<div class="learn-section">
+<h3>Day 176: Joint Deviation Detected</h3>
+<p>Elevated resting heart rate plus falling HRV plus broken sleep cross the experimental sustained-change rule. Lasted 5 days.</p>
+</div>
+
+<div class="learn-section">
+<h3>Days 168-175: Gradual Drift Building</h3>
+<p>Resting heart rate edges up, HRV down, sleep deteriorates, before detection on Day 176.</p>
+</div>
+
+<div class="learn-section">
+<h3>Days 150-167: Stable Baseline Period</h3>
+<p>All signals inside personal bands. Anchored baseline keeps learning from full clean history, never rolls.</p>
+</div>
+
+<div class="learn-section">
+<h3>Days 121-128: Missing / Low-Quality Data (8 Days)</h3>
+<p>Watch off for travel, then loose fit. Flagged low confidence. No alerts from bad data.</p>
+</div>
+
+<div class="learn-section">
+<h3>Day 88: Short-Lived Fluctuation, No Alert</h3>
+<p>Hard workout plus late night. Context explained it. Normalised next day.</p>
+</div>
+
+<div class="learn-section">
+<h3>Days 1-28: Baseline Reference Window</h3>
+<p>Initial learning Days 1-7, stabilized by Day 14. System listening only, no change alerts until a personal band existed. New users see "still learning you."</p>
+</div>
+</div>
+
+<div id="learn-sensors" class="hidden">
+<div class="learn-section">
+<h3>The Proposed Sensor Platform (Demonstrated, Not Built Yet)</h3>
+<p><strong>SIMULATED HARDWARE.</strong> Readings are generated in the browser. No real sensor is connected.</p>
+</div>
+
+<div class="learn-section">
+<h3>H-CAR Pod Concept v0.1 (Simulated)</h3>
+<p>Bluetooth LE simulated connected, battery 82%, signal quality Good (94%), firmware concept 0.1.0. Live tiles: heart rate 68 bpm, SpO2 (spot) 98%, skin temp +0.2, motion Resting, PPG quality 94%, battery about 6.5 days.</p>
+<p style="margin-top:10px">A real pod would sample PPG periodically, not continuously, to save battery.</p>
+</div>
+
+<div class="learn-section">
+<h3>What Can Actually Sense What</h3>
+<table class="days">
+<tr><th>Signal</th><th>Sensor</th><th>Notes</th></tr>
+<tr><td>Heart rate / HRV</td><td>Optical PPG, green LED</td><td>Skin contact, snug fit</td></tr>
+<tr><td>SpO2</td><td>Red + infrared PPG</td><td>Skin, spot-check, motion-sensitive</td></tr>
+<tr><td>Skin temperature</td><td>Thermistor</td><td>Relative change only</td></tr>
+<tr><td>Movement / falls / sleep</td><td>Accelerometer + gyroscope</td><td>Worn, no skin contact needed</td></tr>
+<tr><td>ECG</td><td>Dry electrodes, finger + wrist</td><td>Specialised, user-triggered 30-second reading, not continuous on most watches</td></tr>
+<tr><td>Blood pressure, glucose, labs</td><td>External devices only</td><td>No watch measures these reliably today. H-CAR must import, not invent them.</td></tr>
+</table>
+</div>
+
+<div class="learn-section">
+<h3>Context Inputs (Simulated)</h3>
+<p><strong>Altitude / elevation</strong> (barometer + GPS): SpO2 falls, resting heart rate rises. Moving to 2,100 m: Watch alerts 97.4% down to 0.4%, Act 73.2% down to about 0%.</p>
+<p style="margin-top:10px"><strong>Training load</strong> (workout sessions + activity): a hard two-week block: Watch alerts 62.2% down to 0.03%, Act 17.7% down to 0%.</p>
+<p style="margin-top:10px"><strong>Honest status:</strong> these subtraction results are from simulation design. Detector v2 classifies after scoring. Caveats: population-average corrections, individuals vary 60-140%, acclimatisation over 1-3 weeks, SpO2 hard floor guardrail.</p>
+<div class="chart-container">
+<h4>People Alerted (Watch Tier): Plain vs Context-Aware</h4>
+<svg viewBox="0 0 600 140" style="width:100%;height:auto;">
+<text x="10" y="25" font-family="Manrope, sans-serif" font-size="12" font-weight="700" fill="#16211C">Altitude (2,100 m)</text>
+<rect x="10" y="32" width="480" height="18" fill="#B42318" opacity="0.7" rx="4"/>
+<text x="495" y="46" font-family="Manrope, sans-serif" font-size="11" fill="#B42318" font-weight="700">97.4%</text>
+<rect x="10" y="54" width="4" height="18" fill="#0E7A68" rx="4"/>
+<text x="20" y="68" font-family="Manrope, sans-serif" font-size="11" fill="#0E7A68" font-weight="700">0.4% context-aware</text>
+<text x="10" y="100" font-family="Manrope, sans-serif" font-size="12" font-weight="700" fill="#16211C">Hard training block</text>
+<rect x="10" y="107" width="310" height="18" fill="#B42318" opacity="0.7" rx="4"/>
+<text x="325" y="121" font-family="Manrope, sans-serif" font-size="11" fill="#B42318" font-weight="700">62.2%</text>
+<rect x="10" y="129" width="3" height="8" fill="#0E7A68" rx="2"/>
+</svg>
+<p>Context awareness dramatically reduces false alerts from altitude and training, while real-decline detection is unchanged.</p>
+</div>
+</div>
+
+<div class="learn-section">
+<h3>Four Hardware Paths</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li><strong>Software on existing watches:</strong> do first. Cheapest and fastest. The prototype path.</li>
+<li><strong>Dev board + sensors:</strong> best next step. nRF52840 plus PPG/IMU/temp modules, about $80-250 in parts.</li>
+<li><strong>Custom wearable:</strong> later if justified. PCB, enclosure, 20-50 units, safety and radio certification.</li>
+<li><strong>Custom chip:</strong> not yet, probably not soon. Millions and years.</li>
+</ol>
+</div>
+</div>
+
+<div id="learn-assistant" class="hidden">
+<div class="learn-section">
+<h3>Ask About Your Data, With Its Limits Stated</h3>
+<p>The demo assistant uses canned logic answering only from Jordan's synthetic data. A production version needs a grounded model citing actual measurements and refusing when data is missing.</p>
+</div>
+
+<div class="learn-section">
+<h3>Why did I get this alert?</h3>
+<p>Three signals moved together for 5 days: resting heart rate 64 to 75 (band 61-67), HRV 48 to 26, sleep score 84 to 49, temp +0.8. Drift from Days 168-180, detected Day 176.</p>
+</div>
+
+<div class="learn-section">
+<h3>When did it begin?</h3>
+<p>Drift from Days 168-180. Joint deviation detected Day 176. Lasted 5 days.</p>
+</div>
+
+<div class="learn-section">
+<h3>Am I sick?</h3>
+<p>H-CAR cannot tell. This pattern can accompany infection, stress, overtraining, poor sleep, alcohol, medication changes. Only a clinician can interpret it.</p>
+</div>
+
+<div class="learn-section">
+<h3>What should I do next?</h3>
+<p>Rest, hydrate, log symptoms, re-check tonight. Contact a clinician if it continues 1-2 days or worsens. Call emergency services for severe symptoms.</p>
+</div>
+
+<div class="learn-section">
+<h3>What don't you know?</h3>
+<p>No blood pressure, labs, medication list, or ECG. 12 of 180 days missing or low-quality. HRV and sleep staging are brand approximations. Confidence is moderate.</p>
+</div>
+</div>
+
+<div id="learn-report" class="hidden">
+<div class="learn-section">
+<h3>A Summary Worth Handing to a Clinician</h3>
+<p><strong>30-day trend summary (synthetic):</strong> Period Days 151-180. Baseline reference window Days 1-28 (RHR 64, HRV 48 ms, sleep 7h 28m). Last 7 days: RHR 71, HRV 31 ms, sleep 6h 12m. Detected gradual multisignal drift Days 168-180, joint deviation detected Day 176, lasted 5 days, moderate. Data completeness 93%. Symptoms logged: tired, headache (Day 180).</p>
+<p style="margin-top:10px">Experimental system, not a medical record or diagnosis. Prepared for discussion with a healthcare professional.</p>
+</div>
+
+<div class="learn-section">
+<h3>Algorithms and Limitations</h3>
+<p><strong>Method:</strong> anchored all-history baseline after 28-day learning, median + MAD, cap around 4, spread floor. Episode lockout plus 14-day merging. Scores first, then context classification. Exertion tagging built; altitude/training pre-correction is design intent, not built. Unknown escalates as unexplained. Missing data never imputed; thin days can log Watch, never Act. Watch is a silent log; Act is the only human alert, after a direct contact attempt. Human-confirmed re-baselining only.</p>
+<p style="margin-top:10px"><strong>Limitations:</strong> PPG is noisy with motion, tattoos, cold, or loose fit. HRV varies by device algorithm, not comparable across brands. Watch sleep staging is approximate. Correlation is not cause. Thresholds are experimental, zero clinical validation. LifeSnaps replay (52 people, 5.2 person-years) measured false alarms only. Rare or serious conditions may produce no wearable signal. A "stable" reading never rules out illness.</p>
+</div>
+
+<div class="learn-section">
+<h3>System Architecture (4 Stages)</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li><strong>Sense:</strong> existing watch or future pod (PPG, IMU, temp, ECG spot-checks, plus symptom logs).</li>
+<li><strong>Phone, on-device first:</strong> cleaning, quality flags, baseline model, deviation detection. Raw data stays local by default.</li>
+<li><strong>Explain:</strong> what changed, when, contributing signals, confidence. Assistant grounded in those numbers.</li>
+<li><strong>Act and share, only with consent:</strong> options from self-check to trusted contact to clinician to emergency, report export, care-circle alerts. Optional encrypted cloud sync for backup and multi-device, never required for core detection.</li>
+</ol>
+</div>
 </div>
 
 <div id="learn-results" class="hidden">
 <div class="learn-section">
-<h3>Blind Validation Trial</h3>
-<p>In November 2026, H-CAR detector v2 was tested in a blind validation trial on 12,000 synthetic people with fresh data it had never seen. The trial passed all four pre-set gates.</p>
+<h3>Tested Blind on Invented People, Then Checked Against Real Ones</h3>
+<p>Synthetic studies 2026-11-03, real-data replay added 2026-11-10. Detection is synthetic only; false alarms were also measured on real data.</p>
+<p style="margin-top:10px"><strong>Blinding method:</strong> detector blind to group labels, events and patterns generated independently of detection code, thresholds fixed before scoring, results scored afterward.</p>
+</div>
+
+<div class="learn-section">
+<h3>LifeSnaps Replay (Nov 2026)</h3>
+<p>Open Fitbit dataset, healthy volunteers. 71 labelled IDs equals 52 distinct people, 5.2 person-years, breathing rate present, no illness or outcome labels, false alarms only.</p>
+<table class="days">
+<tr><th>Measure</th><th>Watch</th><th>Act</th></tr>
+<tr><td>Simulation promise</td><td>0.31%/year</td><td>0.001%/year</td></tr>
+<tr><td>Original detector on LifeSnaps</td><td>7 episodes, 1.35/person-year</td><td>1 episode, about 1 per 5 person-years</td></tr>
+<tr><td>Fixed detector</td><td>5 episodes to 3 unexplained, 0.6/person-year</td><td>1 preserved (genuine)</td></tr>
+</table>
+<p style="margin-top:12px">The original rate was roughly 430x the simulated Watch rate. In a 40-person trial that would mean about 54 Watch and about 8 Act per year.</p>
+<p style="margin-top:10px"><strong>Why flags were not random:</strong> 6 of 7 were real multi-day excursions in healthy people, clustered June/July and December (exertion, hard training, bad sleep, illness season). On day two, "two rough days" and "the start of something" look identical, hence the behavioural fix.</p>
+</div>
+
+<div class="learn-section">
+<h3>Simulation Guardrail: v1 vs v2 (Nov 2026, 3,000 Synthetic People/Group, 365 Days)</h3>
+<table class="days">
+<tr><th>Measure</th><th>v1</th><th>v2</th></tr>
+<tr><td>Fast decline Watch</td><td>99.17%</td><td>99.23%</td></tr>
+<tr><td>Fast decline Act</td><td>86.83%</td><td>87.80%</td></tr>
+<tr><td>Slow decline Watch</td><td>100%</td><td>100%</td></tr>
+<tr><td>Slow decline Act</td><td>99.97%</td><td>100.00%</td></tr>
+<tr><td>Confounder bump Act</td><td>27.37%</td><td>29.17%</td></tr>
+<tr><td>Healthy, any episode</td><td>0.07%</td><td>0.17%</td></tr>
+<tr><td>Healthy, Act</td><td>0%</td><td>0%</td></tr>
+</table>
+<p style="margin-top:12px"><strong>Verdict:</strong> fixes did not deafen detection. Small cost in the noisier direction. A large multi-day synthetic bump still reaches Act about 29% of the time.</p>
+</div>
+
+<div class="learn-section">
+<h3>Blind Validation Trial, Detector v2, 14 Nov 2026: PASS</h3>
+<p>All four pre-set gates passed. Fresh synthetic arm, new seed 20261114, 12,000 synthetic people, detector v2 unmodified. Protocol pre-registered and timestamped before any new-seed run.</p>
 <div class="stats-grid">
 <div class="stat-card"><div class="stat-num">99.37%</div><div class="stat-label">Fast declines caught at Watch</div></div>
 <div class="stat-card"><div class="stat-num">87.7%</div><div class="stat-label">Fast declines caught at Act</div></div>
@@ -225,17 +763,152 @@ ul li{margin:8px 0}
 <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">False Watch flags in 3,000 healthy person-years</div></div>
 <div class="stat-card"><div class="stat-num">0</div><div class="stat-label">False Act flags in 3,000 healthy person-years</div></div>
 </div>
-<p style="font-size:13px;color:var(--muted);margin-top:12px;">These are synthetic results. They prove the detector machinery works as designed. They do not prove it works on real bodies. Real-world validation is the purpose of the 40-person trial.</p>
+<p style="margin-top:12px"><strong>Confounder bump:</strong> 28.6% reached Act (known weakness, reported descriptively, no pass/fail attached). Replication: every measure within about one point of the 20261110 guardrail run.</p>
+<p style="font-size:13px;color:var(--muted);margin-top:12px;">Synthetic results prove the machinery works as designed, not that it works on real bodies. Not clinical validation. The 40-person trial remains the test for real-world detection.</p>
 </div>
 
 <div class="learn-section">
-<h3>Real Data Replays</h3>
-<p>H-CAR was also tested on real wearable data from public research datasets:</p>
-<ul style="margin:10px 0 10px 20px;">
-<li><strong>LifeSnaps (52 people, 5.17 person-years):</strong> 3 unexplained Watch flags, about 0.6 per person-year. One genuine Act flag that fired correctly.</li>
-<li><strong>PMData (15 people, 4.04 person-years):</strong> 6 Watch flags, about 1.5 per person-year. Zero Act flags.</li>
+<h3>Headline Study: 1,400,000 Synthetic People, Full Year</h3>
+<p>Seven groups of 200,000, 365 days, context-aware vs plain.</p>
+<table class="days">
+<tr><th>Group</th><th>Watch</th><th>Act</th></tr>
+<tr><td>Fast multi-signal decline</td><td>99.07%</td><td>92.41%</td></tr>
+<tr><td>Slow decline (120 days)</td><td>99.78%</td><td>~100%</td></tr>
+<tr><td>Illness episode (no event follows)</td><td>87.45%</td><td>33.32%</td></tr>
+<tr><td>Healthy and stable (false alerts)</td><td>0.314%</td><td>0.001%</td></tr>
+<tr><td>Event with NO preceding change</td><td>0.30%</td><td>~0%</td></tr>
+<tr><td>Permanent move to 2,100 m altitude</td><td>97.39% to 0.41%</td><td>73.17% to 0.001%</td></tr>
+<tr><td>Two-week hard training block</td><td>62.24% to 0.03%</td><td>17.72% to 0%</td></tr>
+</table>
+<p style="margin-top:12px">Median warning: fast decline 7/5 days before event; slow decline 64/48 days early. Illness episode flagged is a correct "see a doctor" detection, not a false alarm. Event with no preceding change flagged at chance level.</p>
+</div>
+
+<div class="learn-section">
+<h3>Studies 1-4 (Summary)</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Study 1 (400 people, 150 days):</strong> strong drift 100/100 flagged, median 7 days early; half-strength 41/100; no-drift event 1/100 (chance); illness/training 88/100 by loose rule (specificity problem motivating two tiers plus context).</li>
+<li><strong>Study 2 (1,000,000 people, 150 days):</strong> strong drift 99.1% Watch / 92.5% Act; half-strength 41.0%/9.0%; silent events 0.31%/about 0%; illness 88.7%/36.1%; healthy false alerts 0.32%/0.002%. Honest note: the first scaled run collapsed to about 15% detection because synthetic drift leaked into the baseline window, caught via disagreement with Study 1, fixed and re-run.</li>
+<li><strong>Study 3 (600,000 people, full year):</strong> healthy false alerts: expanding baseline 0.24%, fixed 28-day 0.95%, rolling 90-day 0.27%. Rolling failed slow declines 50.1%/3.1%. 15-day baseline roughly tripled false alarms (about 1.1% vs 0.32%).</li>
+<li><strong>Study 4 (40,000/group, full year):</strong> anchored plus lockout: slow declines 99.8% Watch / about 100% Act (median 64/48 days early), fast drift 99.1%/92.4%, healthy false alerts 0.32%/about 0%. Failed attempt kept on record: clean-days-only learning inflated false alerts to about 16%.</li>
 </ul>
-<p style="margin-top:10px">These replays show H-CAR rarely cries wolf on real data, while still catching genuine changes.</p>
+</div>
+
+<div class="learn-section">
+<h3>Real Data Replays (PMData)</h3>
+<p><strong>PMData (15 people, 4.04 person-years):</strong> 6 Watch flags, about 1.5 per person-year. Zero Act flags.</p>
+</div>
+
+<div class="learn-section">
+<h3>Honest Limits</h3>
+<p>Detection comes from invented people and physiology. LifeSnaps measures false alarms only. Whether real deterioration is preceded by multi-signal drift is an open empirical question only a prospective clinician-adjudicated study can answer. Overfitting risk with only 5.2 person-years (hence the dual gate).</p>
+<p style="margin-top:10px">H-CAR detects change, does not diagnose, predict, or replace a professional. It can never say "you are fine." The defensible claim is the "see a doctor" claim. Context corrections use population averages (individuals 60-140%). Altitude acclimatisation takes 1-3 weeks. Simulation true normals never legitimately changed outside designed scenarios.</p>
+</div>
+</div>
+
+<div id="learn-plan" class="hidden">
+<div class="learn-section">
+<h3>What It Would Actually Take to Build This</h3>
+<p>Figures are rough planning ranges (CAD), not quotes. Low-cost path is deliberate: spend on validation before hardware.</p>
+<table class="days">
+<tr><th>Stage</th><th>What</th><th>Cost</th></tr>
+<tr><td>0. Prototype (done)</td><td>Interactive concept + synthetic data</td><td>Time only</td></tr>
+<tr><td>1. Working app</td><td>Phone app reading Apple Health / Health Connect, real baseline engine, 5-10 testers</td><td>$5k-25k freelance / DIY near $0 + dev accounts ~$150/yr</td></tr>
+<tr><td>2. Sensor proof</td><td>Dev-board pod, sampling + battery tests</td><td>$500-3k parts + time</td></tr>
+<tr><td>3. Custom wearable pilot</td><td>PCB, enclosure, 20-50 units, safety/radio certification</td><td>$40k-150k+</td></tr>
+<tr><td>4. Clinical / regulatory</td><td>Validation studies, regulatory counsel, quality system</td><td>$100k+ and 1-3 years, or stay a "wellness" product with no medical claims</td></tr>
+<tr><td>5. Custom chip</td><td>ASIC design + fabrication</td><td>$1M+. Don't. Revisit only with proven volume.</td></tr>
+</table>
+</div>
+
+<div class="learn-section">
+<h3>Real-World Validation Path (In Order)</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li><strong>Dual gate, both run.</strong> LifeSnaps unexplained Watch at or below about 0.6 per person-year AND simulated detection at old rates. Every future change must keep both green.</li>
+<li><strong>Measure real context responses.</strong> Real SpO2 fall at 2,000 m and recovery over 1-3 weeks. Same for training load.</li>
+<li><strong>Prospective cohort.</strong> Real people, real devices, thresholds locked in advance, clinician-adjudicated outcomes.</li>
+<li><strong>Only then, claims.</strong> No health claim of any kind before step 3. Experimental wellness concept reporting change, never diagnosis.</li>
+</ol>
+</div>
+
+<div class="learn-section">
+<h3>Roadmap Phases</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Phase 0 (Now):</strong> concept demo plus tested design.</li>
+<li><strong>Phase 1 (1-3 months):</strong> real data, one platform. Implement tested spec, tune false alarms on real data. Cross-platform explicitly NOT in this phase.</li>
+<li><strong>Phase 2 (3-6 months):</strong> small pilot, 5-10 volunteers, weekly review of every alert.</li>
+<li><strong>Phase 3 (6-12 months):</strong> hardware decision plus validation gate. Dev-board pod only if pilot shows a sensing gap watches cannot fill. Design prospective clinician-adjudicated cohort. Regulatory advice before any medical claim.</li>
+</ul>
+</div>
+
+<div class="learn-section">
+<h3>Unresolved Technical Questions (9)</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li>HRV and sleep data exposure per platform and frequency.</li>
+<li>Deviation thresholds per person balancing early warning vs alarm fatigue.</li>
+<li>Baselines vs medication changes and ageing (no population-average correction exists).</li>
+<li>Whether consumer SpO2 can be trusted enough to weight.</li>
+<li>On-device vs cloud split for battery and privacy.</li>
+<li>Which claims keep H-CAR in "wellness" territory legally in Canada and the US.</li>
+<li>Numeric absolute oxygen floor (value still to be set with clinician input).</li>
+<li>Missing-data policy untested until the 40-person trial (blind-trial generator had no missing-data patterns).</li>
+<li>Clinical adjudication: who reviews Act episodes and trial outcomes.</li>
+</ol>
+</div>
+
+<div class="learn-section">
+<h3>Next Three Highest-Priority Actions</h3>
+<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
+<li>Get 3-5 people to use the demo and say in their own words what they would do at each alert. Fix wording before code.</li>
+<li>Build the Phase-1 single-platform app against your own real watch history. Live with its alerts for 30 days.</li>
+<li>Before any health claim or pilot with others, get one hour of regulatory plus clinical advice on scope, consent, and safety wording.</li>
+</ol>
+</div>
+
+<div class="learn-section">
+<h3>Safety and Validation Required Before Real Use</h3>
+<p>Bench plus on-body sensor accuracy testing, false-alarm rate studies, human-factors testing with older and chronically ill users, privacy and security review, and for any diagnostic or alerting claim, formal clinical validation and regulatory clearance (Health Canada MDL / FDA). Until then, experimental wellness concept only.</p>
+</div>
+</div>
+
+<div id="learn-privacy" class="hidden">
+<div class="learn-section">
+<h3>Consent, Export, Deletion, in Plain Language</h3>
+</div>
+
+<div class="learn-section">
+<h3>Permissions (Demo State)</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Heart and oxygen data:</strong> on-device comparison (on).</li>
+<li><strong>Sleep and activity:</strong> on-device (on).</li>
+<li><strong>Location:</strong> off except during an SOS you trigger.</li>
+<li><strong>Cloud sync:</strong> off by default.</li>
+<li><strong>Research sharing:</strong> off, separate optional consent, never bundled.</li>
+</ul>
+<p style="margin-top:10px">Pause tracking, revoke any permission, or delete baseline plus history in one place. Deletion is a design commitment: in production it must delete server copies too, with confirmation.</p>
+</div>
+
+<div class="learn-section">
+<h3>Connected Devices (Simulated)</h3>
+<ul style="margin:10px 0 10px 20px;line-height:1.7;">
+<li><strong>Jordan's Watch:</strong> connected, primary source.</li>
+<li><strong>Fitbit tracker:</strong> simulated feed only (sample readings generated in page, no Fitbit account linked, nothing leaves browser).</li>
+<li><strong>Phone:</strong> connected, baseline engine.</li>
+<li><strong>Home BP cuff:</strong> not connected (example of an external device H-CAR would import from, never estimate).</li>
+</ul>
+</div>
+
+<div class="learn-section">
+<h3>Your Data Rights</h3>
+<p><strong>Export my data:</strong> download your data (demo shows a locally generated file).</p>
+<p style="margin-top:10px"><strong>Delete baseline:</strong> remove your baseline and history (demo shows a note that nothing was deleted here; production must delete server copies too).</p>
+</div>
+
+<div class="learn-section" style="border-left:4px solid var(--red);">
+<h3>Important Disclaimer</h3>
+<p>H-CAR is an experimental concept for early awareness and support, not a medical device. It does not diagnose, cannot predict heart attacks or prevent death, and does not replace a healthcare professional.</p>
+<p style="margin-top:10px">Jordan's data is synthetic. All hardware is simulated. LifeSnaps figures are aggregated replay results (52 distinct people, 5.2 person-years, false alarms only, no individual LifeSnaps data shown). All thresholds are experimental and unvalidated.</p>
+<p style="margin-top:10px">Watch sensors can be wrong (loose fit, cold hands, movement). If seriously unwell (chest pain, severe breathlessness, fainting, stroke signs), call your local emergency number immediately. Do not wait for an app.</p>
+<p style="margin-top:10px"><strong>Talk to your clinician about what thresholds make sense for your own health conditions and medications.</strong></p>
 </div>
 </div>
 
@@ -400,9 +1073,11 @@ function showTab(tab, element) {
 function showLearnTab(tab, element) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   element.classList.add('active');
-  document.getElementById('learn-overview').classList.toggle('hidden', tab !== 'overview');
-  document.getElementById('learn-how-it-works').classList.toggle('hidden', tab !== 'how-it-works');
-  document.getElementById('learn-results').classList.toggle('hidden', tab !== 'results');
+  const tabs = ['overview','how-it-works','demo','baseline','changes','spec','timeline','sensors','assistant','report','results','plan','privacy'];
+  tabs.forEach(t => {
+    const el = document.getElementById('learn-' + t);
+    if (el) el.classList.toggle('hidden', t !== tab);
+  });
 }
 
 function showStep(stepId) {
