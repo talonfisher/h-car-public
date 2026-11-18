@@ -1072,6 +1072,47 @@ ul li{margin:8px 0}
 <div id="symptom-msg" style="margin-top:10px;"></div>
 <div id="symptom-history" style="margin-top:16px;"><p style="color:var(--muted);font-size:14px;">Loading recent symptoms...</p></div>
 
+<h3 style="margin-top:30px;">Morning Check-In</h3>
+<p style="color:var(--muted);font-size:14px;">A quick morning check-in helps H-CAR understand your context. Answer before looking at your scores, once a day.</p>
+<div id="checkin-status" style="margin:12px 0;"></div>
+<div id="checkin-form">
+<p style="font-weight:700;margin:14px 0 6px;">1. Rested / alert</p>
+<div id="checkin-rested" style="display:flex;flex-wrap:wrap;gap:8px;">
+<button type="button" class="symptom-chip checkin-rested" data-value="1" onclick="selectCheckinSingle('rested', this)">1 wrecked</button>
+<button type="button" class="symptom-chip checkin-rested" data-value="2" onclick="selectCheckinSingle('rested', this)">2 rough</button>
+<button type="button" class="symptom-chip checkin-rested" data-value="3" onclick="selectCheckinSingle('rested', this)">3 okay</button>
+<button type="button" class="symptom-chip checkin-rested" data-value="4" onclick="selectCheckinSingle('rested', this)">4 good</button>
+<button type="button" class="symptom-chip checkin-rested" data-value="5" onclick="selectCheckinSingle('rested', this)">5 fully rested</button>
+</div>
+<p style="font-weight:700;margin:14px 0 6px;">2. Body overall</p>
+<div id="checkin-body" style="display:flex;flex-wrap:wrap;gap:8px;">
+<button type="button" class="symptom-chip checkin-body" data-value="1" onclick="selectCheckinSingle('body', this)">1 rough</button>
+<button type="button" class="symptom-chip checkin-body" data-value="2" onclick="selectCheckinSingle('body', this)">2 off</button>
+<button type="button" class="symptom-chip checkin-body" data-value="3" onclick="selectCheckinSingle('body', this)">3 okay</button>
+<button type="button" class="symptom-chip checkin-body" data-value="4" onclick="selectCheckinSingle('body', this)">4 good</button>
+<button type="button" class="symptom-chip checkin-body" data-value="5" onclick="selectCheckinSingle('body', this)">5 great</button>
+</div>
+<p style="font-weight:700;margin:14px 0 6px;">3. Sore / aching</p>
+<div id="checkin-sore" style="display:flex;flex-wrap:wrap;gap:8px;">
+<button type="button" class="symptom-chip checkin-sore" data-value="0" onclick="selectCheckinSingle('sore', this)">0 none</button>
+<button type="button" class="symptom-chip checkin-sore" data-value="1" onclick="selectCheckinSingle('sore', this)">1 a little</button>
+<button type="button" class="symptom-chip checkin-sore" data-value="2" onclick="selectCheckinSingle('sore', this)">2 moderate</button>
+<button type="button" class="symptom-chip checkin-sore" data-value="3" onclick="selectCheckinSingle('sore', this)">3 a lot</button>
+</div>
+<p style="font-weight:700;margin:14px 0 6px;">4. Yesterday (pick any)</p>
+<div id="checkin-factors" style="display:flex;flex-wrap:wrap;gap:8px;">
+<button type="button" class="symptom-chip checkin-factor" data-factor="alcohol" onclick="toggleCheckinFactor(this)">Alcohol</button>
+<button type="button" class="symptom-chip checkin-factor" data-factor="hard exertion" onclick="toggleCheckinFactor(this)">Hard exertion</button>
+<button type="button" class="symptom-chip checkin-factor" data-factor="felt unwell" onclick="toggleCheckinFactor(this)">Felt unwell</button>
+<button type="button" class="symptom-chip checkin-factor" data-factor="slept somewhere else" onclick="toggleCheckinFactor(this)">Slept somewhere else</button>
+<button type="button" class="symptom-chip checkin-factor" data-factor="sick people around me" onclick="toggleCheckinFactor(this)">Sick people around me</button>
+<button type="button" class="symptom-chip checkin-factor" data-factor="none" onclick="toggleCheckinFactor(this)">None</button>
+</div>
+<button onclick="saveSleepCheckin()" style="margin-top:14px;">Save Check-In</button>
+<div id="checkin-msg" style="margin-top:10px;"></div>
+</div>
+<div id="checkin-history" style="margin-top:16px;"><p style="color:var(--muted);font-size:14px;">Loading recent check-ins...</p></div>
+
 <h3 style="margin-top:30px;">Sensitivity</h3>
 <p style="color:var(--muted);font-size:14px;">How sensitive should H-CAR be to changes? <strong>Balanced is the only tested mode.</strong> Gentle and Sensitive are experimental presets, never replayed, no test claims.</p>
 <div style="display:flex;gap:8px;margin:12px 0;">
@@ -1404,6 +1445,7 @@ async function loadDashboard() {
     // Emergency contact, symptoms, and settings are non-critical; never let them break the dashboard.
     loadEmergencyContact();
     loadSymptoms();
+    loadSleepCheckin();
     loadSettings();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
@@ -1476,6 +1518,109 @@ async function loadSymptoms() {
     historyEl.innerHTML = html;
   } catch (e) {
     historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load symptoms.</p>';
+  }
+}
+
+// Morning sleep check-in
+const checkinState = { rested: null, body: null, sore: null, factors: new Set() };
+const restedLabels = { 1: 'wrecked', 2: 'rough', 3: 'okay', 4: 'good', 5: 'fully rested' };
+const bodyLabels = { 1: 'rough', 2: 'off', 3: 'okay', 4: 'good', 5: 'great' };
+const soreLabels = { 0: 'none', 1: 'a little', 2: 'moderate', 3: 'a lot' };
+
+function selectCheckinSingle(field, button) {
+  document.querySelectorAll('.checkin-' + field).forEach(b => b.classList.remove('selected'));
+  button.classList.add('selected');
+  checkinState[field] = parseInt(button.dataset.value, 10);
+}
+
+function toggleCheckinFactor(button) {
+  const factor = button.dataset.factor;
+  if (checkinState.factors.has(factor)) {
+    checkinState.factors.delete(factor);
+    button.classList.remove('selected');
+    return;
+  }
+  // "none" clears all other factors; any other factor clears "none"
+  if (factor === 'none') {
+    checkinState.factors.clear();
+    document.querySelectorAll('.checkin-factor').forEach(c => c.classList.remove('selected'));
+  } else {
+    checkinState.factors.delete('none');
+    const noneBtn = document.querySelector('[data-factor="none"]');
+    if (noneBtn) noneBtn.classList.remove('selected');
+  }
+  checkinState.factors.add(factor);
+  button.classList.add('selected');
+}
+
+function fillCheckinForm(checkin) {
+  checkinState.rested = checkin.rested;
+  checkinState.body = checkin.body;
+  checkinState.sore = checkin.sore;
+  checkinState.factors = new Set(checkin.yesterday_factors || []);
+  document.querySelectorAll('.checkin-rested, .checkin-body, .checkin-sore, .checkin-factor').forEach(b => b.classList.remove('selected'));
+  const restedBtn = document.querySelector('.checkin-rested[data-value="' + checkin.rested + '"]');
+  if (restedBtn) restedBtn.classList.add('selected');
+  const bodyBtn = document.querySelector('.checkin-body[data-value="' + checkin.body + '"]');
+  if (bodyBtn) bodyBtn.classList.add('selected');
+  const soreBtn = document.querySelector('.checkin-sore[data-value="' + checkin.sore + '"]');
+  if (soreBtn) soreBtn.classList.add('selected');
+  (checkin.yesterday_factors || []).forEach(f => {
+    const btn = document.querySelector('.checkin-factor[data-factor="' + f + '"]');
+    if (btn) btn.classList.add('selected');
+  });
+}
+
+async function saveSleepCheckin() {
+  const msgEl = document.getElementById('checkin-msg');
+  if (checkinState.rested === null || checkinState.body === null || checkinState.sore === null) {
+    msgEl.innerHTML = '<div class="error">Please answer all three questions (rested, body, sore).</div>';
+    return;
+  }
+  try {
+    await apiCall('/sleep-checkin', 'POST', {
+      rested: checkinState.rested,
+      body: checkinState.body,
+      sore: checkinState.sore,
+      yesterday_factors: Array.from(checkinState.factors)
+    });
+    msgEl.innerHTML = '<div class="success">Check-in saved.</div>';
+    loadSleepCheckin();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Failed to save: ' + e.message + '</div>';
+  }
+}
+
+async function loadSleepCheckin() {
+  const historyEl = document.getElementById('checkin-history');
+  const statusEl = document.getElementById('checkin-status');
+  try {
+    const data = await apiCall('/sleep-checkin?days=7', 'GET');
+    const checkins = data.checkins || [];
+    const today = new Date().toISOString().split('T')[0];
+    const todays = checkins.find(c => c.date === today);
+    if (todays) {
+      statusEl.innerHTML = '<div class="success">Done for today: rested ' + todays.rested + ' (' + (restedLabels[todays.rested] || '') + '), body ' + todays.body + ' (' + (bodyLabels[todays.body] || '') + '), sore ' + todays.sore + ' (' + (soreLabels[todays.sore] || '') + '). You can edit and save again.</div>';
+      fillCheckinForm(todays);
+    } else {
+      statusEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Not done yet today.</p>';
+    }
+    if (checkins.length === 0) {
+      historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No check-ins yet. Your recent check-ins will appear here.</p>';
+      return;
+    }
+    let html = '<h4 style="margin-top:16px;">Recent Check-Ins</h4>';
+    for (const c of checkins) {
+      html += '<div style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;">';
+      html += '<strong>' + c.date + ':</strong> rested ' + c.rested + ' (' + (restedLabels[c.rested] || '') + '), body ' + c.body + ' (' + (bodyLabels[c.body] || '') + '), sore ' + c.sore + ' (' + (soreLabels[c.sore] || '') + ')';
+      if (c.yesterday_factors && c.yesterday_factors.length > 0) {
+        html += '<br><span style="color:var(--muted);font-size:13px;">Yesterday: ' + c.yesterday_factors.join(', ') + '</span>';
+      }
+      html += '</div>';
+    }
+    historyEl.innerHTML = html;
+  } catch (e) {
+    historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load check-ins.</p>';
   }
 }
 
