@@ -733,7 +733,11 @@ app.get('/api/emergency-contact', authenticateToken, async (req, res) => {
 
 app.put('/api/emergency-contact', authenticateToken, async (req, res) => {
   try {
-    const name = (req.body.name || '').trim();
+    // Capitalize each word in the name (Talon's rule: all names capitalized)
+    let name = (req.body.name || '').trim();
+    if (name) {
+      name = name.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    }
     const email = (req.body.email || '').trim();
     const phone = (req.body.phone || '').trim();
     const relationship = (req.body.relationship || '').trim();
@@ -861,10 +865,16 @@ app.post('/api/alerts/send-test', authenticateToken, async (req, res) => {
       '',
       'H-CAR (https://h-car.onrender.com)',
     ].join('\n');
-    const result = await sendEmail(user.emergency_contact_email, subject, text);
-    if (!result.sent) {
-      return res.status(503).json({ error: 'Test alert could not be sent: ' + result.reason });
-    }
+    // Send email in background, do not wait for it (prevents SMTP timeouts from blocking the response)
+    sendEmail(user.emergency_contact_email, subject, text).then(result => {
+      if (!result.sent) {
+        console.error('Test alert email failed for ' + user.emergency_contact_email + ': ' + result.reason);
+      } else {
+        console.log('Test alert sent to ' + user.emergency_contact_email);
+      }
+    }).catch(err => {
+      console.error('Test alert email error:', err);
+    });
     res.json({ message: 'Test alert sent to ' + user.emergency_contact_email + '.' });
   } catch (err) {
     console.error('Test alert error:', err);
@@ -2142,17 +2152,27 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       return v.toFixed(decimals) + suffix;
     };
 
+    // Helper to say "today" or "yesterday" based on the date
+    const dayWord = (dateStr) => {
+      if (!dateStr) return 'your most recent day';
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      if (dateStr === today) return 'today';
+      if (dateStr === yesterday) return 'yesterday';
+      return 'on ' + dateStr;
+    };
+
     // Resting heart rate questions
     if ((q.includes('resting') || q.includes('heart rate') || q.includes('rhr') || q.includes('pulse')) && !q.includes('baseline')) {
       if (!latest || latest.rhr === null) {
         answer = 'I don\'t have a resting heart rate reading for your most recent day. Make sure your Fitbit is synced.';
       } else {
         const base = baselineMap['resting_hr'];
-        let text = `Your resting heart rate yesterday (${latest.date}) was ${Math.round(latest.rhr)} bpm.`;
+        let text = `Your resting heart rate ${dayWord(latest.date)} (${latest.date}) was ${Math.round(latest.rhr)} bpm.`;
         if (base) {
           const diff = latest.rhr - base;
           const dir = diff > 0 ? 'above' : diff < 0 ? 'below' : 'at';
-          text += ` Your usual baseline is ${Math.round(base)} bpm, so yesterday was ${Math.abs(Math.round(diff))} bpm ${dir} your normal.`;
+          text += ` Your usual baseline is ${Math.round(base)} bpm, so that was ${Math.abs(Math.round(diff))} bpm ${dir} your normal.`;
         }
         // 7-day average
         const rhrVals = recentDays.filter(d => d.rhr !== null).map(d => d.rhr);
@@ -2167,11 +2187,11 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have an HRV reading for your most recent day. HRV measures how much your heart rate varies between beats, higher usually means better recovery.';
       } else {
         const base = baselineMap['rmssd'];
-        let text = `Your HRV yesterday (${latest.date}) was ${Math.round(latest.hrv)} ms. HRV measures recovery, higher is generally better.`;
+        let text = `Your HRV ${dayWord(latest.date)} (${latest.date}) was ${Math.round(latest.hrv)} ms. HRV measures recovery, higher is generally better.`;
         if (base) {
           const diff = latest.hrv - base;
           const pct = Math.round((diff / base) * 100);
-          text += ` Your usual baseline is ${Math.round(base)} ms, so yesterday was ${Math.abs(pct)}% ${diff > 0 ? 'higher' : 'lower'} than normal.`;
+          text += ` Your usual baseline is ${Math.round(base)} ms, so that was ${Math.abs(pct)}% ${diff > 0 ? 'higher' : 'lower'} than normal.`;
         }
         answer = text;
       }
@@ -2182,7 +2202,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         const hours = Math.floor(latest.sleep_minutes / 60);
         const mins = Math.round(latest.sleep_minutes % 60);
         const base = baselineMap['sleep_duration_h'];
-        let text = `You slept ${hours}h ${mins}m on the night of ${latest.date}.`;
+        let text = `You slept ${hours}h ${mins}m (recorded ${latest.date}).`;
         if (base) {
           const baseH = Math.floor(base);
           const baseM = Math.round((base - baseH) * 60);
@@ -2198,7 +2218,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have a blood oxygen reading for your most recent day.';
       } else {
         const base = baselineMap['spo2'];
-        let text = `Your average blood oxygen yesterday was ${latest.spo2_avg.toFixed(1)}%.`;
+        let text = `Your average blood oxygen ${dayWord(latest.date)} was ${latest.spo2_avg.toFixed(1)}%.`;
         if (latest.spo2_min !== null) text += ` Your lowest was ${latest.spo2_min.toFixed(1)}%.`;
         if (base) text += ` Your usual baseline is ${base.toFixed(1)}%.`;
         answer = text;
@@ -2208,7 +2228,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have a breathing rate reading for your most recent day.';
       } else {
         const base = baselineMap['full_sleep_breathing_rate'];
-        let text = `Your breathing rate yesterday was ${latest.breathing_rate.toFixed(1)} breaths per minute.`;
+        let text = `Your breathing rate ${dayWord(latest.date)} was ${latest.breathing_rate.toFixed(1)} breaths per minute.`;
         if (base) text += ` Your usual baseline is ${base.toFixed(1)} per minute.`;
         answer = text;
       }
@@ -2216,7 +2236,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       if (!latest || latest.skin_temp_delta === null) {
         answer = 'I don\'t have a skin temperature reading for your most recent day.';
       } else {
-        let text = `Your skin temperature yesterday was ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees from your usual.`;
+        let text = `Your skin temperature ${dayWord(latest.date)} was ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees from your usual.`;
         if (Math.abs(latest.skin_temp_delta) < 0.3) text += ' That is within your normal range.';
         else if (latest.skin_temp_delta > 0) text += ' That is slightly elevated.';
         else text += ' That is slightly below your normal.';
@@ -2329,9 +2349,6 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I can help you understand your H-CAR data. Try asking about your resting heart rate, HRV, sleep, blood oxygen, alerts, or baseline. I can only answer from your actual measurements, and I am not a medical professional. For medical advice, consult your clinician.';
       }
     }
-
-    // Always add disclaimer
-    answer += '\n\nThis is not medical advice. H-CAR is a general wellness tool, not a medical device. It does not diagnose or treat any condition. If you feel unwell, seek professional medical care.';
 
     res.json({ answer });
   } catch (err) {
