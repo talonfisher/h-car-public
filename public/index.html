@@ -24,7 +24,7 @@
 *{box-sizing:border-box} html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;line-height:1.6}
 a{color:var(--teal2)} @media(prefers-color-scheme:dark){a{color:var(--teal)}}
-.container{max-width:1400px;margin:0 auto;padding:0 20px}
+.container{max-width:1800px;margin:0 auto;padding:0 20px}
 header{text-align:center;padding:40px 0 20px}
 header h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(42px,6vw,56px);line-height:.95;letter-spacing:-.02em;margin:0;color:var(--ink)}
 header h1 em{color:var(--teal);font-style:italic}
@@ -135,9 +135,9 @@ body.app-mode header p{display:none}
 button.nav-item{flex:1;max-width:120px;background:none;border:0;padding:6px 4px;margin:0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Manrope,system-ui,sans-serif;width:auto;box-shadow:none}
 button.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 button.nav-item.active{color:var(--teal)}
-body.has-bottom-nav{padding-bottom:140px}
-body.has-bottom-nav .footer{padding-bottom:160px}
-@media(min-width:641px){.bottom-nav{max-width:1400px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
+body.has-bottom-nav{padding-bottom:220px}
+body.has-bottom-nav .footer{padding-bottom:240px}
+@media(min-width:641px){.bottom-nav{max-width:1800px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
 @media(max-width:640px){.metric-grid{grid-template-columns:repeat(2,1fr)}.section-card{padding:18px}.status-hero{padding:20px 16px}}
 </style>
 </head>
@@ -211,6 +211,7 @@ body.has-bottom-nav .footer{padding-bottom:160px}
 <div class="nav-tab" onclick="showLearnTab('report', this)">Clinician Report</div>
 <div class="nav-tab" onclick="showLearnTab('results', this)">Blind Tests</div>
 <div class="nav-tab" onclick="showLearnTab('privacy', this)">Privacy</div>
+<div class="nav-tab" onclick="showLearnTab('terms', this)">Terms</div>
 </div>
 
 <div id="learn-overview" class="learn-tab-content">
@@ -929,6 +930,48 @@ body.has-bottom-nav .footer{padding-bottom:160px}
 </div>
 </div>
 
+<div id="learn-terms" class="learn-tab-content hidden">
+<div class="learn-section">
+<h3>Terms of Service</h3>
+<p><strong>Last updated:</strong> November 19, 2026</p>
+</div>
+
+<div class="learn-section">
+<h3>1. What H-CAR Is</h3>
+<p>H-CAR is a general wellness tool operated by Talon Fisher Contracting, Courtenay, British Columbia, Canada. H-CAR learns your personal baseline from your Fitbit data and flags sustained changes over days. H-CAR is NOT a medical device. It does not diagnose, treat, monitor, or prevent any disease or condition. It does not replace a healthcare professional.</p>
+</div>
+
+<div class="learn-section">
+<h3>2. Subscription and Payment</h3>
+<p>H-CAR costs $5.00 CAD per month, billed monthly through Square. You may cancel anytime from your account settings. Cancellation takes effect at the end of your current paid period. No refunds are given for partial months.</p>
+</div>
+
+<div class="learn-section">
+<h3>3. Your Responsibilities</h3>
+<p>You are responsible for wearing your Fitbit regularly, keeping your account secure, and seeking professional medical care when you feel unwell. Do not rely on H-CAR to detect medical emergencies. If you experience chest pain, severe breathlessness, fainting, or other serious symptoms, call your local emergency number immediately.</p>
+</div>
+
+<div class="learn-section">
+<h3>4. Data and Privacy</h3>
+<p>Your Fitbit data is used only to calculate your personal baseline and detect changes. Your data is never sold. You may export your data at any time and request deletion by contacting support. See the Privacy section for details.</p>
+</div>
+
+<div class="learn-section">
+<h3>5. Limitation of Liability</h3>
+<p>H-CAR is provided "as is" without warranties of any kind. Talon Fisher Contracting is not liable for any damages arising from your use of H-CAR, including missed detections, false alerts, or reliance on H-CAR instead of professional medical care. Your use of H-CAR is at your own risk.</p>
+</div>
+
+<div class="learn-section">
+<h3>6. Changes to These Terms</h3>
+<p>We may update these terms from time to time. Continued use of H-CAR after changes constitutes acceptance of the updated terms.</p>
+</div>
+
+<div class="learn-section">
+<h3>7. Contact</h3>
+<p>Questions about these terms? Contact Talon Fisher Contracting at tfcontracting@shaw.ca or 250-465-0852.</p>
+</div>
+</div>
+
 <div id="consent-step" class="card hidden">
 <div class="step-indicator"><div class="step done">1</div><div class="step active">2</div><div class="step">3</div><div class="step">4</div></div>
 <h2>Consent Form</h2>
@@ -1181,10 +1224,10 @@ body.has-bottom-nav .footer{padding-bottom:160px}
 
 <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:12px;border:1px solid var(--line);">
 <h4 style="margin:0 0 8px 0;font-size:15px;">Emergency Location Sharing</h4>
-<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
-<input type="checkbox" id="location-sharing-checkbox" onchange="toggleLocationSharing()" style="margin-top:0;width:24px;height:24px;cursor:pointer;flex-shrink:0;">
-<span style="font-size:14px;line-height:1.5;">Share my location with my emergency contact if H-CAR detects a serious change</span>
-</label>
+<div style="display:flex;align-items:flex-start;gap:10px;">
+<input type="checkbox" id="location-sharing-checkbox" style="margin-top:0;width:24px;height:24px;cursor:pointer;flex-shrink:0;">
+<span style="font-size:14px;line-height:1.5;cursor:pointer;" onclick="document.getElementById('location-sharing-checkbox').click();">Share my location with my emergency contact if H-CAR detects a serious change</span>
+</div>
 <p style="color:var(--muted);font-size:13px;margin:8px 0 0 28px;line-height:1.5;">When you sync your Fitbit, H-CAR will save your location. If an Act flag fires, your emergency contact will receive your last known location in the alert email so they know where to send help. Your location is never shared otherwise, and never tracked continuously. You can turn this off at any time.</p>
 <div id="location-status" style="margin:8px 0 0 28px;font-size:13px;color:var(--muted);"></div>
 <div id="location-msg" style="margin-top:8px;"></div>
@@ -1254,7 +1297,7 @@ body.has-bottom-nav .footer{padding-bottom:160px}
 </div>
 
 <div class="footer">
-<p><a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
+<p><a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showFooterPage('terms'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
 <p style="margin-top:12px;">H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
 <p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. $5/month. Cancel anytime.</p>
 </div>
@@ -1347,7 +1390,7 @@ function showLearnTab(tab, element) {
       t.classList.add('active');
     }
   });
-  const tabs = ['overview','how-it-works','demo','baseline','changes','spec','timeline','sensors','assistant','report','results','privacy'];
+  const tabs = ['overview','how-it-works','demo','baseline','changes','spec','timeline','sensors','assistant','report','results','privacy','terms'];
   tabs.forEach(t => {
     const el = document.getElementById('learn-' + t);
     if (el) el.classList.toggle('hidden', t !== tab);
@@ -1832,6 +1875,9 @@ async function loadEmergencyContact() {
     const checkbox = document.getElementById('location-sharing-checkbox');
     if (checkbox) {
       checkbox.checked = !!c.location_sharing_enabled;
+      // Attach change handler (using addEventListener to ensure it works even if inline handler fails)
+      checkbox.removeEventListener('change', toggleLocationSharing);
+      checkbox.addEventListener('change', toggleLocationSharing);
     }
     updateLocationStatus(c);
   } catch (e) {
@@ -1861,21 +1907,21 @@ function updateLocationStatus(contactData) {
 
 async function toggleLocationSharing() {
   const checkbox = document.getElementById('location-sharing-checkbox');
+  if (!checkbox) return;
   const enabled = checkbox.checked;
   const msgEl = document.getElementById('location-msg');
   // Confirm before disabling (deletes location data)
   if (!enabled) {
     const confirmed = confirm('Turn off location sharing? This will delete your saved location. Your emergency contact will not receive your location if an Act flag fires.');
     if (!confirmed) {
-      checkbox.checked = true;
+      // Use setTimeout to ensure the checkbox state is restored after the click event completes
+      setTimeout(() => { checkbox.checked = true; }, 0);
       return;
     }
   }
-  // Disable checkbox while saving to prevent double-clicks
-  checkbox.disabled = true;
   try {
     const res = await apiCall('/settings/location', 'PUT', { enabled });
-    msgEl.innerHTML = '<div class="success">' + res.message + '</div>';
+    if (msgEl) msgEl.innerHTML = '<div class="success">' + res.message + '</div>';
     // Update status display directly (don't reload whole contact, which can reset checkbox)
     const statusEl = document.getElementById('location-status');
     if (statusEl) {
@@ -1892,9 +1938,7 @@ async function toggleLocationSharing() {
   } catch (e) {
     // Revert checkbox on error
     checkbox.checked = !enabled;
-    msgEl.innerHTML = '<div class="error">Failed to update location sharing: ' + e.message + '</div>';
-  } finally {
-    checkbox.disabled = false;
+    if (msgEl) msgEl.innerHTML = '<div class="error">Failed to update location sharing: ' + e.message + '</div>';
   }
   // Clear message after 5 seconds
   setTimeout(() => { if (msgEl) msgEl.innerHTML = ''; }, 5000);
@@ -1932,8 +1976,13 @@ function showContactMsg(text, isError) {
 }
 
 async function saveEmergencyContact() {
+  // Capitalize each word in the name (Talon's rule: all names capitalized)
+  let name = document.getElementById('ec-name').value.trim();
+  if (name) {
+    name = name.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+  }
   const body = {
-    name: document.getElementById('ec-name').value.trim(),
+    name: name,
     relationship: document.getElementById('ec-relationship').value.trim(),
     email: document.getElementById('ec-email').value.trim(),
     phone: document.getElementById('ec-phone').value.trim(),
@@ -2169,11 +2218,11 @@ function renderCurrentVsUsual(days, baselines) {
   baselines.forEach(b => { baselineMap[b.signal] = b.centre; });
   const fmt = (v, digits) => (v === null || v === undefined ? '–' : Number(v).toFixed(digits === undefined ? 0 : digits));
   const rows = [
-    { label: 'Resting HR', current: d.rhr, usual: baselineMap.rhr, unit: 'bpm', digits: 0 },
+    { label: 'Resting HR', current: d.rhr, usual: baselineMap.resting_hr, unit: 'bpm', digits: 0 },
     { label: 'HRV (Recovery)', current: d.hrv, usual: baselineMap.rmssd, unit: 'ms', digits: 0 },
     { label: 'Blood Oxygen', current: d.spo2Avg, usual: baselineMap.spo2, unit: '%', digits: 1 },
-    { label: 'Breathing', current: d.breathingRate, usual: baselineMap.breathing_rate, unit: '/min', digits: 1 },
-    { label: 'Sleep', current: d.sleepMinutes !== null && d.sleepMinutes !== undefined ? d.sleepMinutes / 60 : null, usual: baselineMap.sleep_hours, unit: 'h', digits: 1 },
+    { label: 'Breathing', current: d.breathingRate, usual: baselineMap.full_sleep_breathing_rate, unit: '/min', digits: 1 },
+    { label: 'Sleep', current: d.sleepMinutes !== null && d.sleepMinutes !== undefined ? d.sleepMinutes / 60 : null, usual: baselineMap.sleep_duration_h, unit: 'h', digits: 1 },
     { label: 'Skin Temp', current: d.skinTempDelta, usual: 0, unit: '°', digits: 2, isDelta: true },
   ];
   let html = '<div class="table-wrap"><table class="days"><tr><th>Signal</th><th>Usual</th><th>Latest (' + d.date + ')</th><th>Change</th></tr>';
@@ -2182,7 +2231,10 @@ function renderCurrentVsUsual(days, baselines) {
     const usualStr = r.isDelta ? '±0.00°' : fmt(r.usual, r.digits) + (r.usual !== null && r.usual !== undefined ? ' ' + r.unit : '');
     let changeStr = '–';
     if (r.current !== null && r.current !== undefined && r.usual !== null && r.usual !== undefined) {
-      const diff = r.current - r.usual;
+      // Round both values to displayed precision first, so the change matches what the user sees
+      const currentRounded = Number(Number(r.current).toFixed(r.digits));
+      const usualRounded = Number(Number(r.usual).toFixed(r.digits));
+      const diff = currentRounded - usualRounded;
       if (r.isDelta) {
         changeStr = (diff >= 0 ? '+' : '') + diff.toFixed(2) + '°';
       } else if (Math.abs(diff) < 0.05) {
