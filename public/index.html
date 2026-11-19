@@ -24,7 +24,7 @@
 *{box-sizing:border-box} html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;line-height:1.6}
 a{color:var(--teal2)} @media(prefers-color-scheme:dark){a{color:var(--teal)}}
-.container{max-width:1200px;margin:0 auto;padding:0 20px}
+.container{max-width:1400px;margin:0 auto;padding:0 20px}
 header{text-align:center;padding:40px 0 20px}
 header h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(42px,6vw,56px);line-height:.95;letter-spacing:-.02em;margin:0;color:var(--ink)}
 header h1 em{color:var(--teal);font-style:italic}
@@ -135,9 +135,9 @@ body.app-mode header p{display:none}
 button.nav-item{flex:1;max-width:120px;background:none;border:0;padding:6px 4px;margin:0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Manrope,system-ui,sans-serif;width:auto;box-shadow:none}
 button.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 button.nav-item.active{color:var(--teal)}
-body.has-bottom-nav{padding-bottom:110px}
-body.has-bottom-nav .footer{padding-bottom:130px}
-@media(min-width:641px){.bottom-nav{max-width:1200px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
+body.has-bottom-nav{padding-bottom:140px}
+body.has-bottom-nav .footer{padding-bottom:160px}
+@media(min-width:641px){.bottom-nav{max-width:1400px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
 @media(max-width:640px){.metric-grid{grid-template-columns:repeat(2,1fr)}.section-card{padding:18px}.status-hero{padding:20px 16px}}
 </style>
 </head>
@@ -149,7 +149,10 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 <p>Your personal health baseline. We notice change, so you can act.</p>
 </header>
 
-<div id="landing" class="card">
+<div id="loading" class="card" style="text-align:center;padding:60px 20px;">
+<p style="font-size:18px;color:var(--muted);">Loading H-CAR...</p>
+</div>
+<div id="landing" class="card hidden">
 <p class="eyebrow">General Wellness Tool</p>
 <h2>What is H-CAR?</h2>
 <p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
@@ -191,6 +194,10 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 </div>
 
 <div id="learn-container" class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+<h2 style="margin:0;font-size:24px;">H-CAR Guide</h2>
+<button onclick="closeGuide()" style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;line-height:1;padding:0;" title="Close guide">×</button>
+</div>
 <div class="nav-tabs" style="flex-wrap:wrap;">
 <div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
 <div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
@@ -439,7 +446,7 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 <div id="learn-baseline" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>180 Days of Learning You, Not an Average Person</h3>
-<p>H-CAR builds your personal statistical profile: median plus typical range per signal, by time of day. The 28-day reference window never rolls or forgets. Learning pauses during a deviation so your baseline stays clean.</p>
+<p>H-CAR builds your personal statistical profile: median plus typical range per signal, by time of day. After your initial 28-day baseline, it becomes a rolling 28-day window that updates as you add more data. Learning pauses during a deviation so your baseline stays clean.</p>
 <div class="chart-container">
 <h4>180-Day Resting Heart Rate</h4>
 <svg viewBox="0 0 600 220" style="width:100%;height:auto;">
@@ -462,7 +469,8 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 </div>
 
 <div class="learn-section">
-<h3>Current vs. Usual</h3>
+<h3>Current vs. Usual (Example)</h3>
+<p style="color:var(--muted);font-size:13px;margin-bottom:12px;">This is an example showing what the table looks like after 180 days. Your real data appears on your Home dashboard.</p>
 <div class="table-wrap"><table class="days">
 <tr><th>Signal</th><th>Usual</th><th>Last 7 Days</th><th>Reading</th></tr>
 <tr><td>Resting HR</td><td>64 (61-67)</td><td>71</td><td>Sustained rise</td></tr>
@@ -655,7 +663,7 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 
 <div class="learn-section">
 <h3>Days 150-167: Stable Baseline Period</h3>
-<p>All signals inside personal bands. Anchored baseline keeps learning from full clean history, never rolls.</p>
+<p>All signals inside personal bands. Your baseline updates as you add more clean data, using a rolling 28-day window after the initial baseline period.</p>
 </div>
 
 <div class="learn-section">
@@ -888,7 +896,7 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 <ul style="margin:10px 0 10px 20px;line-height:1.7;">
 <li><strong>Heart and oxygen data:</strong> on-device comparison (on).</li>
 <li><strong>Sleep and activity:</strong> on-device (on).</li>
-<li><strong>Location:</strong> off except during an SOS you trigger.</li>
+<li><strong>Location:</strong> only shared with your emergency contact if you opt in and an Act flag fires. Never tracked continuously.</li>
 <li><strong>Cloud sync:</strong> off by default.</li>
 <li><strong>Research sharing:</strong> off, separate optional consent, never bundled.</li>
 </ul>
@@ -1024,6 +1032,13 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 <p id="metric-date" style="text-align:center;color:var(--muted);font-size:13px;margin:-6px 0 4px;">Latest day: loading...</p>
 
 <div class="section-card">
+<p class="section-eyebrow">Your Numbers</p>
+<h3>Current vs. Usual</h3>
+<p style="color:var(--muted);font-size:14px;">How your latest day compares to your personal baseline. Your usual is the median of your baseline days.</p>
+<div id="current-vs-usual"><p style="color:var(--muted);">Loading your comparison...</p></div>
+</div>
+
+<div class="section-card">
 <p class="section-eyebrow">Connected Device</p>
 <h3>Your Fitbit</h3>
 <div id="fitbit-section"><p>Loading Fitbit status...</p></div>
@@ -1118,7 +1133,7 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 <div class="section-card">
 <p class="section-eyebrow">Assistant</p>
 <h3>Ask About Your Data</h3>
-<p style="color:var(--muted);font-size:14px;">Ask questions about your H-CAR data. The assistant answers only from your actual measurements.</p>
+<p style="color:var(--muted);font-size:14px;">Ask questions about your H-CAR data. The assistant answers only from your actual measurements. This is not medical advice. H-CAR is a general wellness tool, not a medical device. If you feel unwell, seek professional medical care.</p>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
 <button type="button" class="secondary" onclick="askAssistant('What was my resting heart rate yesterday?')" style="font-size:13px;">My heart rate yesterday?</button>
 <button type="button" class="secondary" onclick="askAssistant('How did I sleep last night?')" style="font-size:13px;">How did I sleep?</button>
@@ -1239,7 +1254,7 @@ body.has-bottom-nav .footer{padding-bottom:130px}
 </div>
 
 <div class="footer">
-<p><a href="#" onclick="showLearnTab('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showLearnTab('privacy'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
+<p><a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
 <p style="margin-top:12px;">H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
 <p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. $5/month. Cancel anytime.</p>
 </div>
@@ -1311,6 +1326,19 @@ async function forgotPassword() {
   }
 }
 
+function showFooterPage(tab) {
+  // Show the learn container (it may be hidden on dashboard) and show the requested tab
+  const learnContainer = document.getElementById('learn-container');
+  if (learnContainer) {
+    learnContainer.classList.remove('hidden');
+  }
+  showLearnTab(tab);
+  // Scroll to the learn container
+  if (learnContainer) {
+    learnContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
 function showLearnTab(tab, element) {
   // Remove active from all nav tabs, then add to all tabs matching this tab name (syncs both landing and dashboard tab sets)
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1331,7 +1359,17 @@ function showLearnTab(tab, element) {
   }
 }
 
+function closeGuide() {
+  const learnContainer = document.getElementById('learn-container');
+  if (learnContainer) {
+    learnContainer.classList.add('hidden');
+  }
+}
+
 function showStep(stepId) {
+  // Hide loading screen when showing a real step
+  const loading = document.getElementById('loading');
+  if (loading) loading.classList.add('hidden');
   ['landing', 'consent-step', 'payment-step', 'dashboard'].forEach(id => {
     document.getElementById(id).classList.toggle('hidden', id !== stepId);
   });
@@ -1357,6 +1395,11 @@ function showDashView(view) {
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.view === view);
   });
+  // Hide the guide when switching views (user can reopen via Insights)
+  const learnContainer = document.getElementById('learn-container');
+  if (learnContainer && view !== 'insights') {
+    learnContainer.classList.add('hidden');
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1507,6 +1550,7 @@ async function loadDashboard() {
     renderDetector(det);
     const days = await apiCall('/days?limit=7', 'GET');
     renderDays(days.days);
+    renderCurrentVsUsual(days.days, det.baselines);
     // Emergency contact, symptoms, and settings are non-critical; never let them break the dashboard.
     loadEmergencyContact();
     loadSymptoms();
@@ -1762,13 +1806,28 @@ function askAssistantFromInput() {
 
 // Emergency contact: load, save, and test alert. Values are set via
 // .value (never innerHTML) so contact names cannot inject markup.
+function formatPhone(phone) {
+  if (!phone) return '';
+  // Remove all non-digits
+  const digits = phone.replace(/\D/g, '');
+  // Format as (XXX) XXX-XXXX for 10-digit numbers
+  if (digits.length === 10) {
+    return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+  }
+  // Format as +1 (XXX) XXX-XXXX for 11-digit numbers starting with 1
+  if (digits.length === 11 && digits[0] === '1') {
+    return '+1 (' + digits.slice(1, 4) + ') ' + digits.slice(4, 7) + '-' + digits.slice(7);
+  }
+  return phone;
+}
+
 async function loadEmergencyContact() {
   try {
     const c = await apiCall('/emergency-contact', 'GET');
     document.getElementById('ec-name').value = c.name || '';
     document.getElementById('ec-relationship').value = c.relationship || '';
     document.getElementById('ec-email').value = c.email || '';
-    document.getElementById('ec-phone').value = c.phone || '';
+    document.getElementById('ec-phone').value = formatPhone(c.phone) || '';
     // Load location sharing status
     const checkbox = document.getElementById('location-sharing-checkbox');
     if (checkbox) {
@@ -1812,11 +1871,20 @@ async function toggleLocationSharing() {
       return;
     }
   }
+  // Disable checkbox while saving to prevent double-clicks
+  checkbox.disabled = true;
   try {
     const res = await apiCall('/settings/location', 'PUT', { enabled });
     msgEl.innerHTML = '<div class="success">' + res.message + '</div>';
-    // Reload emergency contact to update status display
-    await loadEmergencyContact();
+    // Update status display directly (don't reload whole contact, which can reset checkbox)
+    const statusEl = document.getElementById('location-status');
+    if (statusEl) {
+      if (enabled) {
+        statusEl.textContent = 'Location sharing is on. Your location will be saved on your next Fitbit sync.';
+      } else {
+        statusEl.textContent = '';
+      }
+    }
     // If just enabled, try to capture location now
     if (enabled) {
       captureLocation();
@@ -1825,6 +1893,8 @@ async function toggleLocationSharing() {
     // Revert checkbox on error
     checkbox.checked = !enabled;
     msgEl.innerHTML = '<div class="error">Failed to update location sharing: ' + e.message + '</div>';
+  } finally {
+    checkbox.disabled = false;
   }
   // Clear message after 5 seconds
   setTimeout(() => { if (msgEl) msgEl.innerHTML = ''; }, 5000);
@@ -2083,6 +2153,51 @@ function renderDetector(det) {
   }
 }
 
+function renderCurrentVsUsual(days, baselines) {
+  const el = document.getElementById('current-vs-usual');
+  if (!el) return;
+  if (!days || days.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);">No data yet. Connect your Fitbit and sync to see your comparison.</p>';
+    return;
+  }
+  if (!baselines || baselines.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);">Your baseline is still learning. The comparison will appear once H-CAR has enough data to calculate your usual values.</p>';
+    return;
+  }
+  const d = days[0];
+  const baselineMap = {};
+  baselines.forEach(b => { baselineMap[b.signal] = b.centre; });
+  const fmt = (v, digits) => (v === null || v === undefined ? '–' : Number(v).toFixed(digits === undefined ? 0 : digits));
+  const rows = [
+    { label: 'Resting HR', current: d.rhr, usual: baselineMap.rhr, unit: 'bpm', digits: 0 },
+    { label: 'HRV (Recovery)', current: d.hrv, usual: baselineMap.rmssd, unit: 'ms', digits: 0 },
+    { label: 'Blood Oxygen', current: d.spo2Avg, usual: baselineMap.spo2, unit: '%', digits: 1 },
+    { label: 'Breathing', current: d.breathingRate, usual: baselineMap.breathing_rate, unit: '/min', digits: 1 },
+    { label: 'Sleep', current: d.sleepMinutes !== null && d.sleepMinutes !== undefined ? d.sleepMinutes / 60 : null, usual: baselineMap.sleep_hours, unit: 'h', digits: 1 },
+    { label: 'Skin Temp', current: d.skinTempDelta, usual: 0, unit: '°', digits: 2, isDelta: true },
+  ];
+  let html = '<div class="table-wrap"><table class="days"><tr><th>Signal</th><th>Usual</th><th>Latest (' + d.date + ')</th><th>Change</th></tr>';
+  for (const r of rows) {
+    const curStr = r.isDelta ? (r.current === null || r.current === undefined ? '–' : (r.current >= 0 ? '+' : '') + fmt(r.current, r.digits) + r.unit) : fmt(r.current, r.digits) + (r.current !== null && r.current !== undefined ? ' ' + r.unit : '');
+    const usualStr = r.isDelta ? '±0.00°' : fmt(r.usual, r.digits) + (r.usual !== null && r.usual !== undefined ? ' ' + r.unit : '');
+    let changeStr = '–';
+    if (r.current !== null && r.current !== undefined && r.usual !== null && r.usual !== undefined) {
+      const diff = r.current - r.usual;
+      if (r.isDelta) {
+        changeStr = (diff >= 0 ? '+' : '') + diff.toFixed(2) + '°';
+      } else if (Math.abs(diff) < 0.05) {
+        changeStr = 'Same';
+      } else {
+        changeStr = (diff > 0 ? '+' : '') + diff.toFixed(r.digits) + ' ' + r.unit;
+      }
+    }
+    html += '<tr><td>' + r.label + '</td><td>' + usualStr + '</td><td>' + curStr + '</td><td>' + changeStr + '</td></tr>';
+  }
+  html += '</table></div>';
+  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Usual is your baseline median. Small day-to-day changes are normal.</p>';
+  el.innerHTML = html;
+}
+
 function renderMetricCards(days) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   if (!days || days.length === 0) {
@@ -2110,14 +2225,29 @@ function renderDays(days) {
   }
   const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
   const fmtTemp = (v) => (v === null || v === undefined ? '&ndash;' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '°');
+  // Flag extreme outliers (likely sensor errors)
+  const isOutlierTemp = (v) => v !== null && v !== undefined && Math.abs(v) > 1.5;
+  const isOutlierRhr = (v) => v !== null && v !== undefined && (v < 40 || v > 120);
+  const isOutlierSpo2 = (v) => v !== null && v !== undefined && (v < 85 || v > 100);
   let html = '<div class="table-wrap"><table class="days"><tr><th>Date</th><th>Resting HR</th><th>HRV</th><th>Oxygen</th><th>Breathing</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
   for (const d of days) {
     const rowCls = d.act ? 'act-row' : (d.watch ? 'flag-row' : '');
-    const flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
+    let flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
+    // Note outliers and missing data in the flag column
+    const issues = [];
+    if (isOutlierTemp(d.skinTempDelta)) issues.push('Temp outlier');
+    if (isOutlierRhr(d.rhr)) issues.push('HR outlier');
+    if (isOutlierSpo2(d.spo2Avg)) issues.push('SpO2 outlier');
+    if (d.spo2Avg === null || d.spo2Avg === undefined) issues.push('SpO2 missing');
+    if (issues.length > 0 && !d.act && !d.watch) {
+      flag = flag ? flag + ' (' + issues.join(', ') + ')' : issues.join(', ');
+    }
     const sleepH = d.sleepMinutes !== null && d.sleepMinutes !== undefined ? (d.sleepMinutes / 60).toFixed(1) + 'h' : '&ndash;';
-    html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + fmt(d.breathingRate, 1) + '</td><td>' + fmtTemp(d.skinTempDelta) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
+    const tempStyle = isOutlierTemp(d.skinTempDelta) ? ' style="color:#B42318;font-weight:700;"' : '';
+    html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + fmt(d.breathingRate, 1) + '</td><td' + tempStyle + '>' + fmtTemp(d.skinTempDelta) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
   }
   html += '</table></div>';
+  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Outliers (red) are likely sensor errors and are excluded from baseline calculations. Missing values (&ndash;) mean your Fitbit did not record that signal that day.</p>';
   el.innerHTML = html;
 }
 
@@ -2148,8 +2278,8 @@ async function syncNow() {
   try {
     const res = await apiCall('/fitbit/sync', 'POST', {});
     const notice = document.getElementById('fitbit-notice');
-    notice.textContent = 'Sync complete: ' + res.daysStored + ' days stored' +
-      (res.episodes > 0 ? ', ' + res.episodes + ' flag episode(s) on record' : ', no flags') + '.';
+    notice.textContent = 'Sync complete: ' + res.daysStored + ' day(s) updated in this sync' +
+      (res.episodes > 0 ? ', ' + res.episodes + ' flag episode(s) on record' : ', no flags') + '. Your total is shown above.';
     notice.classList.remove('hidden');
     // Capture location if sharing is enabled (silently fails if unavailable)
     // This runs in background and does not block dashboard load
@@ -2264,7 +2394,11 @@ function logout() {
 }
 
 // Check if already logged in
-if (authToken) checkStatus();
+if (authToken) {
+  checkStatus();
+} else {
+  showStep('landing');
+}
 
 // Track visit (silent, no display)
 fetch('/api/visit', { method: 'POST' }).catch(() => {});
