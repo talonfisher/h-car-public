@@ -80,6 +80,8 @@ table.days th:first-child, table.days td:first-child{text-align:left}
 table.days th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
 table.days tr.flag-row{background:var(--amber-bg)}
 table.days tr.act-row{background:var(--red-bg)}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0}
+.table-wrap table{margin-top:0;min-width:520px}
 ul{color:var(--muted)}
 ul li{margin:8px 0}
 .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0 0 12px}
@@ -106,7 +108,7 @@ ul li{margin:8px 0}
 .symptom-chip.selected{background:var(--teal);color:white;border-color:var(--teal)}
 .sensitivity-btn{padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
 .sensitivity-btn.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-@media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}.signal-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}.signal-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.learn-section{padding:16px}table.days{font-size:13px}table.days th, table.days td{padding:8px 6px}}
 </style>
 </head>
 <body>
@@ -432,7 +434,7 @@ ul li{margin:8px 0}
 
 <div class="learn-section">
 <h3>Current vs. Usual</h3>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Signal</th><th>Usual</th><th>Last 7 Days</th><th>Reading</th></tr>
 <tr><td>Resting HR</td><td>64 (61-67)</td><td>71</td><td>Sustained rise</td></tr>
 <tr><td>HRV</td><td>48 ms (42-55)</td><td>31 ms</td><td>Recovery down</td></tr>
@@ -440,7 +442,7 @@ ul li{margin:8px 0}
 <tr><td>SpO2</td><td>98% (97-99)</td><td>97%</td><td>Within range</td></tr>
 <tr><td>Skin temp</td><td>+/-0.3</td><td>+0.5</td><td>Mildly up</td></tr>
 <tr><td>Steps</td><td>8,400/day</td><td>6,100/day</td><td>Down, context matters</td></tr>
-</table>
+</table></div>
 <p style="margin-top:12px">This week vs last month: RHR +7, HRV -35%, sleep -1h 16m. Last month vs prior: essentially flat (+/-1 bpm, HRV +/-3%).</p>
 <p style="margin-top:10px"><strong>Confidence:</strong> Moderate. 168 of 180 days usable (93%), 12 missing or low-quality.</p>
 </div>
@@ -452,12 +454,12 @@ ul li{margin:8px 0}
 
 <div class="learn-section">
 <h3>Anchored vs. Rolling Baseline (600,000 Synthetic People, Full Year)</h3>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Baseline Type</th><th>Slow Declines Caught</th><th>Healthy False Alerts</th></tr>
 <tr><td>Anchored (all history)</td><td>99.5-100%</td><td>0.24%</td></tr>
 <tr><td>Fixed 28-day</td><td>~100%</td><td>0.95%</td></tr>
 <tr><td>Rolling 90-day</td><td>50.1% / 3.1% Act</td><td>0.27%</td></tr>
-</table>
+</table></div>
 <p style="margin-top:12px">Anchored plus episode lockout: 99.8% Watch, about 100% Act, median 64/48 days early, 0.32%/about 0% false alerts (Study 4).</p>
 <p style="margin-top:10px"><strong>Caveat:</strong> simulation never legitimately changed a person's true normal outside designed scenarios, which flatters the anchored baseline.</p>
 </div>
@@ -526,12 +528,12 @@ ul li{margin:8px 0}
 
 <div class="learn-section">
 <h3>Three Layers</h3>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Layer</th><th>What</th><th>Status</th></tr>
 <tr><td>1. Daily detector (v2)</td><td>One score per day</td><td>Built, blind-tested on synthetic data</td></tr>
 <tr><td>2. Context layer</td><td>Per-episode classification</td><td>Partly built (exertion tagging in detector; full classification specified for next build)</td></tr>
 <tr><td>3. Device safety layer</td><td>Fall, irregular rhythm, SOS (minutes)</td><td>Demo-only watch-platform functions, NOT detector v2</td></tr>
-</table>
+</table></div>
 </div>
 
 <div class="learn-section">
@@ -657,7 +659,7 @@ ul li{margin:8px 0}
 
 <div class="learn-section">
 <h3>What Can Actually Sense What</h3>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Signal</th><th>Sensor</th><th>Notes</th></tr>
 <tr><td>Heart rate / HRV</td><td>Optical PPG, green LED</td><td>Skin contact, snug fit</td></tr>
 <tr><td>SpO2</td><td>Red + infrared PPG</td><td>Skin, spot-check, motion-sensitive</td></tr>
@@ -665,7 +667,7 @@ ul li{margin:8px 0}
 <tr><td>Movement / falls / sleep</td><td>Accelerometer + gyroscope</td><td>Worn, no skin contact needed</td></tr>
 <tr><td>ECG</td><td>Dry electrodes, finger + wrist</td><td>Specialised, user-triggered 30-second reading, not continuous on most watches</td></tr>
 <tr><td>Blood pressure, glucose, labs</td><td>External devices only</td><td>No watch measures these reliably today. H-CAR must import, not invent them.</td></tr>
-</table>
+</table></div>
 </div>
 
 <div class="learn-section">
@@ -767,19 +769,19 @@ ul li{margin:8px 0}
 <div class="learn-section">
 <h3>LifeSnaps Replay (Nov 2026)</h3>
 <p>Open Fitbit dataset, healthy volunteers. 71 labelled IDs equals 52 distinct people, 5.2 person-years, breathing rate present, no illness or outcome labels, false alarms only.</p>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Measure</th><th>Watch</th><th>Act</th></tr>
 <tr><td>Simulation promise</td><td>0.31%/year</td><td>0.001%/year</td></tr>
 <tr><td>Original detector on LifeSnaps</td><td>7 episodes, 1.35/person-year</td><td>1 episode, about 1 per 5 person-years</td></tr>
 <tr><td>Fixed detector</td><td>5 episodes to 3 unexplained, 0.6/person-year</td><td>1 preserved (genuine)</td></tr>
-</table>
+</table></div>
 <p style="margin-top:12px">The original rate was roughly 430x the simulated Watch rate. In a 40-person trial that would mean about 54 Watch and about 8 Act per year.</p>
 <p style="margin-top:10px"><strong>Why flags were not random:</strong> 6 of 7 were real multi-day excursions in healthy people, clustered June/July and December (exertion, hard training, bad sleep, illness season). On day two, "two rough days" and "the start of something" look identical, hence the behavioural fix.</p>
 </div>
 
 <div class="learn-section">
 <h3>Simulation Guardrail: v1 vs v2 (Nov 2026, 3,000 Synthetic People/Group, 365 Days)</h3>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Measure</th><th>v1</th><th>v2</th></tr>
 <tr><td>Fast decline Watch</td><td>99.17%</td><td>99.23%</td></tr>
 <tr><td>Fast decline Act</td><td>86.83%</td><td>87.80%</td></tr>
@@ -788,7 +790,7 @@ ul li{margin:8px 0}
 <tr><td>Confounder bump Act</td><td>27.37%</td><td>29.17%</td></tr>
 <tr><td>Healthy, any episode</td><td>0.07%</td><td>0.17%</td></tr>
 <tr><td>Healthy, Act</td><td>0%</td><td>0%</td></tr>
-</table>
+</table></div>
 <p style="margin-top:12px"><strong>Verdict:</strong> fixes did not deafen detection. Small cost in the noisier direction. A large multi-day synthetic bump still reaches Act about 29% of the time.</p>
 </div>
 
@@ -812,7 +814,7 @@ ul li{margin:8px 0}
 <div class="learn-section">
 <h3>Headline Study: 1,400,000 Synthetic People, Full Year</h3>
 <p>Seven groups of 200,000, 365 days, context-aware vs plain.</p>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Group</th><th>Watch</th><th>Act</th></tr>
 <tr><td>Fast multi-signal decline</td><td>99.07%</td><td>92.41%</td></tr>
 <tr><td>Slow decline (120 days)</td><td>99.78%</td><td>~100%</td></tr>
@@ -821,7 +823,7 @@ ul li{margin:8px 0}
 <tr><td>Event with NO preceding change</td><td>0.30%</td><td>~0%</td></tr>
 <tr><td>Permanent move to 2,100 m altitude</td><td>97.39% to 0.41%</td><td>73.17% to 0.001%</td></tr>
 <tr><td>Two-week hard training block</td><td>62.24% to 0.03%</td><td>17.72% to 0%</td></tr>
-</table>
+</table></div>
 <p style="margin-top:12px">Median warning: fast decline 7/5 days before event; slow decline 64/48 days early. Illness episode flagged is a correct "see a doctor" detection, not a false alarm. Event with no preceding change flagged at chance level.</p>
 </div>
 
@@ -851,7 +853,7 @@ ul li{margin:8px 0}
 <div class="learn-section">
 <h3>What It Would Actually Take to Build This</h3>
 <p>Figures are rough planning ranges (CAD), not quotes. Low-cost path is deliberate: spend on validation before hardware.</p>
-<table class="days">
+<div class="table-wrap"><table class="days">
 <tr><th>Stage</th><th>What</th><th>Cost</th></tr>
 <tr><td>0. Prototype (done)</td><td>Interactive concept + synthetic data</td><td>Time only</td></tr>
 <tr><td>1. Working app</td><td>Phone app reading Apple Health / Health Connect, real baseline engine, 5-10 testers</td><td>$5k-25k freelance / DIY near $0 + dev accounts ~$150/yr</td></tr>
@@ -859,7 +861,7 @@ ul li{margin:8px 0}
 <tr><td>3. Custom wearable pilot</td><td>PCB, enclosure, 20-50 units, safety/radio certification</td><td>$40k-150k+</td></tr>
 <tr><td>4. Clinical / regulatory</td><td>Validation studies, regulatory counsel, quality system</td><td>$100k+ and 1-3 years, or stay a "wellness" product with no medical claims</td></tr>
 <tr><td>5. Custom chip</td><td>ASIC design + fabrication</td><td>$1M+. Don't. Revisit only with proven volume.</td></tr>
-</table>
+</table></div>
 </div>
 
 <div class="learn-section">
@@ -2086,14 +2088,14 @@ function renderDays(days) {
   }
   const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
   const fmtTemp = (v) => (v === null || v === undefined ? '&ndash;' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '°');
-  let html = '<table class="days"><tr><th>Date</th><th>RHR</th><th>HRV</th><th>SpO2</th><th>Breath</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
+  let html = '<div class="table-wrap"><table class="days"><tr><th>Date</th><th>RHR</th><th>HRV</th><th>SpO2</th><th>Breath</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
   for (const d of days) {
     const rowCls = d.act ? 'act-row' : (d.watch ? 'flag-row' : '');
     const flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
     const sleepH = d.sleepMinutes !== null && d.sleepMinutes !== undefined ? (d.sleepMinutes / 60).toFixed(1) + 'h' : '&ndash;';
     html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + fmt(d.breathingRate, 1) + '</td><td>' + fmtTemp(d.skinTempDelta) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
   }
-  html += '</table>';
+  html += '</table></div>';
   el.innerHTML = html;
 }
 
