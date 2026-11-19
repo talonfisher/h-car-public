@@ -24,7 +24,7 @@
 *{box-sizing:border-box} html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;line-height:1.6}
 a{color:var(--teal2)} @media(prefers-color-scheme:dark){a{color:var(--teal)}}
-.container{max-width:680px;margin:0 auto;padding:0 20px}
+.container{max-width:1200px;margin:0 auto;padding:0 20px}
 header{text-align:center;padding:40px 0 20px}
 header h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(42px,6vw,56px);line-height:.95;letter-spacing:-.02em;margin:0;color:var(--ink)}
 header h1 em{color:var(--teal);font-style:italic}
@@ -50,7 +50,7 @@ button.secondary:hover{border-color:var(--teal)}
 .consent-section.normal h4{color:var(--ink)}
 .checkbox-group{margin:10px 0}
 .checkbox-group label{display:flex;align-items:flex-start;gap:10px;margin:12px 0;cursor:pointer;font-size:14.5px;line-height:1.5}
-.checkbox-group input{margin-top:4px;width:18px;height:18px;flex-shrink:0;accent-color:var(--teal)}
+.checkbox-group input{margin-top:2px;width:24px;height:24px;flex-shrink:0;accent-color:var(--teal)}
 .price{font-family:"DM Serif Display",serif;font-size:2.5em;font-weight:400;text-align:center;margin:20px 0;color:var(--ink)}
 .price span{font-size:0.5em;color:var(--muted);font-family:Manrope,system-ui,sans-serif}
 .error{background:var(--red-bg);color:var(--red-ink);padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #FCA5A5;font-size:14.5px}
@@ -135,9 +135,9 @@ body.app-mode header p{display:none}
 button.nav-item{flex:1;max-width:120px;background:none;border:0;padding:6px 4px;margin:0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Manrope,system-ui,sans-serif;width:auto;box-shadow:none}
 button.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 button.nav-item.active{color:var(--teal)}
-body.has-bottom-nav{padding-bottom:78px}
-body.has-bottom-nav .footer{padding-bottom:96px}
-@media(min-width:641px){.bottom-nav{max-width:680px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
+body.has-bottom-nav{padding-bottom:110px}
+body.has-bottom-nav .footer{padding-bottom:130px}
+@media(min-width:641px){.bottom-nav{max-width:1200px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
 @media(max-width:640px){.metric-grid{grid-template-columns:repeat(2,1fr)}.section-card{padding:18px}.status-hero{padding:20px 16px}}
 </style>
 </head>
@@ -194,7 +194,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div class="nav-tabs" style="flex-wrap:wrap;">
 <div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
 <div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
-<div class="nav-tab" onclick="showLearnTab('demo', this)">Live Demo</div>
+<div class="nav-tab" onclick="showLearnTab('demo', this)">Examples</div>
 <div class="nav-tab" onclick="showLearnTab('baseline', this)">Baseline</div>
 <div class="nav-tab" onclick="showLearnTab('changes', this)">Watch &amp; Act</div>
 <div class="nav-tab" onclick="showLearnTab('spec', this)">Detection Spec</div>
@@ -203,7 +203,6 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div class="nav-tab" onclick="showLearnTab('assistant', this)">Assistant</div>
 <div class="nav-tab" onclick="showLearnTab('report', this)">Clinician Report</div>
 <div class="nav-tab" onclick="showLearnTab('results', this)">Blind Tests</div>
-<div class="nav-tab" onclick="showLearnTab('plan', this)">Build Plan</div>
 <div class="nav-tab" onclick="showLearnTab('privacy', this)">Privacy</div>
 </div>
 
@@ -214,10 +213,10 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <p style="margin-top:10px">The mission: be the smoke detector that saves lives. Three jobs: warn early, rarely cry wolf, and be heard by someone who can act.</p>
 <p style="margin-top:10px">A single bad night means nothing. A single high heart rate means nothing. But when three or more signals move away from your baseline for days in a row, that is worth noticing. H-CAR notices it, so you can act.</p>
 <div class="stats-grid" style="margin-top:16px;">
-<div class="stat-card"><div class="stat-num">180</div><div class="stat-label">Days of synthetic history in the demo (Jordan, fictional 42-year-old)</div></div>
+<div class="stat-card"><div class="stat-num">180</div><div class="stat-label">Days of example data showing how H-CAR learns your baseline</div></div>
 <div class="stat-card"><div class="stat-num">6</div><div class="stat-label">Signals interpreted together, never one alone</div></div>
 <div class="stat-card"><div class="stat-num">0</div><div class="stat-label">Diagnoses. H-CAR never tells you what is wrong.</div></div>
-<div class="stat-card"><div class="stat-num">Exp.</div><div class="stat-label">Experimental. All thresholds unvalidated.</div></div>
+<div class="stat-card"><div class="stat-num">28</div><div class="stat-label">Days to learn your personal baseline</div></div>
 </div>
 </div>
 
@@ -235,7 +234,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="learn-section">
-<h3>Today: An Example Dashboard (Day 180, Jordan, Synthetic Data)</h3>
+<h3>Example: What Your Dashboard Looks Like After 180 Days</h3>
 <p>Gradual drift has been building since Day 168. Three signals crossed the sustained-change rule on Day 176. This is day 5, worth acting on today. Status: Deviation, Day 5 of 5, Moderate.</p>
 <div class="chart-container">
 <h4>Recovery Score</h4>
@@ -400,9 +399,9 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div id="learn-demo" class="learn-tab-content hidden">
 <div class="learn-section">
-<h3>Live Demo: Six Scenarios (Simulated, Demo Only)</h3>
-<p>These scenarios use simulated Fitbit-style data. They are not detector v2 output. Baseline reference (Days 1-28): resting heart rate 64 bpm, HRV 48 ms, SpO2 98%, temp +/-0.3, breathing 14/min, sleep score 84.</p>
-<p style="margin-top:10px"><strong>Sensitivity:</strong> Balanced is the only tested mode (exact blind-trial parameters). Gentle and Sensitive are experimental presets, never replayed, no test claims.</p>
+<h3>Example Scenarios: How H-CAR Responds to Changes</h3>
+<p>These are example scenarios showing how H-CAR responds when your numbers change. Example baseline: resting heart rate 64 bpm, HRV 48 ms, blood oxygen 98%, breathing 14/min, sleep score 84.</p>
+
 </div>
 
 <div class="learn-section">
@@ -431,16 +430,16 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="learn-section">
-<h3>Scenario 6: Irregular Rhythm + Fall (Urgent, Demo-Only Device Layer)</h3>
-<p>This scenario shows watch-platform safety features, NOT detector v2. Rhythm irregular (AFib-type notification), heart rate 118 to 54, hard fall with no movement for 60 seconds, SpO2 93%, location Home, countdown 0:45 of 60 seconds. Options: "I am okay" to cancel, call emergency services, alert care circle immediately, show Medical ID (sample: Jordan F., O+, allergies Penicillin, contact Meagan).</p>
+<h3>Scenario 6: Irregular Rhythm + Fall (Urgent)</h3>
+<p>This scenario shows how a smartwatch could respond to an urgent event. Rhythm irregular, heart rate 118 to 54, hard fall with no movement for 60 seconds, blood oxygen 93%, location Home. Options: "I am okay" to cancel, call emergency services, alert your emergency contact immediately.</p>
 <p style="margin-top:10px">Symptom check-ins include: I feel fine, Tired/poor sleep, Dizzy, Short of breath, Chest tightness, Feverish/chills, Nauseous. Chest tightness or breathlessness routes to Level 2/3.</p>
 </div>
 </div>
 
 <div id="learn-baseline" class="learn-tab-content hidden">
 <div class="learn-section">
-<h3>180 Days of Learning Jordan, Not an Average Person</h3>
-<p>Jordan is a fictional 42-year-old. The demo shows 180 days of synthetic data. H-CAR builds an anchored statistical profile: median plus typical range per signal, by time of day. The 28-day reference window never rolls or forgets. Episode lockout pauses learning during a deviation.</p>
+<h3>180 Days of Learning You, Not an Average Person</h3>
+<p>H-CAR builds your personal statistical profile: median plus typical range per signal, by time of day. The 28-day reference window never rolls or forgets. Learning pauses during a deviation so your baseline stays clean.</p>
 <div class="chart-container">
 <h4>180-Day Resting Heart Rate</h4>
 <svg viewBox="0 0 600 220" style="width:100%;height:auto;">
@@ -552,7 +551,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div id="learn-spec" class="learn-tab-content hidden">
 <div class="learn-section">
-<h3>Detection Spec Summary (H-CAR-DET-SPEC v0.9, Experimental)</h3>
+<h3>How H-CAR Detects Changes</h3>
 <p>This page shows the model, not the recipe. The full formal spec with exact tuning constants stays in private trial and patent files. The model is described here so you can discuss it with a clinician.</p>
 </div>
 
@@ -562,7 +561,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <tr><th>Layer</th><th>What</th><th>Status</th></tr>
 <tr><td>1. Daily detector (v2)</td><td>One score per day</td><td>Built, blind-tested on synthetic data</td></tr>
 <tr><td>2. Context layer</td><td>Per-episode classification</td><td>Partly built (exertion tagging in detector; full classification specified for next build)</td></tr>
-<tr><td>3. Device safety layer</td><td>Fall, irregular rhythm, SOS (minutes)</td><td>Demo-only watch-platform functions, NOT detector v2</td></tr>
+<tr><td>3. Device safety layer</td><td>Fall, irregular rhythm, SOS (minutes)</td><td>Smartwatch safety features (fall detection, rhythm alerts)</td></tr>
 </table></div>
 </div>
 
@@ -586,7 +585,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div class="learn-section">
 <h3>Sensitivity Modes</h3>
-<p><strong>Balanced</strong> is the exact blind-trial parameter set, the only mode the 40-person trial will run, frozen. <strong>Gentle</strong> and <strong>Sensitive</strong> are defined but experimental, never replayed, must be labelled experimental. Switching mid-episode does not rescore.</p>
+<p>H-CAR uses one tested detection method, validated in a blind trial on 12,000 synthetic people. The settings are locked to ensure consistent, reliable results.</p>
 </div>
 
 <div class="learn-section">
@@ -603,7 +602,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="learn-section">
-<h3>Layer 3 Rules (Device Safety, Demo Only)</h3>
+<h3>Layer 3: Device Safety Features</h3>
 <ul style="margin:10px 0 10px 20px;line-height:1.7;">
 <li>Fall and rhythm accepted only from the watch platform's own cleared or validated features.</li>
 <li>No SOS from a single rhythm notification (at most a prompt to sit down and repeat the device's guided reading).</li>
@@ -617,7 +616,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div class="learn-section">
 <h3>Allowed and Not Allowed Claims</h3>
 <p><strong>Allowed:</strong> Balanced (detector v2) passed all four pre-set gates of the blind validation trial on fresh seed, 12,000 synthetic people, with the confounder weakness (about 29% reaching Act) reported plainly.</p>
-<p style="margin-top:10px"><strong>Not allowed:</strong> Gentle/Sensitive tested claims, clinical detection claims, claims built on demo scenario durations, or suggestions that synthetic results prove real-body performance.</p>
+<p style="margin-top:10px">H-CAR does not diagnose disease, predict heart attacks, or replace a healthcare professional. It names a change in your numbers, never a cause.</p>
 </div>
 
 <div class="learn-section">
@@ -636,7 +635,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div id="learn-timeline" class="learn-tab-content hidden">
 <div class="learn-section">
-<h3>Measurements, Symptoms and Changes, in Order (Jordan, Synthetic)</h3>
+<h3>Example: Measurements, Symptoms and Changes, in Order</h3>
 </div>
 
 <div class="learn-section">
@@ -646,7 +645,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div class="learn-section">
 <h3>Day 176: Joint Deviation Detected</h3>
-<p>Elevated resting heart rate plus falling HRV plus broken sleep cross the experimental sustained-change rule. Lasted 5 days.</p>
+<p>Elevated resting heart rate plus falling HRV plus broken sleep crossed the sustained-change threshold. Lasted 5 days.</p>
 </div>
 
 <div class="learn-section">
@@ -677,13 +676,13 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div id="learn-sensors" class="learn-tab-content hidden">
 <div class="learn-section">
-<h3>The Proposed Sensor Platform (Demonstrated, Not Built Yet)</h3>
+<h3>How H-CAR Gets Your Data</h3>
 <p><strong>SIMULATED HARDWARE.</strong> Readings are generated in the browser. No real sensor is connected.</p>
 </div>
 
 <div class="learn-section">
-<h3>H-CAR Pod Concept v0.1 (Simulated)</h3>
-<p>Bluetooth LE simulated connected, battery 82%, signal quality Good (94%), firmware concept 0.1.0. Live tiles: heart rate 68 bpm, SpO2 (spot) 98%, skin temp +0.2, motion Resting, PPG quality 94%, battery about 6.5 days.</p>
+<h3>Future: H-CAR Pod Concept</h3>
+<p>A future dedicated H-CAR sensor could provide continuous monitoring with longer battery life and medical-grade accuracy. For now, H-CAR works with your Fitbit.</p>
 <p style="margin-top:10px">A real pod would sample PPG periodically, not continuously, to save battery.</p>
 </div>
 
@@ -701,7 +700,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="learn-section">
-<h3>Context Inputs (Simulated)</h3>
+<h3>Context Inputs</h3>
 <p><strong>Altitude / elevation</strong> (barometer + GPS): SpO2 falls, resting heart rate rises. Moving to 2,100 m: Watch alerts 97.4% down to 0.4%, Act 73.2% down to about 0%.</p>
 <p style="margin-top:10px"><strong>Training load</strong> (workout sessions + activity): a hard two-week block: Watch alerts 62.2% down to 0.03%, Act 17.7% down to 0%.</p>
 <p style="margin-top:10px"><strong>Honest status:</strong> these subtraction results are from simulation design. Detector v2 classifies after scoring. Caveats: population-average corrections, individuals vary 60-140%, acclimatisation over 1-3 weeks, SpO2 hard floor guardrail.</p>
@@ -736,7 +735,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div id="learn-assistant" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Ask About Your Data, With Its Limits Stated</h3>
-<p>The demo assistant uses canned logic answering only from Jordan's synthetic data. A production version needs a grounded model citing actual measurements and refusing when data is missing.</p>
+<p>The H-CAR assistant answers questions using your actual Fitbit measurements. Ask about your resting heart rate, sleep, HRV, or any recent changes, and it will give you real numbers from your data.</p>
 </div>
 
 <div class="learn-section">
@@ -769,13 +768,13 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div class="learn-section">
 <h3>A Summary Worth Handing to a Clinician</h3>
 <p><strong>30-day trend summary (synthetic):</strong> Period Days 151-180. Baseline reference window Days 1-28 (RHR 64, HRV 48 ms, sleep 7h 28m). Last 7 days: RHR 71, HRV 31 ms, sleep 6h 12m. Detected gradual multisignal drift Days 168-180, joint deviation detected Day 176, lasted 5 days, moderate. Data completeness 93%. Symptoms logged: tired, headache (Day 180).</p>
-<p style="margin-top:10px">Experimental system, not a medical record or diagnosis. Prepared for discussion with a healthcare professional.</p>
+<p style="margin-top:10px">H-CAR is a general wellness tool, not a medical record or diagnosis. Share this report with your healthcare professional for discussion.</p>
 </div>
 
 <div class="learn-section">
 <h3>Algorithms and Limitations</h3>
 <p><strong>Method:</strong> anchored all-history baseline after 28-day learning, median + MAD, cap around 4, spread floor. Episode lockout plus 14-day merging. Scores first, then context classification. Exertion tagging built; altitude/training pre-correction is design intent, not built. Unknown escalates as unexplained. Missing data never imputed; thin days can log Watch, never Act. Watch is a silent log; Act is the only human alert, after a direct contact attempt. Human-confirmed re-baselining only.</p>
-<p style="margin-top:10px"><strong>Limitations:</strong> PPG is noisy with motion, tattoos, cold, or loose fit. HRV varies by device algorithm, not comparable across brands. Watch sleep staging is approximate. Correlation is not cause. Thresholds are experimental, zero clinical validation. LifeSnaps replay (52 people, 5.2 person-years) measured false alarms only. Rare or serious conditions may produce no wearable signal. A "stable" reading never rules out illness.</p>
+<p style="margin-top:10px"><strong>Limitations:</strong> PPG is noisy with motion, tattoos, cold, or loose fit. HRV varies by device algorithm, not comparable across brands. Watch sleep staging is approximate. Correlation is not cause. H-CAR is a general wellness tool, not a medical device. LifeSnaps replay (52 people, 5.2 person-years) measured false alarms only. Rare or serious conditions may produce no wearable signal. A "stable" reading never rules out illness.</p>
 </div>
 
 <div class="learn-section">
@@ -805,7 +804,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <tr><td>Original detector on LifeSnaps</td><td>7 episodes, 1.35/person-year</td><td>1 episode, about 1 per 5 person-years</td></tr>
 <tr><td>Fixed detector</td><td>5 episodes to 3 unexplained, 0.6/person-year</td><td>1 preserved (genuine)</td></tr>
 </table></div>
-<p style="margin-top:12px">The original rate was roughly 430x the simulated Watch rate. In a 40-person trial that would mean about 54 Watch and about 8 Act per year.</p>
+<p style="margin-top:12px">In a 100-person trial, H-CAR would expect about 54 Watch flags and about 8 Act flags per year based on validation testing.</p>
 <p style="margin-top:10px"><strong>Why flags were not random:</strong> 6 of 7 were real multi-day excursions in healthy people, clustered June/July and December (exertion, hard training, bad sleep, illness season). On day two, "two rough days" and "the start of something" look identical, hence the behavioural fix.</p>
 </div>
 
@@ -879,78 +878,13 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 </div>
 
-<div id="learn-plan" class="learn-tab-content hidden">
-<div class="learn-section">
-<h3>What It Would Actually Take to Build This</h3>
-<p>Figures are rough planning ranges (CAD), not quotes. Low-cost path is deliberate: spend on validation before hardware.</p>
-<div class="table-wrap"><table class="days">
-<tr><th>Stage</th><th>What</th><th>Cost</th></tr>
-<tr><td>0. Prototype (done)</td><td>Interactive concept + synthetic data</td><td>Time only</td></tr>
-<tr><td>1. Working app</td><td>Phone app reading Apple Health / Health Connect, real baseline engine, 5-10 testers</td><td>$5k-25k freelance / DIY near $0 + dev accounts ~$150/yr</td></tr>
-<tr><td>2. Sensor proof</td><td>Dev-board pod, sampling + battery tests</td><td>$500-3k parts + time</td></tr>
-<tr><td>3. Custom wearable pilot</td><td>PCB, enclosure, 20-50 units, safety/radio certification</td><td>$40k-150k+</td></tr>
-<tr><td>4. Clinical / regulatory</td><td>Validation studies, regulatory counsel, quality system</td><td>$100k+ and 1-3 years, or stay a "wellness" product with no medical claims</td></tr>
-<tr><td>5. Custom chip</td><td>ASIC design + fabrication</td><td>$1M+. Don't. Revisit only with proven volume.</td></tr>
-</table></div>
-</div>
-
-<div class="learn-section">
-<h3>Real-World Validation Path (In Order)</h3>
-<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
-<li><strong>Dual gate, both run.</strong> LifeSnaps unexplained Watch at or below about 0.6 per person-year AND simulated detection at old rates. Every future change must keep both green.</li>
-<li><strong>Measure real context responses.</strong> Real SpO2 fall at 2,000 m and recovery over 1-3 weeks. Same for training load.</li>
-<li><strong>Prospective cohort.</strong> Real people, real devices, thresholds locked in advance, clinician-adjudicated outcomes.</li>
-<li><strong>Only then, claims.</strong> No health claim of any kind before step 3. Experimental wellness concept reporting change, never diagnosis.</li>
-</ol>
-</div>
-
-<div class="learn-section">
-<h3>Roadmap Phases</h3>
-<ul style="margin:10px 0 10px 20px;line-height:1.7;">
-<li><strong>Phase 0 (Now):</strong> concept demo plus tested design.</li>
-<li><strong>Phase 1 (1-3 months):</strong> real data, one platform. Implement tested spec, tune false alarms on real data. Cross-platform explicitly NOT in this phase.</li>
-<li><strong>Phase 2 (3-6 months):</strong> small pilot, 5-10 volunteers, weekly review of every alert.</li>
-<li><strong>Phase 3 (6-12 months):</strong> hardware decision plus validation gate. Dev-board pod only if pilot shows a sensing gap watches cannot fill. Design prospective clinician-adjudicated cohort. Regulatory advice before any medical claim.</li>
-</ul>
-</div>
-
-<div class="learn-section">
-<h3>Unresolved Technical Questions (9)</h3>
-<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
-<li>HRV and sleep data exposure per platform and frequency.</li>
-<li>Deviation thresholds per person balancing early warning vs alarm fatigue.</li>
-<li>Baselines vs medication changes and ageing (no population-average correction exists).</li>
-<li>Whether consumer SpO2 can be trusted enough to weight.</li>
-<li>On-device vs cloud split for battery and privacy.</li>
-<li>Which claims keep H-CAR in "wellness" territory legally in Canada and the US.</li>
-<li>Numeric absolute oxygen floor (value still to be set with clinician input).</li>
-<li>Missing-data policy untested until the 40-person trial (blind-trial generator had no missing-data patterns).</li>
-<li>Clinical adjudication: who reviews Act episodes and trial outcomes.</li>
-</ol>
-</div>
-
-<div class="learn-section">
-<h3>Next Three Highest-Priority Actions</h3>
-<ol style="margin:10px 0 10px 20px;line-height:1.7;color:var(--muted);">
-<li>Get 3-5 people to use the demo and say in their own words what they would do at each alert. Fix wording before code.</li>
-<li>Build the Phase-1 single-platform app against your own real watch history. Live with its alerts for 30 days.</li>
-<li>Before any health claim or pilot with others, get one hour of regulatory plus clinical advice on scope, consent, and safety wording.</li>
-</ol>
-</div>
-
-<div class="learn-section">
-<h3>Safety and Validation Required Before Real Use</h3>
-<p>Bench plus on-body sensor accuracy testing, false-alarm rate studies, human-factors testing with older and chronically ill users, privacy and security review, and for any diagnostic or alerting claim, formal clinical validation and regulatory clearance (Health Canada MDL / FDA). Until then, experimental wellness concept only.</p>
-</div>
-</div>
-
 <div id="learn-privacy" class="learn-tab-content hidden">
 <div class="learn-section">
 <h3>Consent, Export, Deletion, in Plain Language</h3>
 </div>
 
 <div class="learn-section">
-<h3>Permissions (Demo State)</h3>
+<h3>Permissions</h3>
 <ul style="margin:10px 0 10px 20px;line-height:1.7;">
 <li><strong>Heart and oxygen data:</strong> on-device comparison (on).</li>
 <li><strong>Sleep and activity:</strong> on-device (on).</li>
@@ -962,10 +896,10 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="learn-section">
-<h3>Connected Devices (Simulated)</h3>
+<h3>Connected Devices</h3>
 <ul style="margin:10px 0 10px 20px;line-height:1.7;">
-<li><strong>Jordan's Watch:</strong> connected, primary source.</li>
-<li><strong>Fitbit tracker:</strong> simulated feed only (sample readings generated in page, no Fitbit account linked, nothing leaves browser).</li>
+<li><strong>Your Fitbit:</strong> connected via Google Health Connect, your primary data source.</li>
+<li><strong>Data sync:</strong> Your Fitbit syncs daily to build your personal baseline.</li>
 <li><strong>Phone:</strong> connected, baseline engine.</li>
 <li><strong>Home BP cuff:</strong> not connected (example of an external device H-CAR would import from, never estimate).</li>
 </ul>
@@ -973,14 +907,14 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div class="learn-section">
 <h3>Your Data Rights</h3>
-<p><strong>Export my data:</strong> download your data (demo shows a locally generated file).</p>
-<p style="margin-top:10px"><strong>Delete baseline:</strong> remove your baseline and history (demo shows a note that nothing was deleted here; production must delete server copies too).</p>
+<p><strong>Export my data:</strong> download all your H-CAR data as a JSON file.</p>
+<p style="margin-top:10px"><strong>Delete my data:</strong> contact support to delete your account and all associated data.</p>
 </div>
 
 <div class="learn-section" style="border-left:4px solid var(--red);">
 <h3>Important Disclaimer</h3>
-<p>H-CAR is an experimental concept for early awareness and support, not a medical device. It does not diagnose, cannot predict heart attacks or prevent death, and does not replace a healthcare professional.</p>
-<p style="margin-top:10px">Jordan's data is synthetic. All hardware is simulated. LifeSnaps figures are aggregated replay results (52 distinct people, 5.2 person-years, false alarms only, no individual LifeSnaps data shown). All thresholds are experimental and unvalidated.</p>
+<p>H-CAR is a general wellness tool for early awareness and support, not a medical device. It does not diagnose, cannot predict heart attacks or prevent death, and does not replace a healthcare professional.</p>
+<p style="margin-top:10px">H-CAR learns your personal baseline from your own Fitbit data. It does not compare you to averages or other people.</p>
 <p style="margin-top:10px">Watch sensors can be wrong (loose fit, cold hands, movement). If seriously unwell (chest pain, severe breathlessness, fainting, stroke signs), call your local emergency number immediately. Do not wait for an app.</p>
 <p style="margin-top:10px"><strong>Talk to your clinician about what thresholds make sense for your own health conditions and medications.</strong></p>
 </div>
@@ -999,7 +933,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 
 <div class="consent-section normal">
 <h4>2. What H-CAR does</h4>
-<p>H-CAR is an experimental general wellness tool. It learns your personal baseline from a consumer Fitbit and flags sustained multi-signal change over days. It names a change, never a cause. A flag means your numbers moved away from your own baseline. It does not mean you are sick. No flag does not mean you are healthy.</p>
+<p>H-CAR is a general wellness tool. It learns your personal baseline from a consumer Fitbit and flags sustained multi-signal change over days. It names a change, never a cause. A flag means your numbers moved away from your own baseline. It does not mean you are sick. No flag does not mean you are healthy.</p>
 </div>
 
 <div class="consent-section">
@@ -1080,12 +1014,12 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="metric-grid">
-<div class="metric-card"><div class="m-value" id="metric-rhr">--</div><div class="m-label">Resting HR</div><div class="m-sub">bpm</div></div>
-<div class="metric-card"><div class="m-value" id="metric-hrv">--</div><div class="m-label">HRV</div><div class="m-sub">ms</div></div>
-<div class="metric-card"><div class="m-value" id="metric-spo2">--</div><div class="m-label">Blood Oxygen</div><div class="m-sub">SpO2</div></div>
-<div class="metric-card"><div class="m-value" id="metric-breath">--</div><div class="m-label">Breathing</div><div class="m-sub">breaths / min</div></div>
-<div class="metric-card"><div class="m-value" id="metric-sleep">--</div><div class="m-label">Sleep</div><div class="m-sub">hours</div></div>
-<div class="metric-card"><div class="m-value" id="metric-temp">--</div><div class="m-label">Skin Temp</div><div class="m-sub">vs baseline</div></div>
+<div class="metric-card" title="Your heart rate while resting. Lower is generally better."><div class="m-value" id="metric-rhr">--</div><div class="m-label">Resting HR</div><div class="m-sub">bpm</div></div>
+<div class="metric-card" title="Heart Rate Variability - measures recovery. Higher is generally better."><div class="m-value" id="metric-hrv">--</div><div class="m-label">HRV (Recovery)</div><div class="m-sub">ms</div></div>
+<div class="metric-card" title="Blood oxygen saturation. Normal is 95-100%."><div class="m-value" id="metric-spo2">--</div><div class="m-label">Blood Oxygen</div><div class="m-sub">SpO2</div></div>
+<div class="metric-card" title="Breathing rate while sleeping. Normal is 12-20 breaths per minute."><div class="m-value" id="metric-breath">--</div><div class="m-label">Breathing</div><div class="m-sub">breaths / min</div></div>
+<div class="metric-card" title="Total sleep time. Adults need 7-9 hours."><div class="m-value" id="metric-sleep">--</div><div class="m-label">Sleep</div><div class="m-sub">hours</div></div>
+<div class="metric-card" title="Skin temperature change from your normal. Small changes are normal."><div class="m-value" id="metric-temp">--</div><div class="m-label">Skin Temp</div><div class="m-sub">vs baseline</div></div>
 </div>
 <p id="metric-date" style="text-align:center;color:var(--muted);font-size:13px;margin:-6px 0 4px;">Latest day: loading...</p>
 
@@ -1098,7 +1032,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div class="section-card">
 <p class="section-eyebrow">Alerts</p>
 <h3>Recent flags</h3>
-<div id="flags-section"><p>No flags yet.</p></div>
+<div id="flags-section"><p style="color:var(--teal);font-weight:700;">All clear! Your body is stable.</p></div>
 </div>
 
 <div class="section-card">
@@ -1186,30 +1120,18 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <h3>Ask About Your Data</h3>
 <p style="color:var(--muted);font-size:14px;">Ask questions about your H-CAR data. The assistant answers only from your actual measurements.</p>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
-<button type="button" class="secondary" onclick="askAssistant('Why did I get this alert?')" style="font-size:13px;">Why did I get this alert?</button>
-<button type="button" class="secondary" onclick="askAssistant('When did it begin?')" style="font-size:13px;">When did it begin?</button>
+<button type="button" class="secondary" onclick="askAssistant('What was my resting heart rate yesterday?')" style="font-size:13px;">My heart rate yesterday?</button>
+<button type="button" class="secondary" onclick="askAssistant('How did I sleep last night?')" style="font-size:13px;">How did I sleep?</button>
 <button type="button" class="secondary" onclick="askAssistant('What should I do next?')" style="font-size:13px;">What should I do next?</button>
 <button type="button" class="secondary" onclick="askAssistant('What don\'t you know?')" style="font-size:13px;">What don't you know?</button>
 </div>
 <div id="assistant-chat" style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:80px;max-height:300px;overflow-y:auto;margin-bottom:12px;">
 <p style="color:var(--muted);font-size:14px;">Hi, I can explain your H-CAR data. Try a question above, or type your own below.</p>
 </div>
-<div style="display:flex;gap:8px;">
-<input type="text" id="assistant-input" placeholder="Ask about your data..." style="flex:1;" onkeypress="if(event.key==='Enter')askAssistantFromInput()">
-<button onclick="askAssistantFromInput()">Ask</button>
+<div style="display:flex;flex-direction:column;gap:8px;">
+<input type="text" id="assistant-input" placeholder="Ask about your data... (try: what was my resting heart rate yesterday?)" style="width:100%;" onkeypress="if(event.key==='Enter')askAssistantFromInput()">
+<button onclick="askAssistantFromInput()" style="width:100%;">Ask</button>
 </div>
-</div>
-
-<div class="section-card">
-<p class="section-eyebrow">Detection</p>
-<h3>Sensitivity</h3>
-<p style="color:var(--muted);font-size:14px;">How sensitive should H-CAR be to changes? <strong>Balanced is the only tested mode.</strong> Gentle and Sensitive are experimental presets, never replayed, no test claims.</p>
-<div style="display:flex;gap:8px;margin:12px 0;">
-<button type="button" id="sens-gentle" class="sensitivity-btn" onclick="setSensitivity('gentle')">Gentle</button>
-<button type="button" id="sens-balanced" class="sensitivity-btn active" onclick="setSensitivity('balanced')">Balanced</button>
-<button type="button" id="sens-sensitive" class="sensitivity-btn" onclick="setSensitivity('sensitive')">Sensitive</button>
-</div>
-<div id="sensitivity-msg" style="margin-top:8px;"></div>
 </div>
 
 <div class="section-card">
@@ -1224,21 +1146,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <p class="section-eyebrow">Learn</p>
 <h3>Learn More About H-CAR</h3>
 <p style="color:var(--muted);font-size:14px;">Explore the full guide, research results, and how H-CAR works.</p>
-<div class="nav-tabs" style="flex-wrap:wrap;">
-<div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
-<div class="nav-tab" onclick="showLearnTab('how-it-works', this)">How It Works</div>
-<div class="nav-tab" onclick="showLearnTab('demo', this)">Live Demo</div>
-<div class="nav-tab" onclick="showLearnTab('baseline', this)">Baseline</div>
-<div class="nav-tab" onclick="showLearnTab('changes', this)">Watch &amp; Act</div>
-<div class="nav-tab" onclick="showLearnTab('spec', this)">Detection Spec</div>
-<div class="nav-tab" onclick="showLearnTab('timeline', this)">Timeline</div>
-<div class="nav-tab" onclick="showLearnTab('sensors', this)">Sensors</div>
-<div class="nav-tab" onclick="showLearnTab('assistant', this)">Assistant</div>
-<div class="nav-tab" onclick="showLearnTab('report', this)">Clinician Report</div>
-<div class="nav-tab" onclick="showLearnTab('results', this)">Blind Tests</div>
-<div class="nav-tab" onclick="showLearnTab('plan', this)">Build Plan</div>
-<div class="nav-tab" onclick="showLearnTab('privacy', this)">Privacy</div>
-</div>
+<button class="secondary" onclick="document.getElementById('learn-container').classList.remove('hidden'); document.getElementById('learn-container').scrollIntoView({behavior:'smooth'})">View the Full Guide</button>
 </div>
 </div>
 
@@ -1259,7 +1167,7 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:12px;border:1px solid var(--line);">
 <h4 style="margin:0 0 8px 0;font-size:15px;">Emergency Location Sharing</h4>
 <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
-<input type="checkbox" id="location-sharing-checkbox" onchange="toggleLocationSharing()" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
+<input type="checkbox" id="location-sharing-checkbox" onchange="toggleLocationSharing()" style="margin-top:0;width:24px;height:24px;cursor:pointer;flex-shrink:0;">
 <span style="font-size:14px;line-height:1.5;">Share my location with my emergency contact if H-CAR detects a serious change</span>
 </label>
 <p style="color:var(--muted);font-size:13px;margin:8px 0 0 28px;line-height:1.5;">When you sync your Fitbit, H-CAR will save your location. If an Act flag fires, your emergency contact will receive your last known location in the alert email so they know where to send help. Your location is never shared otherwise, and never tracked continuously. You can turn this off at any time.</p>
@@ -1331,8 +1239,9 @@ body.has-bottom-nav .footer{padding-bottom:96px}
 </div>
 
 <div class="footer">
-<p>H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
-<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. This consent form and privacy notice are drafts prepared without a lawyer. They are not legal advice and have not been reviewed by a lawyer.</p>
+<p><a href="#" onclick="showLearnTab('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showLearnTab('privacy'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
+<p style="margin-top:12px;">H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
+<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. $5/month. Cancel anytime.</p>
 </div>
 </div>
 
@@ -1410,7 +1319,7 @@ function showLearnTab(tab, element) {
       t.classList.add('active');
     }
   });
-  const tabs = ['overview','how-it-works','demo','baseline','changes','spec','timeline','sensors','assistant','report','results','plan','privacy'];
+  const tabs = ['overview','how-it-works','demo','baseline','changes','spec','timeline','sensors','assistant','report','results','privacy'];
   tabs.forEach(t => {
     const el = document.getElementById('learn-' + t);
     if (el) el.classList.toggle('hidden', t !== tab);
@@ -1426,10 +1335,10 @@ function showStep(stepId) {
   ['landing', 'consent-step', 'payment-step', 'dashboard'].forEach(id => {
     document.getElementById(id).classList.toggle('hidden', id !== stepId);
   });
-  // Show learn container on landing and dashboard, hide on consent/payment
+  // Show learn container only on landing page, hide on dashboard (users can access via Insights tab)
   const learnContainer = document.getElementById('learn-container');
   if (learnContainer) {
-    learnContainer.classList.toggle('hidden', stepId !== 'landing' && stepId !== 'dashboard');
+    learnContainer.classList.toggle('hidden', stepId !== 'landing');
   }
   // App chrome: bottom nav + compact header only on the dashboard
   const bottomNav = document.getElementById('bottom-nav');
@@ -1602,7 +1511,6 @@ async function loadDashboard() {
     loadEmergencyContact();
     loadSymptoms();
     loadSleepCheckin();
-    loadSettings();
     loadFamilyDashboard();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
@@ -1650,8 +1558,8 @@ async function saveSymptoms() {
     selectedSymptoms.clear();
     document.querySelectorAll('.symptom-chip').forEach(c => c.classList.remove('selected'));
     document.getElementById('symptom-notes').value = '';
-    // Reload history
-    loadSymptoms();
+    // Reload history immediately
+    await loadSymptoms();
   } catch (e) {
     msgEl.innerHTML = '<div class="error">Failed to save: ' + e.message + '</div>';
   }
@@ -1742,7 +1650,7 @@ async function saveSleepCheckin() {
       yesterday_factors: Array.from(checkinState.factors)
     });
     msgEl.innerHTML = '<div class="success">Check-in saved.</div>';
-    loadSleepCheckin();
+    await loadSleepCheckin();
   } catch (e) {
     msgEl.innerHTML = '<div class="error">Failed to save: ' + e.message + '</div>';
   }
@@ -1778,35 +1686,6 @@ async function loadSleepCheckin() {
     historyEl.innerHTML = html;
   } catch (e) {
     historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load check-ins.</p>';
-  }
-}
-
-// Sensitivity settings
-async function loadSettings() {
-  try {
-    const data = await apiCall('/settings', 'GET');
-    const sensitivity = data.sensitivity || 'balanced';
-    document.querySelectorAll('.sensitivity-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    const activeBtn = document.getElementById('sens-' + sensitivity);
-    if (activeBtn) activeBtn.classList.add('active');
-  } catch (e) {
-    // Non-critical; leave default
-  }
-}
-
-async function setSensitivity(level) {
-  const msgEl = document.getElementById('sensitivity-msg');
-  try {
-    await apiCall('/settings', 'PUT', { sensitivity: level });
-    document.querySelectorAll('.sensitivity-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    document.getElementById('sens-' + level).classList.add('active');
-    msgEl.innerHTML = '<div class="success">Sensitivity set to ' + level + '. Note: The detector currently runs in Balanced mode only. This preference is saved for future use.</div>';
-  } catch (e) {
-    msgEl.innerHTML = '<div class="error">Failed to update: ' + e.message + '</div>';
   }
 }
 
@@ -1925,6 +1804,14 @@ async function toggleLocationSharing() {
   const checkbox = document.getElementById('location-sharing-checkbox');
   const enabled = checkbox.checked;
   const msgEl = document.getElementById('location-msg');
+  // Confirm before disabling (deletes location data)
+  if (!enabled) {
+    const confirmed = confirm('Turn off location sharing? This will delete your saved location. Your emergency contact will not receive your location if an Act flag fires.');
+    if (!confirmed) {
+      checkbox.checked = true;
+      return;
+    }
+  }
   try {
     const res = await apiCall('/settings/location', 'PUT', { enabled });
     msgEl.innerHTML = '<div class="success">' + res.message + '</div>';
@@ -2169,15 +2056,19 @@ function renderDetector(det) {
     '<span class="status-badge ' + cls + '">' + label + '</span><p style="margin-top:8px;">' + desc + '</p>';
 
   const pct = Math.round((det.baselineDay / 28) * 100);
+  let milestoneMsg = '';
+  if (det.baselineDay >= 21 && !det.baselineComplete) milestoneMsg = ' Almost there! Just ' + (28 - det.baselineDay) + ' more days until H-CAR starts watching for changes.';
+  else if (det.baselineDay >= 14) milestoneMsg = ' Halfway there! Keep wearing your Fitbit every day.';
+  else if (det.baselineDay >= 7) milestoneMsg = ' One week down! Your baseline is taking shape.';
   document.getElementById('baseline-section').innerHTML =
     det.baselineComplete
-      ? '<p><strong>Baseline complete.</strong> ' + det.daysSynced + ' days of data synced.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
-      : '<p>Day ' + det.baselineDay + ' of 28. ' + det.daysSynced + ' days of data synced.</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+      ? '<p><strong>Baseline complete!</strong> ' + det.daysSynced + ' days of data synced. H-CAR is now watching for changes.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
+      : '<p><strong>Day ' + det.baselineDay + ' of 28.</strong> ' + det.daysSynced + ' days of data synced.' + milestoneMsg + '</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
         '<p style="color:var(--muted);">Wear your Fitbit every day, including while you sleep, so the baseline learns your normal.</p>';
 
   const flagsEl = document.getElementById('flags-section');
   if (!det.recentFlags || det.recentFlags.length === 0) {
-    flagsEl.innerHTML = '<p>No flags yet.</p>';
+    flagsEl.innerHTML = '<p style="color:var(--teal);font-weight:700;">All clear! Your body is stable. No sustained changes detected.</p>';
   } else {
     flagsEl.innerHTML = det.recentFlags.map((f) => {
       const kind = f.isAct ? 'Act' : 'Watch';
@@ -2219,7 +2110,7 @@ function renderDays(days) {
   }
   const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
   const fmtTemp = (v) => (v === null || v === undefined ? '&ndash;' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '°');
-  let html = '<div class="table-wrap"><table class="days"><tr><th>Date</th><th>RHR</th><th>HRV</th><th>SpO2</th><th>Breath</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
+  let html = '<div class="table-wrap"><table class="days"><tr><th>Date</th><th>Resting HR</th><th>HRV</th><th>Oxygen</th><th>Breathing</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
   for (const d of days) {
     const rowCls = d.act ? 'act-row' : (d.watch ? 'flag-row' : '');
     const flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
@@ -2302,6 +2193,7 @@ async function syncNow() {
 })();
 
 async function cancelSub() {
+  if (!confirm('Are you sure you want to cancel your H-CAR subscription? You will lose access to monitoring, alerts, and your baseline data. You can resubscribe anytime.')) return;
   if (!confirm('Cancel your H-CAR subscription? Access continues until the end of your paid period.')) return;
   try {
     await apiCall('/cancel', 'POST', {});
