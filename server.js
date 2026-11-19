@@ -228,6 +228,22 @@ async function initDatabase() {
       FOREIGN KEY(user_id) REFERENCES users(id)
     )`);
 
+    // Family connections. Lets users share their status (not detailed
+    // health data) with family members. user_id is the person sharing
+    // their status, family_member_id is the person viewing it.
+    // Status: pending, accepted, declined.
+    await client.query(`CREATE TABLE IF NOT EXISTS family_connections (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      family_member_id INTEGER NOT NULL,
+      relationship TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, family_member_id),
+      FOREIGN KEY(user_id) REFERENCES users(id),
+      FOREIGN KEY(family_member_id) REFERENCES users(id)
+    )`);
+
     console.log('Database tables initialized');
   } finally {
     client.release();
@@ -736,6 +752,224 @@ app.post('/api/alerts/send-test', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Test alert error:', err);
     res.status(500).json({ error: 'Failed to send test alert' });
+  }
+});
+
+// ---- Family Dashboard ----
+// Lets users share their health status (not detailed data) with family
+// members. Green = all good, yellow = Watch flag, red = Act flag.
+// Status only, no RHR, HRV, or other values are shared.
+
+// POST /api/family/invite - Send an invite to a family member by email
+app.post('/api/family/invite', authenticateToken, async (req, res) => {
+  try {
+    const { email, relationship } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+    const emailLower = email.toLowerCase().trim();
+    if (!isValidEmail(emailLower)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+    // Cannot invite yourself
+    if (emailLower === req.user.email.toLowerCase()) {
+      return res.status(400).json({ error: 'You cannot invite yourself' });
+    }
+    // Find the user by email
+    const targetUser = await dbGet('SELECT id, name, email FROM users WHERE email = $1', [emailLower]);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'No H-CAR account found with that email' });
+    }
+    // Check if already connected (either direction, any status)
+    const existing = await dbGet(
+      `SELECT id, status FROM family_connections
+       WHERE (user_id = $1 AND family_member_id = $2) OR (user_id = $2 AND family_member_id = $1)`,
+      [req.user.id, targetUser.id]
+    );
+    if (existing) {
+      if (existing.status === 'accepted') {
+        return res.status(400).json({ error: 'You are already connected with ' + targetUser.name });
+      } else if (existing.status === 'pending') {
+        return res.status(400).json({ error: 'An invite is already pending with ' + targetUser.name });
+      }
+      // If declined, allow re-invite by updating the existing record
+      await dbRun(
+        `UPDATE family_connections SET user_id = $1, family_member_id = $2, relationship = $3, status = 'pending', created_at = CURRENT_TIMESTAMP WHERE id = $4`,
+        [req.user.id, targetUser.id, relationship || 'Family', existing.id]
+      );
+      return res.json({ message: 'Invite sent to ' + targetUser.name, connectionId: existing.id });
+    }
+    // Create new pending connection
+    const result = await dbRun(
+      'INSERT INTO family_connections (user_id, family_member_id, relationship, status) VALUES ($1, $2, $3, $4) RETURNING id',
+      [req.user.id, targetUser.id, relationship || 'Family', 'pending']
+    );
+    res.json({ message: 'Invite sent to ' + targetUser.name, connectionId: result.lastID });
+  } catch (err) {
+    console.error('Family invite error:', err);
+    res.status(500).json({ error: 'Failed to send invite' });
+  }
+});
+
+// GET /api/family/pending - List pending invites received
+app.get('/api/family/pending', authenticateToken, async (req, res) => {
+  try {
+    const pending = await dbAll(
+      `SELECT fc.id, fc.user_id, fc.relationship, fc.created_at, u.name, u.email
+       FROM family_connections fc
+       JOIN users u ON fc.user_id = u.id
+       WHERE fc.family_member_id = $1 AND fc.status = 'pending'
+       ORDER BY fc.created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ pending });
+  } catch (err) {
+    console.error('Family pending error:', err);
+    res.status(500).json({ error: 'Failed to load pending invites' });
+  }
+});
+
+// POST /api/family/accept - Accept an invite
+app.post('/api/family/accept', authenticateToken, async (req, res) => {
+  try {
+    const { connectionId } = req.body;
+    if (!connectionId) {
+      return res.status(400).json({ error: 'Connection ID is required' });
+    }
+    // Verify this invite is for the current user and is pending
+    const connection = await dbGet(
+      'SELECT id, user_id, family_member_id FROM family_connections WHERE id = $1 AND family_member_id = $2 AND status = $3',
+      [connectionId, req.user.id, 'pending']
+    );
+    if (!connection) {
+      return res.status(404).json({ error: 'Invite not found or already processed' });
+    }
+    await dbRun('UPDATE family_connections SET status = $1 WHERE id = $2', ['accepted', connectionId]);
+    res.json({ message: 'Invite accepted' });
+  } catch (err) {
+    console.error('Family accept error:', err);
+    res.status(500).json({ error: 'Failed to accept invite' });
+  }
+});
+
+// POST /api/family/decline - Decline an invite
+app.post('/api/family/decline', authenticateToken, async (req, res) => {
+  try {
+    const { connectionId } = req.body;
+    if (!connectionId) {
+      return res.status(400).json({ error: 'Connection ID is required' });
+    }
+    // Verify this invite is for the current user and is pending
+    const connection = await dbGet(
+      'SELECT id FROM family_connections WHERE id = $1 AND family_member_id = $2 AND status = $3',
+      [connectionId, req.user.id, 'pending']
+    );
+    if (!connection) {
+      return res.status(404).json({ error: 'Invite not found or already processed' });
+    }
+    await dbRun('UPDATE family_connections SET status = $1 WHERE id = $2', ['declined', connectionId]);
+    res.json({ message: 'Invite declined' });
+  } catch (err) {
+    console.error('Family decline error:', err);
+    res.status(500).json({ error: 'Failed to decline invite' });
+  }
+});
+
+// GET /api/family/dashboard - Get family members' status
+app.get('/api/family/dashboard', authenticateToken, async (req, res) => {
+  try {
+    // Get all accepted connections where current user is the viewer
+    // (i.e., others sharing their status with me)
+    const connections = await dbAll(
+      `SELECT fc.id, fc.user_id, fc.relationship, u.name, u.email
+       FROM family_connections fc
+       JOIN users u ON fc.user_id = u.id
+       WHERE fc.family_member_id = $1 AND fc.status = 'accepted'
+       ORDER BY u.name ASC`,
+      [req.user.id]
+    );
+
+    const family = [];
+    for (const conn of connections) {
+      const memberId = conn.user_id;
+
+      // Check baseline completion (28 days of data)
+      const dayCount = await dbGet(
+        'SELECT COUNT(DISTINCT date) as count FROM daily_summaries WHERE user_id = $1',
+        [memberId]
+      );
+      const daysSynced = parseInt(dayCount?.count || 0);
+
+      // Get last sync date
+      const lastSync = await dbGet(
+        'SELECT MAX(date) as last_date FROM daily_summaries WHERE user_id = $1',
+        [memberId]
+      );
+      const lastSyncDate = lastSync?.last_date || null;
+
+      // Check for recent data (within last 7 days)
+      let status = 'no_data';
+      if (daysSynced === 0 || !lastSyncDate) {
+        status = 'no_data';
+      } else {
+        // Check if baseline is complete (28 days)
+        if (daysSynced < 28) {
+          status = 'learning';
+        } else {
+          // Check most recent episode (if any, within last 14 days)
+          // end_date is TEXT in YYYY-MM-DD format, compare as date
+          const recentEpisode = await dbGet(
+            `SELECT is_act, end_date FROM episodes
+             WHERE user_id = $1 AND end_date >= TO_CHAR(CURRENT_DATE - INTERVAL '14 days', 'YYYY-MM-DD')
+             ORDER BY end_date DESC LIMIT 1`,
+            [memberId]
+          );
+          if (recentEpisode) {
+            status = recentEpisode.is_act ? 'act' : 'watch';
+          } else {
+            status = 'good';
+          }
+        }
+      }
+
+      family.push({
+        connectionId: conn.id,
+        name: conn.name,
+        email: conn.email,
+        relationship: conn.relationship || 'Family',
+        status: status,
+        lastSync: lastSyncDate,
+        daysSynced: daysSynced,
+      });
+    }
+
+    res.json({ family });
+  } catch (err) {
+    console.error('Family dashboard error:', err);
+    res.status(500).json({ error: 'Failed to load family dashboard' });
+  }
+});
+
+// DELETE /api/family/:connectionId - Remove a family connection
+app.delete('/api/family/:connectionId', authenticateToken, async (req, res) => {
+  try {
+    const connectionId = parseInt(req.params.connectionId);
+    if (isNaN(connectionId)) {
+      return res.status(400).json({ error: 'Invalid connection ID' });
+    }
+    // Verify the current user is part of this connection
+    const connection = await dbGet(
+      'SELECT id FROM family_connections WHERE id = $1 AND (user_id = $2 OR family_member_id = $2)',
+      [connectionId, req.user.id]
+    );
+    if (!connection) {
+      return res.status(404).json({ error: 'Connection not found' });
+    }
+    await dbRun('DELETE FROM family_connections WHERE id = $1', [connectionId]);
+    res.json({ message: 'Family connection removed' });
+  } catch (err) {
+    console.error('Family delete error:', err);
+    res.status(500).json({ error: 'Failed to remove family connection' });
   }
 });
 
