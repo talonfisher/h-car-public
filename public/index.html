@@ -1154,6 +1154,37 @@ ul li{margin:8px 0}
 <button class="secondary" onclick="sendTestAlert()">Send Test Alert</button>
 <p style="color:var(--muted);font-size:13px;margin-top:8px;">To remove your emergency contact, clear all four fields and press Save Contact.</p>
 
+<h3 style="margin-top:30px;">Family Dashboard</h3>
+<p style="color:var(--muted);font-size:14px;">See the health status of your loved ones at a glance. Green means all good, yellow means a change was detected, red means a serious change. No detailed health data is shared, just the status.</p>
+
+<div id="family-pending-section" class="hidden" style="margin-bottom:16px;">
+<h4 style="margin:0 0 10px 0;">Pending Invites</h4>
+<p style="color:var(--muted);font-size:13px;margin:0 0 10px 0;">These people want to share their status with you.</p>
+<div id="family-pending-list"></div>
+</div>
+
+<div id="family-list" style="margin-bottom:16px;"></div>
+
+<div id="family-invite-msg"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+<div style="flex:1;min-width:200px;">
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Family member's email</label>
+<input type="email" id="family-invite-email" placeholder="their@email.com" style="width:100%;">
+</div>
+<div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Relationship</label>
+<select id="family-invite-relationship" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
+<option value="Spouse">Spouse</option>
+<option value="Parent">Parent</option>
+<option value="Child">Child</option>
+<option value="Sibling">Sibling</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<button onclick="sendFamilyInvite()" style="white-space:nowrap;">Send Invite</button>
+</div>
+<p style="color:var(--muted);font-size:13px;margin-top:8px;">They must have an H-CAR account. They will need to accept your invite before you can see their status.</p>
+
 <h3 style="margin-top:30px;">Learn More About H-CAR</h3>
 <p style="color:var(--muted);font-size:14px;">Explore the full guide, research results, and how H-CAR works.</p>
 <div class="nav-tabs" style="flex-wrap:wrap;">
@@ -1447,6 +1478,7 @@ async function loadDashboard() {
     loadSymptoms();
     loadSleepCheckin();
     loadSettings();
+    loadFamilyDashboard();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
   }
@@ -1768,6 +1800,144 @@ async function sendTestAlert() {
   }
 }
 
+// Family Dashboard: see loved ones' status at a glance
+async function loadFamilyDashboard() {
+  try {
+    // Load pending invites and family dashboard in parallel
+    const [pendingData, dashboardData] = await Promise.all([
+      apiCall('/family/pending', 'GET').catch(() => ({ pending: [] })),
+      apiCall('/family/dashboard', 'GET').catch(() => ({ family: [] })),
+    ]);
+    renderPendingInvites(pendingData.pending || []);
+    renderFamilyList(dashboardData.family || []);
+  } catch (e) {
+    // Non-critical; show empty state
+    renderFamilyList([]);
+    renderPendingInvites([]);
+  }
+}
+
+function renderPendingInvites(pending) {
+  const section = document.getElementById('family-pending-section');
+  const list = document.getElementById('family-pending-list');
+  if (!pending || pending.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  list.innerHTML = pending.map(invite => {
+    const name = escapeHtml(invite.name);
+    const relationship = escapeHtml(invite.relationship || 'Family');
+    const date = invite.created_at ? new Date(invite.created_at).toLocaleDateString() : '';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface-muted);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:150px;"><strong>' + name + '</strong> <span style="color:var(--muted);">(' + relationship + ')</span>' +
+      (date ? '<br><span style="font-size:13px;color:var(--muted);">Invited ' + date + '</span>' : '') + '</div>' +
+      '<button onclick="acceptFamilyInvite(' + invite.id + ')" style="padding:6px 12px;font-size:13px;">Accept</button>' +
+      '<button class="secondary" onclick="declineFamilyInvite(' + invite.id + ')" style="padding:6px 12px;font-size:13px;">Decline</button>' +
+      '</div>';
+  }).join('');
+}
+
+function renderFamilyList(family) {
+  const list = document.getElementById('family-list');
+  if (!family || family.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:14px;">No family members yet. Invite someone below to see their status here.</p>';
+    return;
+  }
+  list.innerHTML = family.map(member => {
+    const name = escapeHtml(member.name);
+    const relationship = escapeHtml(member.relationship || 'Family');
+    let dotColor, statusText;
+    switch (member.status) {
+      case 'good':
+        dotColor = '#0E7A68';
+        statusText = 'All good';
+        break;
+      case 'watch':
+        dotColor = '#9A6B12';
+        statusText = 'Watch - change detected';
+        break;
+      case 'act':
+        dotColor = '#B42318';
+        statusText = 'Act - serious change';
+        break;
+      case 'learning':
+        dotColor = '#6B7280';
+        statusText = 'Learning baseline (' + member.daysSynced + ' of 28 days)';
+        break;
+      case 'no_data':
+      default:
+        dotColor = '#6B7280';
+        statusText = 'No recent data';
+        break;
+    }
+    const lastSync = member.lastSync ? 'Last synced ' + new Date(member.lastSync).toLocaleDateString() : 'Never synced';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;">' +
+      '<div style="width:12px;height:12px;border-radius:50%;background:' + dotColor + ';flex-shrink:0;" title="' + statusText + '"></div>' +
+      '<div style="flex:1;min-width:150px;"><strong>' + name + '</strong> <span style="color:var(--muted);">(' + relationship + ')</span>' +
+      '<br><span style="font-size:13px;">' + statusText + '</span>' +
+      '<br><span style="font-size:12px;color:var(--muted);">' + lastSync + '</span></div>' +
+      '<button class="secondary" onclick="removeFamilyMember(' + member.connectionId + ', \'' + name.replace(/'/g, "\\'") + '\')" style="padding:6px 12px;font-size:13px;">Remove</button>' +
+      '</div>';
+  }).join('');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function sendFamilyInvite() {
+  const email = document.getElementById('family-invite-email').value.trim();
+  const relationship = document.getElementById('family-invite-relationship').value;
+  const msgEl = document.getElementById('family-invite-msg');
+  if (!email) {
+    msgEl.innerHTML = '<div class="error">Please enter an email address.</div>';
+    return;
+  }
+  msgEl.innerHTML = '<div style="color:var(--muted);font-size:14px;">Sending invite...</div>';
+  try {
+    const res = await apiCall('/family/invite', 'POST', { email, relationship });
+    msgEl.innerHTML = '<div class="success">' + escapeHtml(res.message) + '</div>';
+    document.getElementById('family-invite-email').value = '';
+    // Reload dashboard to show updated state
+    setTimeout(() => loadFamilyDashboard(), 500);
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+async function acceptFamilyInvite(connectionId) {
+  try {
+    await apiCall('/family/accept', 'POST', { connectionId });
+    loadFamilyDashboard();
+  } catch (e) {
+    alert('Failed to accept invite: ' + e.message);
+  }
+}
+
+async function declineFamilyInvite(connectionId) {
+  try {
+    await apiCall('/family/decline', 'POST', { connectionId });
+    loadFamilyDashboard();
+  } catch (e) {
+    alert('Failed to decline invite: ' + e.message);
+  }
+}
+
+async function removeFamilyMember(connectionId, name) {
+  if (!confirm('Remove ' + name + ' from your Family Dashboard? You will no longer see their status.')) {
+    return;
+  }
+  try {
+    await apiCall('/family/' + connectionId, 'DELETE');
+    loadFamilyDashboard();
+  } catch (e) {
+    alert('Failed to remove family member: ' + e.message);
+  }
+}
+
 function renderFitbit(f) {
   const el = document.getElementById('fitbit-section');
   if (!f.googleConfigured) {
@@ -1982,8 +2152,9 @@ function logout() {
 
 // Check if already logged in
 if (authToken) checkStatus();
-  // Track visit (silent, no display)
-  fetch('/api/visit', { method: 'POST' }).catch(() => {});
+
+// Track visit (silent, no display)
+fetch('/api/visit', { method: 'POST' }).catch(() => {});
 </script>
 </body>
 </html>
