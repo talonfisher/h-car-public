@@ -38,8 +38,13 @@ app.use(express.static('public'));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: 'Too many requests, please try again later.'
+  max: 300,
+  message: 'Too many requests, please try again in a moment.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({ error: 'Too many requests. Please wait a moment and try again.' });
+  }
 });
 app.use('/api/', limiter);
 
@@ -93,8 +98,8 @@ async function initDatabase() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_relationship TEXT`);
 
     // Sensitivity setting (gentle, balanced, sensitive). Default balanced.
-    // The detector currently runs in Balanced mode only; this preference
-    // is saved for future use and does not change detector behavior yet.
+    // Gentle requires 4 signals for Watch (fewer alerts). Sensitive requires 2 signals (more alerts).
+    // Balanced requires 3 signals (the tested default).
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sensitivity TEXT DEFAULT 'balanced'`);
 
     // Emergency-only location sharing. When enabled, H-CAR captures the
@@ -2095,7 +2100,7 @@ app.put('/api/settings', authenticateToken, async (req, res) => {
 });
 
 // AI Assistant (simple rule-based version)
-// POST /api/assistant/ask - Answer questions about the user's data
+// POST /api/assistant/ask - Answer questions about the user's data with real numbers
 app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
   try {
     const { question } = req.body;
@@ -2111,7 +2116,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       [req.user.id]
     );
     const recentDays = await dbAll(
-      `SELECT date, rhr, hrv, spo2_avg, breathing_rate, sleep_minutes, signals_present
+      `SELECT date, rhr, hrv, spo2_avg, spo2_min, breathing_rate, sleep_minutes, temp_delta, signals_present
        FROM daily_summaries WHERE user_id = $1 ORDER BY date DESC LIMIT 7`,
       [req.user.id]
     );
@@ -2123,13 +2128,116 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
     for (const b of baselines) {
       baselineMap[b.signal] = b.centre;
     }
+    const latest = recentDays[0] || null;
 
     let answer = '';
 
-    // Rule-based responses
-    if (q.includes('alert') || q.includes('flag') || q.includes('why')) {
+    // Helper to format a number or return 'not measured'
+    const fmt = (v, decimals = 0, suffix = '') => {
+      if (v === null || v === undefined) return 'not measured';
+      return v.toFixed(decimals) + suffix;
+    };
+
+    // Resting heart rate questions
+    if ((q.includes('resting') || q.includes('heart rate') || q.includes('rhr') || q.includes('pulse')) && !q.includes('baseline')) {
+      if (!latest || latest.rhr === null) {
+        answer = 'I don\'t have a resting heart rate reading for your most recent day. Make sure your Fitbit is synced.';
+      } else {
+        const base = baselineMap['resting_hr'];
+        let text = `Your resting heart rate yesterday (${latest.date}) was ${Math.round(latest.rhr)} bpm.`;
+        if (base) {
+          const diff = latest.rhr - base;
+          const dir = diff > 0 ? 'above' : diff < 0 ? 'below' : 'at';
+          text += ` Your usual baseline is ${Math.round(base)} bpm, so yesterday was ${Math.abs(Math.round(diff))} bpm ${dir} your normal.`;
+        }
+        // 7-day average
+        const rhrVals = recentDays.filter(d => d.rhr !== null).map(d => d.rhr);
+        if (rhrVals.length > 1) {
+          const avg = rhrVals.reduce((a, b) => a + b, 0) / rhrVals.length;
+          text += ` Over the last ${rhrVals.length} days, your average resting heart rate was ${Math.round(avg)} bpm.`;
+        }
+        answer = text;
+      }
+    } else if (q.includes('hrv') || q.includes('heart rate variability')) {
+      if (!latest || latest.hrv === null) {
+        answer = 'I don\'t have an HRV reading for your most recent day. HRV measures how much your heart rate varies between beats, higher usually means better recovery.';
+      } else {
+        const base = baselineMap['rmssd'];
+        let text = `Your HRV yesterday (${latest.date}) was ${Math.round(latest.hrv)} ms. HRV measures recovery, higher is generally better.`;
+        if (base) {
+          const diff = latest.hrv - base;
+          const pct = Math.round((diff / base) * 100);
+          text += ` Your usual baseline is ${Math.round(base)} ms, so yesterday was ${Math.abs(pct)}% ${diff > 0 ? 'higher' : 'lower'} than normal.`;
+        }
+        answer = text;
+      }
+    } else if (q.includes('sleep')) {
+      if (!latest || latest.sleep_minutes === null) {
+        answer = 'I don\'t have a sleep reading for your most recent night.';
+      } else {
+        const hours = Math.floor(latest.sleep_minutes / 60);
+        const mins = Math.round(latest.sleep_minutes % 60);
+        const base = baselineMap['sleep_duration_h'];
+        let text = `You slept ${hours}h ${mins}m on the night of ${latest.date}.`;
+        if (base) {
+          const baseH = Math.floor(base);
+          const baseM = Math.round((base - baseH) * 60);
+          const diffMin = latest.sleep_minutes - (base * 60);
+          const diffH = Math.floor(Math.abs(diffMin) / 60);
+          const diffM = Math.round(Math.abs(diffMin) % 60);
+          text += ` Your usual is ${baseH}h ${baseM}m, so you slept ${diffH}h ${diffM}m ${diffMin > 0 ? 'more' : 'less'} than normal.`;
+        }
+        answer = text;
+      }
+    } else if (q.includes('oxygen') || q.includes('spo2') || q.includes('spo')) {
+      if (!latest || latest.spo2_avg === null) {
+        answer = 'I don\'t have a blood oxygen reading for your most recent day.';
+      } else {
+        const base = baselineMap['spo2'];
+        let text = `Your average blood oxygen yesterday was ${latest.spo2_avg.toFixed(1)}%.`;
+        if (latest.spo2_min !== null) text += ` Your lowest was ${latest.spo2_min.toFixed(1)}%.`;
+        if (base) text += ` Your usual baseline is ${base.toFixed(1)}%.`;
+        answer = text;
+      }
+    } else if (q.includes('breath')) {
+      if (!latest || latest.breathing_rate === null) {
+        answer = 'I don\'t have a breathing rate reading for your most recent day.';
+      } else {
+        const base = baselineMap['full_sleep_breathing_rate'];
+        let text = `Your breathing rate yesterday was ${latest.breathing_rate.toFixed(1)} breaths per minute.`;
+        if (base) text += ` Your usual baseline is ${base.toFixed(1)} per minute.`;
+        answer = text;
+      }
+    } else if (q.includes('temperature') || q.includes('temp')) {
+      if (!latest || latest.temp_delta === null) {
+        answer = 'I don\'t have a skin temperature reading for your most recent day.';
+      } else {
+        let text = `Your skin temperature yesterday was ${latest.temp_delta >= 0 ? '+' : ''}${latest.temp_delta.toFixed(2)} degrees from your usual.`;
+        if (Math.abs(latest.temp_delta) < 0.3) text += ' That is within your normal range.';
+        else if (latest.temp_delta > 0) text += ' That is slightly elevated.';
+        else text += ' That is slightly below your normal.';
+        answer = text;
+      }
+    } else if (q.includes('yesterday') || q.includes('last night') || q.includes('latest') || q.includes('recent')) {
+      if (!latest) {
+        answer = 'I don\'t have any data yet. Connect your Fitbit and sync to start building your baseline.';
+      } else {
+        const parts = [`Here is your most recent data from ${latest.date}:`];
+        if (latest.rhr !== null) parts.push(`Resting heart rate: ${Math.round(latest.rhr)} bpm`);
+        if (latest.hrv !== null) parts.push(`HRV: ${Math.round(latest.hrv)} ms`);
+        if (latest.spo2_avg !== null) parts.push(`Blood oxygen: ${latest.spo2_avg.toFixed(1)}%`);
+        if (latest.breathing_rate !== null) parts.push(`Breathing rate: ${latest.breathing_rate.toFixed(1)}/min`);
+        if (latest.sleep_minutes !== null) {
+          const h = Math.floor(latest.sleep_minutes / 60);
+          const m = Math.round(latest.sleep_minutes % 60);
+          parts.push(`Sleep: ${h}h ${m}m`);
+        }
+        if (latest.temp_delta !== null) parts.push(`Skin temp change: ${latest.temp_delta >= 0 ? '+' : ''}${latest.temp_delta.toFixed(2)} degrees`);
+        answer = parts.join(' ');
+      }
+    } else if (q.includes('alert') || q.includes('flag') || q.includes('why')) {
       if (!latestEpisode) {
-        answer = 'You have no alerts yet. H-CAR has not detected any sustained changes from your baseline. This is good news, it means your signals have stayed within your normal range.';
+        answer = 'You have no alerts yet. All clear! Your signals have stayed within your normal range. H-CAR has not detected any sustained changes from your baseline.';
       } else {
         const type = latestEpisode.is_act ? 'Act' : 'Watch';
         const startDate = latestEpisode.start_date;
@@ -2178,22 +2286,44 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       } else {
         const parts = ['Your baseline values are:'];
         const signalNames = {
-          rhr: 'Resting heart rate',
-          hrv: 'HRV',
+          resting_hr: 'Resting heart rate',
+          rmssd: 'HRV (recovery)',
           spo2: 'Blood oxygen',
-          breathing: 'Breathing rate',
-          sleep: 'Sleep',
-          temp: 'Skin temperature'
+          full_sleep_breathing_rate: 'Breathing rate',
+          sleep_duration_h: 'Sleep',
+          nightly_temperature: 'Skin temperature'
+        };
+        const units = {
+          resting_hr: ' bpm',
+          rmssd: ' ms',
+          spo2: '%',
+          full_sleep_breathing_rate: '/min',
+          sleep_duration_h: ' hours',
+          nightly_temperature: ' degrees'
         };
         for (const b of baselines) {
           const name = signalNames[b.signal] || b.signal;
-          parts.push(`${name}: ${b.centre.toFixed(1)}`);
+          const unit = units[b.signal] || '';
+          parts.push(`${name}: ${b.centre.toFixed(1)}${unit}`);
         }
         answer = parts.join(' ');
       }
     } else {
-      // Default response
-      answer = 'I can help you understand your H-CAR data. Try asking about your alerts, when an episode began, what to do next, or what data is missing. I can only answer from your actual measurements, and I am not a medical professional. For medical advice, consult your clinician.';
+      // Default response - try to give a helpful summary with real numbers
+      if (latest) {
+        const parts = ['Here is a quick summary of your latest data:'];
+        if (latest.rhr !== null) parts.push(`Resting heart rate ${Math.round(latest.rhr)} bpm`);
+        if (latest.hrv !== null) parts.push(`HRV ${Math.round(latest.hrv)} ms`);
+        if (latest.sleep_minutes !== null) {
+          const h = Math.floor(latest.sleep_minutes / 60);
+          const m = Math.round(latest.sleep_minutes % 60);
+          parts.push(`Sleep ${h}h ${m}m`);
+        }
+        parts.push('Try asking about your resting heart rate, HRV, sleep, blood oxygen, or alerts for more detail.');
+        answer = parts.join(' ');
+      } else {
+        answer = 'I can help you understand your H-CAR data. Try asking about your resting heart rate, HRV, sleep, blood oxygen, alerts, or baseline. I can only answer from your actual measurements, and I am not a medical professional. For medical advice, consult your clinician.';
+      }
     }
 
     // Always add disclaimer
