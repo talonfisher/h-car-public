@@ -2116,7 +2116,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       [req.user.id]
     );
     const recentDays = await dbAll(
-      `SELECT date, rhr, hrv, spo2_avg, spo2_min, breathing_rate, sleep_minutes, temp_delta, signals_present
+      `SELECT date, rhr, hrv, spo2_avg, spo2_min, breathing_rate, sleep_minutes, skin_temp_delta, signals_present
        FROM daily_summaries WHERE user_id = $1 ORDER BY date DESC LIMIT 7`,
       [req.user.id]
     );
@@ -2209,12 +2209,12 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = text;
       }
     } else if (q.includes('temperature') || q.includes('temp')) {
-      if (!latest || latest.temp_delta === null) {
+      if (!latest || latest.skin_temp_delta === null) {
         answer = 'I don\'t have a skin temperature reading for your most recent day.';
       } else {
-        let text = `Your skin temperature yesterday was ${latest.temp_delta >= 0 ? '+' : ''}${latest.temp_delta.toFixed(2)} degrees from your usual.`;
-        if (Math.abs(latest.temp_delta) < 0.3) text += ' That is within your normal range.';
-        else if (latest.temp_delta > 0) text += ' That is slightly elevated.';
+        let text = `Your skin temperature yesterday was ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees from your usual.`;
+        if (Math.abs(latest.skin_temp_delta) < 0.3) text += ' That is within your normal range.';
+        else if (latest.skin_temp_delta > 0) text += ' That is slightly elevated.';
         else text += ' That is slightly below your normal.';
         answer = text;
       }
@@ -2232,7 +2232,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
           const m = Math.round(latest.sleep_minutes % 60);
           parts.push(`Sleep: ${h}h ${m}m`);
         }
-        if (latest.temp_delta !== null) parts.push(`Skin temp change: ${latest.temp_delta >= 0 ? '+' : ''}${latest.temp_delta.toFixed(2)} degrees`);
+        if (latest.skin_temp_delta !== null) parts.push(`Skin temp change: ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees`);
         answer = parts.join(' ');
       }
     } else if (q.includes('alert') || q.includes('flag') || q.includes('why')) {
