@@ -1225,8 +1225,15 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:12px;border:1px solid var(--line);">
 <h4 style="margin:0 0 8px 0;font-size:15px;">Emergency Location Sharing</h4>
 <div style="display:flex;align-items:flex-start;gap:10px;">
-<input type="checkbox" id="location-sharing-checkbox" style="margin-top:0;width:24px;height:24px;cursor:pointer;flex-shrink:0;">
+<input type="checkbox" id="location-sharing-checkbox" onchange="toggleLocationSharing()" style="margin-top:0;width:24px;height:24px;cursor:pointer;flex-shrink:0;">
 <span style="font-size:14px;line-height:1.5;cursor:pointer;" onclick="document.getElementById('location-sharing-checkbox').click();">Share my location with my emergency contact if H-CAR detects a serious change</span>
+</div>
+<div id="location-confirm" class="hidden" style="margin:12px 0 0 28px;padding:12px;background:var(--amber-bg);border:1px solid #F59E0B;border-radius:8px;">
+<p style="margin:0 0 10px 0;font-size:14px;color:var(--amber-ink);"><strong>Turn off location sharing?</strong> This will delete your saved location. Your emergency contact will not receive your location if an Act flag fires.</p>
+<div style="display:flex;gap:8px;">
+<button onclick="confirmLocationOff()" style="background:#B42318;color:white;padding:8px 16px;font-size:13px;width:auto;margin:0;">Yes, Turn Off</button>
+<button onclick="cancelLocationOff()" class="secondary" style="padding:8px 16px;font-size:13px;width:auto;margin:0;">Keep It On</button>
+</div>
 </div>
 <p style="color:var(--muted);font-size:13px;margin:8px 0 0 28px;line-height:1.5;">When you sync your Fitbit, H-CAR will save your location. If an Act flag fires, your emergency contact will receive your last known location in the alert email so they know where to send help. Your location is never shared otherwise, and never tracked continuously. You can turn this off at any time.</p>
 <div id="location-status" style="margin:8px 0 0 28px;font-size:13px;color:var(--muted);"></div>
@@ -1275,7 +1282,15 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <h3>Account Settings</h3>
 <p>Manage your subscription and account.</p>
 <button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
-<button class="secondary" onclick="cancelSub()" style="background:#B42318;color:white;border-color:#B42318;margin-top:10px;">Cancel Subscription</button>
+<button class="secondary" onclick="showCancelConfirm()" style="background:#B42318;color:white;border-color:#B42318;margin-top:10px;">Cancel Subscription</button>
+<div id="cancel-confirm" class="hidden" style="margin-top:12px;padding:16px;background:var(--red-bg);border:1px solid #FCA5A5;border-radius:12px;">
+<p style="margin:0 0 10px 0;font-size:14px;color:var(--red-ink);"><strong>Are you sure you want to cancel your H-CAR subscription?</strong></p>
+<p style="margin:0 0 12px 0;font-size:13px;color:var(--red-ink);">You will lose access to monitoring, alerts, and your baseline data. You can resubscribe anytime. Access continues until the end of your paid period.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<button onclick="confirmCancelSub()" style="background:#B42318;color:white;padding:10px 18px;font-size:14px;width:auto;margin:0;">Yes, Cancel Subscription</button>
+<button onclick="hideCancelConfirm()" class="secondary" style="padding:10px 18px;font-size:14px;width:auto;margin:0;">Keep My Subscription</button>
+</div>
+</div>
 <p style="font-size:0.85em;color:var(--muted);margin-top:10px;">Cancelling stops future charges. You keep access until the end of your current billing period. No partial refunds.</p>
 
 <h3 style="margin-top:24px;">Change Password</h3>
@@ -1910,15 +1925,36 @@ async function toggleLocationSharing() {
   if (!checkbox) return;
   const enabled = checkbox.checked;
   const msgEl = document.getElementById('location-msg');
-  // Confirm before disabling (deletes location data)
+  // If turning OFF, show inline confirmation instead of confirm() dialog
+  // (confirm() is blocked in some browsers and headless environments)
   if (!enabled) {
-    const confirmed = confirm('Turn off location sharing? This will delete your saved location. Your emergency contact will not receive your location if an Act flag fires.');
-    if (!confirmed) {
-      // Use setTimeout to ensure the checkbox state is restored after the click event completes
-      setTimeout(() => { checkbox.checked = true; }, 0);
-      return;
-    }
+    // Re-check the box immediately, show confirmation UI
+    checkbox.checked = true;
+    const confirmEl = document.getElementById('location-confirm');
+    if (confirmEl) confirmEl.classList.remove('hidden');
+    return;
   }
+  // Turning ON - proceed immediately
+  await updateLocationSharing(true);
+}
+
+async function confirmLocationOff() {
+  const confirmEl = document.getElementById('location-confirm');
+  if (confirmEl) confirmEl.classList.add('hidden');
+  const checkbox = document.getElementById('location-sharing-checkbox');
+  if (checkbox) checkbox.checked = false;
+  await updateLocationSharing(false);
+}
+
+function cancelLocationOff() {
+  const confirmEl = document.getElementById('location-confirm');
+  if (confirmEl) confirmEl.classList.add('hidden');
+  // Checkbox is already checked (we re-checked it when showing confirmation)
+}
+
+async function updateLocationSharing(enabled) {
+  const checkbox = document.getElementById('location-sharing-checkbox');
+  const msgEl = document.getElementById('location-msg');
   try {
     const res = await apiCall('/settings/location', 'PUT', { enabled });
     if (msgEl) msgEl.innerHTML = '<div class="success">' + res.message + '</div>';
@@ -1937,7 +1973,7 @@ async function toggleLocationSharing() {
     }
   } catch (e) {
     // Revert checkbox on error
-    checkbox.checked = !enabled;
+    if (checkbox) checkbox.checked = !enabled;
     if (msgEl) msgEl.innerHTML = '<div class="error">Failed to update location sharing: ' + e.message + '</div>';
   }
   // Clear message after 5 seconds
@@ -2374,9 +2410,18 @@ async function syncNow() {
   }
 })();
 
-async function cancelSub() {
-  if (!confirm('Are you sure you want to cancel your H-CAR subscription? You will lose access to monitoring, alerts, and your baseline data. You can resubscribe anytime.')) return;
-  if (!confirm('Cancel your H-CAR subscription? Access continues until the end of your paid period.')) return;
+function showCancelConfirm() {
+  const confirmEl = document.getElementById('cancel-confirm');
+  if (confirmEl) confirmEl.classList.remove('hidden');
+}
+
+function hideCancelConfirm() {
+  const confirmEl = document.getElementById('cancel-confirm');
+  if (confirmEl) confirmEl.classList.add('hidden');
+}
+
+async function confirmCancelSub() {
+  hideCancelConfirm();
   try {
     await apiCall('/cancel', 'POST', {});
     alert('Subscription canceled.');
@@ -2384,6 +2429,11 @@ async function cancelSub() {
   } catch (e) {
     alert('Cancel failed: ' + e.message);
   }
+}
+
+// Keep cancelSub for backward compatibility (calls showCancelConfirm)
+async function cancelSub() {
+  showCancelConfirm();
 }
 
 function showSettings() {
