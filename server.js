@@ -1120,16 +1120,14 @@ function describeTopSignals(topSignals) {
 }
 
 let mailer = null;
-let mailerInitTried = false;
 
 function getMailer() {
-  if (mailerInitTried) return mailer;
-  mailerInitTried = true;
+  if (mailer) return mailer;
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) {
-    console.log('Email alerts disabled: SMTP_HOST, SMTP_USER and SMTP_PASS are not all set.');
+    console.log('Email alerts disabled: SMTP_HOST, SMTP_USER and SMTP_PASS are not all set. Host:', !!host, 'User:', !!user, 'Pass:', !!pass);
     return null;
   }
   let nodemailer;
@@ -1140,6 +1138,7 @@ function getMailer() {
     return null;
   }
   const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  console.log('Initializing email transport: host=' + host + ', port=' + port + ', user=' + user);
   mailer = nodemailer.createTransport({
     host,
     port,
@@ -1153,15 +1152,20 @@ async function sendEmail(to, subject, text) {
   const transport = getMailer();
   if (!transport) return { sent: false, reason: 'email is not configured on the server (SMTP settings missing)' };
   try {
+    console.log('Sending email to ' + to + ' with subject: ' + subject);
     await transport.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
       subject,
       text,
     });
+    console.log('Email sent successfully to ' + to);
     return { sent: true };
   } catch (e) {
-    console.error('Email send failed:', e.message);
+    console.error('Email send failed to ' + to + ':', e.message);
+    console.error('SMTP error details:', e);
+    // Reset mailer so next attempt will recreate it (in case of transient connection issues)
+    mailer = null;
     return { sent: false, reason: 'email send failed: ' + e.message };
   }
 }
