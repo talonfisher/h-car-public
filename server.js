@@ -433,11 +433,15 @@ app.post('/api/forgot-password', async (req, res) => {
       '',
       'H-CAR (https://h-car.onrender.com)',
     ].join('\n');
-    const result = await sendEmail(user.email, subject, text);
-    if (!result.sent) {
-      // SMTP not configured: log the token so the operator can help manually
-      console.log(`Password reset requested for ${user.email}. SMTP not configured. Reset link: ${resetLink}`);
-    }
+    // Send email in background, do not wait for it (prevents SMTP timeouts from blocking the response)
+    sendEmail(user.email, subject, text).then(result => {
+      if (!result.sent) {
+        console.log(`Password reset requested for ${user.email}. Email failed: ${result.reason}. Reset link: ${resetLink}`);
+      }
+    }).catch(err => {
+      console.error('Password reset email error:', err);
+      console.log(`Password reset requested for ${user.email}. Reset link: ${resetLink}`);
+    });
     res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
   } catch (err) {
     console.error('Forgot password error:', err);
@@ -1785,14 +1789,6 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       } else {
         answer = `Your most recent episode began on ${latestEpisode.start_date} and lasted ${latestEpisode.days} days, ending on ${latestEpisode.end_date}.`;
       }
-    } else if (q.includes('what should') || q.includes('what do') || q.includes('next')) {
-      if (!latestEpisode) {
-        answer = 'You have no active alerts. Keep wearing your Fitbit, keep logging symptoms if you notice anything, and H-CAR will keep watching. If you feel unwell, seek professional medical care, do not wait for an app.';
-      } else if (latestEpisode.is_act) {
-        answer = 'You have a recent Act flag. This is a sustained change that H-CAR considers significant. Consider resting, logging your symptoms, and contacting your clinician if you feel unwell. If you have severe symptoms like chest pain, severe breathlessness, fainting, or confusion, call emergency services immediately. Your emergency contact has been alerted by email.';
-      } else {
-        answer = 'You have a recent Watch flag. This is a change worth noticing, but not an emergency. Rest, hydrate, log your symptoms, and re-check tomorrow. If it continues or worsens, consider contacting your clinician.';
-      }
     } else if (q.includes('don\'t know') || q.includes('dont know') || q.includes('missing') || q.includes('gap')) {
       const daysWithGaps = recentDays.filter(d => (d.signals_present || 0) < 3).length;
       const totalDays = recentDays.length;
@@ -1802,6 +1798,14 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = `Your recent data is complete. All ${totalDays} of the last ${totalDays} days have 3 or more signals. H-CAR can score your data reliably.`;
       } else {
         answer = `In the last ${totalDays} days, ${daysWithGaps} days had fewer than 3 signals. On those days, H-CAR could not score your data because there was not enough information. This is usually because your Fitbit was not worn, did not sync, or the battery died. Missing data is never filled in, H-CAR only works with what it actually measured.`;
+      }
+    } else if (q.includes('what should') || q.includes('what do') || q.includes('next')) {
+      if (!latestEpisode) {
+        answer = 'You have no active alerts. Keep wearing your Fitbit, keep logging symptoms if you notice anything, and H-CAR will keep watching. If you feel unwell, seek professional medical care, do not wait for an app.';
+      } else if (latestEpisode.is_act) {
+        answer = 'You have a recent Act flag. This is a sustained change that H-CAR considers significant. Consider resting, logging your symptoms, and contacting your clinician if you feel unwell. If you have severe symptoms like chest pain, severe breathlessness, fainting, or confusion, call emergency services immediately. Your emergency contact has been alerted by email.';
+      } else {
+        answer = 'You have a recent Watch flag. This is a change worth noticing, but not an emergency. Rest, hydrate, log your symptoms, and re-check tomorrow. If it continues or worsens, consider contacting your clinician.';
       }
     } else if (q.includes('baseline') || q.includes('normal')) {
       if (baselines.length === 0) {
