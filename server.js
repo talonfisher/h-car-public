@@ -97,6 +97,16 @@ async function initDatabase() {
     // is saved for future use and does not change detector behavior yet.
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sensitivity TEXT DEFAULT 'balanced'`);
 
+    // Emergency-only location sharing. When enabled, H-CAR captures the
+    // user's location when they sync their Fitbit, and includes their last
+    // known location in Act alert emails to their emergency contact.
+    // Location is NEVER shared otherwise, and NEVER tracked continuously.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_sharing_enabled BOOLEAN DEFAULT FALSE`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_lat DOUBLE PRECISION`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_lng DOUBLE PRECISION`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_address TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_updated TIMESTAMP`);
+
     // Google Health API tokens (Fitbit data). Tokens are AES-256-GCM
     // encrypted before storage; see google-health.js.
     await client.query(`CREATE TABLE IF NOT EXISTS fitbit_tokens (
@@ -242,6 +252,18 @@ async function initDatabase() {
       UNIQUE(user_id, family_member_id),
       FOREIGN KEY(user_id) REFERENCES users(id),
       FOREIGN KEY(family_member_id) REFERENCES users(id)
+    )`);
+
+    // Location history (for debugging). Keeps only the last 10 locations
+    // per user. Location is captured only when user syncs Fitbit AND has
+    // opted into emergency-only location sharing.
+    await client.query(`CREATE TABLE IF NOT EXISTS location_history (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      lat DOUBLE PRECISION NOT NULL,
+      lng DOUBLE PRECISION NOT NULL,
+      address TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
     console.log('Database tables initialized');
@@ -685,13 +707,18 @@ function isValidEmail(email) {
 
 app.get('/api/emergency-contact', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship, location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({
       name: user.emergency_contact_name || null,
       email: user.emergency_contact_email || null,
       phone: user.emergency_contact_phone || null,
       relationship: user.emergency_contact_relationship || null,
+      location_sharing_enabled: !!user.location_sharing_enabled,
+      last_location_lat: user.last_location_lat || null,
+      last_location_lng: user.last_location_lng || null,
+      last_location_address: user.last_location_address || null,
+      last_location_updated: user.last_location_updated || null,
     });
   } catch (err) {
     console.error('Emergency contact get error:', err);
@@ -721,6 +748,91 @@ app.put('/api/emergency-contact', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Emergency contact save error:', err);
     res.status(500).json({ error: 'Failed to save emergency contact' });
+  }
+});
+
+// PUT /api/settings/location - Toggle emergency-only location sharing on/off
+// When enabled, H-CAR captures location on Fitbit sync and includes last known
+// location in Act alert emails. Location is NEVER shared otherwise.
+app.put('/api/settings/location', authenticateToken, async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'Enabled must be true or false' });
+    }
+    if (enabled) {
+      await dbRun('UPDATE users SET location_sharing_enabled = TRUE WHERE id = $1', [req.user.id]);
+      res.json({ ok: true, enabled: true, message: 'Location sharing enabled. Your location will be saved when you sync your Fitbit, and shared with your emergency contact only if an Act flag fires.' });
+    } else {
+      // When turning off, delete all location data
+      await dbRun('UPDATE users SET location_sharing_enabled = FALSE, last_location_lat = NULL, last_location_lng = NULL, last_location_address = NULL, last_location_updated = NULL WHERE id = $1', [req.user.id]);
+      await dbRun('DELETE FROM location_history WHERE user_id = $1', [req.user.id]);
+      res.json({ ok: true, enabled: false, message: 'Location sharing disabled. Your location data has been deleted.' });
+    }
+  } catch (err) {
+    console.error('Location setting error:', err);
+    res.status(500).json({ error: 'Failed to update location sharing setting' });
+  }
+});
+
+// GET /api/settings/location - Get current location sharing status
+app.get('/api/settings/location', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({
+      enabled: !!user.location_sharing_enabled,
+      last_lat: user.last_location_lat || null,
+      last_lng: user.last_location_lng || null,
+      last_address: user.last_location_address || null,
+      last_updated: user.last_location_updated || null,
+    });
+  } catch (err) {
+    console.error('Get location setting error:', err);
+    res.status(500).json({ error: 'Failed to get location sharing setting' });
+  }
+});
+
+// POST /api/location/update - Update last known location
+// Only updates if user has location_sharing_enabled = true.
+// Called after Fitbit sync when user has opted in.
+app.post('/api/location/update', authenticateToken, async (req, res) => {
+  try {
+    const { lat, lng, address } = req.body;
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+    // Check if user has location sharing enabled
+    const user = await dbGet('SELECT location_sharing_enabled FROM users WHERE id = $1', [req.user.id]);
+    if (!user || !user.location_sharing_enabled) {
+      return res.status(403).json({ error: 'Location sharing is not enabled' });
+    }
+    const now = new Date().toISOString();
+    const addressStr = (address && typeof address === 'string') ? address.trim().substring(0, 500) : null;
+    // Update user's last known location
+    await dbRun(
+      'UPDATE users SET last_location_lat = $1, last_location_lng = $2, last_location_address = $3, last_location_updated = $4 WHERE id = $5',
+      [lat, lng, addressStr, now, req.user.id]
+    );
+    // Insert into history (for debugging)
+    await dbRun(
+      'INSERT INTO location_history (user_id, lat, lng, address) VALUES ($1, $2, $3, $4)',
+      [req.user.id, lat, lng, addressStr]
+    );
+    // Keep only last 10 locations per user, delete older ones
+    await dbRun(
+      `DELETE FROM location_history WHERE user_id = $1 AND id NOT IN (
+        SELECT id FROM location_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10
+      )`,
+      [req.user.id]
+    );
+    res.json({ ok: true, message: 'Location updated' });
+  } catch (err) {
+    console.error('Location update error:', err);
+    res.status(500).json({ error: 'Failed to update location' });
   }
 });
 
@@ -1053,7 +1165,9 @@ async function sendActAlert(user, episode) {
   const contactName = user.emergency_contact_name || 'there';
   const signals = describeTopSignals(episode.top_signals);
   const subject = 'H-CAR alert: ' + user.name + ' has a serious baseline change';
-  const text = [
+  
+  // Build the email text
+  const textParts = [
     'Hi ' + contactName + ',',
     '',
     'You are listed as the emergency contact for ' + user.name + ' on H-CAR.',
@@ -1064,12 +1178,29 @@ async function sendActAlert(user, episode) {
     '  Episode: ' + episode.start + ' to ' + episode.end + ' (' + episode.days + ' days)',
     '  Signals that moved most: ' + signals,
     '',
-    'What this means: ' + user.name + '\'s wearable data has moved away from their usual pattern for several days in a row. H-CAR names a change, never a cause. It does not diagnose anything, and it does not monitor in real time.',
-    '',
-    'What to do: check in with ' + user.name + '. If they feel unwell, or you cannot reach them and you are worried, call your local emergency number. Do not wait for the app.',
-    '',
-    'This is an automated message from H-CAR (https://h-car.onrender.com). Please do not reply to this email.',
-  ].join('\n');
+  ];
+
+  // Include last known location if user opted into emergency-only location sharing
+  if (user.location_sharing_enabled && user.last_location_lat && user.last_location_lng) {
+    const locationStr = user.last_location_address 
+      ? user.last_location_address 
+      : 'Lat: ' + user.last_location_lat + ', Lng: ' + user.last_location_lng;
+    const updatedStr = user.last_location_updated 
+      ? new Date(user.last_location_updated).toLocaleString() 
+      : 'Unknown';
+    textParts.push('Last known location: ' + locationStr);
+    textParts.push('  Coordinates: ' + user.last_location_lat + ', ' + user.last_location_lng);
+    textParts.push('  Last updated: ' + updatedStr);
+    textParts.push('');
+  }
+
+  textParts.push('What this means: ' + user.name + '\'s wearable data has moved away from their usual pattern for several days in a row. H-CAR names a change, never a cause. It does not diagnose anything, and it does not monitor in real time.');
+  textParts.push('');
+  textParts.push('What to do: check in with ' + user.name + '. If they feel unwell, or you cannot reach them and you are worried, call your local emergency number. Do not wait for the app.');
+  textParts.push('');
+  textParts.push('This is an automated message from H-CAR (https://h-car.onrender.com). Please do not reply to this email.');
+
+  const text = textParts.join('\n');
   return sendEmail(user.emergency_contact_email, subject, text);
 }
 
@@ -1080,7 +1211,7 @@ async function sendActAlert(user, episode) {
 async function maybeSendActAlerts(userId, mergedEpisodes) {
   const actEpisodes = (mergedEpisodes || []).filter((e) => e.is_act && e.trigger_date);
   if (actEpisodes.length === 0) return { checked: 0, sent: 0 };
-  const user = await dbGet('SELECT id, name, email, emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship FROM users WHERE id = $1', [userId]);
+  const user = await dbGet('SELECT id, name, email, emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship, location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [userId]);
   if (!user || !user.emergency_contact_email) {
     console.log('Act alert skipped for user ' + userId + ': no emergency contact email on file.');
     return { checked: actEpisodes.length, sent: 0 };
