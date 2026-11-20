@@ -274,6 +274,9 @@ async function initDatabase() {
     // Promo codes for free passes (friends and family). Each code can be
     // used max_uses times (default 1). When redeemed, the user gets
     // subscription_status = 'complimentary' instead of paying via Square.
+    // pass_type: 'family', 'friend', or 'trial'. Trial codes have a
+    // duration_days (e.g., 118 for the full trial period) and the user's
+    // subscription expires after that many days from redemption.
     await client.query(`CREATE TABLE IF NOT EXISTS promo_codes (
       code TEXT PRIMARY KEY,
       created_by INTEGER NOT NULL REFERENCES users(id),
@@ -281,23 +284,57 @@ async function initDatabase() {
       used_by INTEGER REFERENCES users(id),
       used_at TIMESTAMP,
       max_uses INTEGER DEFAULT 1,
-      uses_count INTEGER DEFAULT 0
+      uses_count INTEGER DEFAULT 0,
+      pass_type TEXT DEFAULT 'family',
+      duration_days INTEGER,
+      expires_at TIMESTAMP
     )`);
+
+    // Add new columns if the table already exists (migration for existing DBs).
+    await client.query(`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS pass_type TEXT DEFAULT 'family'`);
+    await client.query(`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS duration_days INTEGER`);
+    await client.query(`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP`);
 
     // Track which promo code a user redeemed (if any).
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_code_used TEXT`);
+    // Subscription expiration for trial passes. NULL means no expiration.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP`);
 
     // Seed initial promo codes for Talon (user ID 1) if they don't exist.
     const seedCodes = [
-      'FAMILY-2026-A1B2',
-      'FAMILY-2026-C3D4',
-      'FAMILY-2026-E5F6',
-      'FRIEND-2026-G7H8',
-      'FRIEND-2026-I9J0'
+      { code: 'FAMILY-2026-A1B2', pass_type: 'family', duration_days: null },
+      { code: 'FAMILY-2026-C3D4', pass_type: 'family', duration_days: null },
+      { code: 'FAMILY-2026-E5F6', pass_type: 'family', duration_days: null },
+      { code: 'FRIEND-2026-G7H8', pass_type: 'friend', duration_days: null },
+      { code: 'FRIEND-2026-I9J0', pass_type: 'friend', duration_days: null },
     ];
-    for (const code of seedCodes) {
+    for (const seed of seedCodes) {
       await client.query(
-        `INSERT INTO promo_codes (code, created_by, max_uses) VALUES ($1, 1, 1) ON CONFLICT (code) DO NOTHING`,
+        `INSERT INTO promo_codes (code, created_by, max_uses, pass_type, duration_days) VALUES ($1, 1, 1, $2, $3) ON CONFLICT (code) DO NOTHING`,
+        [seed.code, seed.pass_type, seed.duration_days]
+      );
+    }
+
+    // Seed 50 trial guest passes for Meniere's groups. Each is good for
+    // 118 days (28-day baseline + 90 days live monitoring) from redemption.
+    const trialCodes = [
+      'TRIAL-2026-23WH', 'TRIAL-2026-259J', 'TRIAL-2026-2AB8', 'TRIAL-2026-2ADJ',
+      'TRIAL-2026-39D7', 'TRIAL-2026-4QQ3', 'TRIAL-2026-4S68', 'TRIAL-2026-668L',
+      'TRIAL-2026-6ZDT', 'TRIAL-2026-7E9M', 'TRIAL-2026-8AXE', 'TRIAL-2026-8DLW',
+      'TRIAL-2026-8J6K', 'TRIAL-2026-8PBS', 'TRIAL-2026-8VWW', 'TRIAL-2026-9TER',
+      'TRIAL-2026-9VUU', 'TRIAL-2026-9XVP', 'TRIAL-2026-ARGE', 'TRIAL-2026-BFG7',
+      'TRIAL-2026-CD8Z', 'TRIAL-2026-CDM6', 'TRIAL-2026-D9DV', 'TRIAL-2026-DAQQ',
+      'TRIAL-2026-DMUB', 'TRIAL-2026-DU2Q', 'TRIAL-2026-EUSB', 'TRIAL-2026-F56Q',
+      'TRIAL-2026-J8X2', 'TRIAL-2026-KH9C', 'TRIAL-2026-LF2B', 'TRIAL-2026-LXNR',
+      'TRIAL-2026-M43D', 'TRIAL-2026-M874', 'TRIAL-2026-MGW8', 'TRIAL-2026-N7DQ',
+      'TRIAL-2026-P6DG', 'TRIAL-2026-Q59L', 'TRIAL-2026-R67J', 'TRIAL-2026-R9P9',
+      'TRIAL-2026-RA5Q', 'TRIAL-2026-RR62', 'TRIAL-2026-RWU2', 'TRIAL-2026-SLUN',
+      'TRIAL-2026-UCZX', 'TRIAL-2026-UD59', 'TRIAL-2026-VCQY', 'TRIAL-2026-VYEM',
+      'TRIAL-2026-WPPS', 'TRIAL-2026-XWDC'
+    ];
+    for (const code of trialCodes) {
+      await client.query(
+        `INSERT INTO promo_codes (code, created_by, max_uses, pass_type, duration_days) VALUES ($1, 1, 1, 'trial', 118) ON CONFLICT (code) DO NOTHING`,
         [code]
       );
     }
@@ -714,7 +751,13 @@ app.post('/api/promo/validate', async (req, res) => {
     if (promo.uses_count >= promo.max_uses) {
       return res.json({ valid: false, message: 'This promo code has already been used' });
     }
-    res.json({ valid: true, message: 'Promo code is valid - Free access!' });
+    if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+      return res.json({ valid: false, message: 'This promo code has expired' });
+    }
+    const message = promo.pass_type === 'trial'
+      ? `Promo code is valid - ${promo.duration_days} days of free access!`
+      : 'Promo code is valid - Free access!';
+    res.json({ valid: true, message, passType: promo.pass_type, durationDays: promo.duration_days });
   } catch (err) {
     console.error('Promo validate error:', err);
     res.status(500).json({ valid: false, message: 'Failed to validate promo code' });
@@ -744,16 +787,27 @@ app.post('/api/promo/redeem', authenticateToken, async (req, res) => {
     if (promo.uses_count >= promo.max_uses) {
       return res.status(400).json({ error: 'This promo code has already been used' });
     }
+    if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'This promo code has expired' });
+    }
+    // Calculate expiration date for trial codes (duration_days from now)
+    let expiresAt = null;
+    if (promo.duration_days) {
+      expiresAt = new Date(Date.now() + promo.duration_days * 24 * 60 * 60 * 1000);
+    }
     // Redeem it: mark code as used, give user complimentary access
     await dbRun(
       'UPDATE promo_codes SET uses_count = uses_count + 1, used_by = $1, used_at = CURRENT_TIMESTAMP WHERE code = $2',
       [user.id, codeUpper]
     );
     await dbRun(
-      'UPDATE users SET subscription_status = $1, promo_code_used = $2 WHERE id = $3',
-      ['complimentary', codeUpper, user.id]
+      'UPDATE users SET subscription_status = $1, promo_code_used = $2, subscription_expires_at = $3 WHERE id = $4',
+      ['complimentary', codeUpper, expiresAt, user.id]
     );
-    res.json({ message: 'Promo code redeemed! Welcome to H-CAR.', status: 'complimentary' });
+    const message = promo.pass_type === 'trial'
+      ? `Promo code redeemed! You have ${promo.duration_days} days of free access. Welcome to H-CAR.`
+      : 'Promo code redeemed! Welcome to H-CAR.';
+    res.json({ message, status: 'complimentary', expiresAt, durationDays: promo.duration_days });
   } catch (err) {
     console.error('Promo redeem error:', err);
     res.status(500).json({ error: 'Failed to redeem promo code' });
@@ -766,11 +820,13 @@ app.get('/api/promo/my-codes', authenticateToken, async (req, res) => {
   try {
     const codes = await dbAll(
       `SELECT p.code, p.created_at, p.uses_count, p.max_uses, p.used_at,
-              u.name as used_by_name, u.email as used_by_email
+              p.pass_type, p.duration_days, p.expires_at,
+              u.name as used_by_name, u.email as used_by_email,
+              u.subscription_expires_at as user_expires_at
        FROM promo_codes p
        LEFT JOIN users u ON p.used_by = u.id
        WHERE p.created_by = $1
-       ORDER BY p.created_at DESC`,
+       ORDER BY p.pass_type, p.created_at DESC`,
       [req.user.id]
     );
     res.json({ codes });
@@ -783,15 +839,24 @@ app.get('/api/promo/my-codes', authenticateToken, async (req, res) => {
 // Get user status
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, created_at FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    // Check if trial subscription has expired
+    let subscriptionStatus = user.subscription_status;
+    if (subscriptionStatus === 'complimentary' && user.subscription_expires_at) {
+      if (new Date(user.subscription_expires_at) < new Date()) {
+        subscriptionStatus = 'expired';
+      }
+    }
     res.json({
       id: user.id,
       name: user.name,
       email: user.email,
       consentGiven: !!user.consent_given,
-      subscriptionStatus: user.subscription_status,
+      subscriptionStatus,
       subscriptionPeriodEnd: user.subscription_period_end,
+      subscriptionExpiresAt: user.subscription_expires_at,
+      promoCodeUsed: user.promo_code_used,
       createdAt: user.created_at
     });
   } catch (err) {
