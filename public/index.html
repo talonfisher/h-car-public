@@ -1045,8 +1045,21 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 </div>
 <div class="price">$5<span>/month CAD</span></div>
 <p style="text-align:center;">H-CAR Monthly - Cancel anytime</p>
+
+<div id="promo-section" style="margin:20px 0;padding:16px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;">
+<p style="margin:0 0 10px 0;font-weight:700;">Have a promo code?</p>
+<p style="margin:0 0 12px 0;font-size:13px;color:var(--muted);">Enter a free pass code from Talon to get complimentary access.</p>
+<div style="display:flex;gap:8px;">
+<input type="text" id="promo-code-input" placeholder="Enter promo code (e.g., FAMILY-2026-A1B2)" style="flex:1;text-transform:uppercase;" autocomplete="off">
+<button onclick="applyPromoCode()" style="white-space:nowrap;width:auto;margin:0;">Apply</button>
+</div>
+<div id="promo-msg" style="margin-top:10px;"></div>
+</div>
+
+<div id="payment-form-section">
 <div id="card-container"></div>
 <button id="pay-btn" onclick="processPayment()">Subscribe - $5.00/month</button>
+</div>
 <div id="pay-error" class="error hidden"></div>
 <div id="pay-success" class="success hidden"></div>
 </div>
@@ -1273,6 +1286,14 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <button onclick="sendFamilyInvite()" style="white-space:nowrap;">Send Invite</button>
 </div>
 <p style="color:var(--muted);font-size:13px;margin-top:8px;">They must have an H-CAR account. They will need to accept your invite before you can see their status.</p>
+</div>
+
+<div class="section-card" id="promo-codes-section">
+<p class="section-eyebrow">Free Passes</p>
+<h3>My Promo Codes</h3>
+<p style="color:var(--muted);font-size:14px;">Free pass codes to give to friends and family. Each code gives one person complimentary access to H-CAR.</p>
+<div id="promo-codes-list"><p style="color:var(--muted);">Loading your promo codes...</p></div>
+<button class="secondary" onclick="loadMyPromoCodes()" style="margin-top:10px;">Refresh Codes</button>
 </div>
 
 <button class="secondary" onclick="showSettings()">Settings</button>
@@ -1579,17 +1600,55 @@ async function processPayment() {
   }
 }
 
+async function applyPromoCode() {
+  const input = document.getElementById('promo-code-input');
+  const msgEl = document.getElementById('promo-msg');
+  const code = input.value.trim().toUpperCase();
+  if (!code) {
+    msgEl.innerHTML = '<p style="color:var(--red-ink);margin:0;">Please enter a promo code.</p>';
+    return;
+  }
+  msgEl.innerHTML = '<p style="color:var(--muted);margin:0;">Checking promo code...</p>';
+  try {
+    // First validate the code
+    const validateRes = await fetch('/api/promo/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const validateData = await validateRes.json();
+    if (!validateData.valid) {
+      msgEl.innerHTML = '<p style="color:var(--red-ink);margin:0;">' + escapeHtml(validateData.message) + '</p>';
+      return;
+    }
+    // Code is valid, redeem it
+    msgEl.innerHTML = '<p style="color:var(--muted);margin:0;">Promo code valid! Redeeming...</p>';
+    const redeemData = await apiCall('/promo/redeem', 'POST', { code });
+    msgEl.innerHTML = '<p style="color:var(--teal);font-weight:700;margin:0;">✓ Promo code applied - Free access! Welcome to H-CAR.</p>';
+    // Hide the payment form since promo code covers it
+    document.getElementById('payment-form-section').classList.add('hidden');
+    document.getElementById('promo-section').style.opacity = '0.7';
+    input.disabled = true;
+    setTimeout(() => checkStatus(), 1500);
+  } catch (e) {
+    msgEl.innerHTML = '<p style="color:var(--red-ink);margin:0;">' + escapeHtml(e.message || 'Failed to apply promo code') + '</p>';
+  }
+}
+
 async function checkStatus() {
   try {
     const me = await apiCall('/me', 'GET');
     document.getElementById('dash-name').textContent = me.name;
     if (!me.consentGiven) {
       showStep('consent-step');
-    } else if (me.subscriptionStatus !== 'active') {
+    } else if (me.subscriptionStatus !== 'active' && me.subscriptionStatus !== 'complimentary') {
       showStep('payment-step');
       await initSquare();
     } else {
-      document.getElementById('dash-status').innerHTML = '<div class="success">Subscription active. ' + (me.subscriptionPeriodEnd ? 'Paid through ' + new Date(me.subscriptionPeriodEnd).toLocaleDateString() : '') + '</div>';
+      const statusText = me.subscriptionStatus === 'complimentary'
+        ? 'Complimentary access (free pass).'
+        : 'Subscription active. ' + (me.subscriptionPeriodEnd ? 'Paid through ' + new Date(me.subscriptionPeriodEnd).toLocaleDateString() : '');
+      document.getElementById('dash-status').innerHTML = '<div class="success">' + statusText + '</div>';
       showStep('dashboard');
       await loadDashboard();
     }
@@ -1614,6 +1673,7 @@ async function loadDashboard() {
     loadSymptoms();
     loadSleepCheckin();
     loadFamilyDashboard();
+    loadMyPromoCodes();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
   }
@@ -2055,6 +2115,36 @@ async function loadFamilyDashboard() {
     // Non-critical; show empty state
     renderFamilyList([]);
     renderPendingInvites([]);
+  }
+}
+
+// Promo Codes: free passes for friends and family
+async function loadMyPromoCodes() {
+  const listEl = document.getElementById('promo-codes-list');
+  if (!listEl) return;
+  try {
+    const data = await apiCall('/promo/my-codes', 'GET');
+    const codes = data.codes || [];
+    if (codes.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No promo codes yet.</p>';
+      return;
+    }
+    listEl.innerHTML = codes.map(c => {
+      const isUsed = c.uses_count >= c.max_uses;
+      const statusColor = isUsed ? 'var(--red-ink)' : 'var(--teal)';
+      const statusText = isUsed
+        ? 'Used' + (c.used_by_name ? ' by ' + escapeHtml(c.used_by_name) : '') + (c.used_at ? ' on ' + new Date(c.used_at).toLocaleDateString() : '')
+        : 'Available (' + (c.max_uses - c.uses_count) + ' use' + (c.max_uses - c.uses_count > 1 ? 's' : '') + ' left)';
+      return '<div style="padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--line);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+        '<code style="font-size:15px;font-weight:700;letter-spacing:0.5px;">' + escapeHtml(c.code) + '</code>' +
+        '<span style="font-size:13px;color:' + statusColor + ';font-weight:600;">' + statusText + '</span>' +
+        '</div>' +
+        '<p style="margin:6px 0 0 0;font-size:13px;color:var(--muted);">Created ' + new Date(c.created_at).toLocaleDateString() + '</p>' +
+        '</div>';
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load promo codes.</p>';
   }
 }
 
