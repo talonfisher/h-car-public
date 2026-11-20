@@ -271,6 +271,37 @@ async function initDatabase() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Promo codes for free passes (friends and family). Each code can be
+    // used max_uses times (default 1). When redeemed, the user gets
+    // subscription_status = 'complimentary' instead of paying via Square.
+    await client.query(`CREATE TABLE IF NOT EXISTS promo_codes (
+      code TEXT PRIMARY KEY,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      used_by INTEGER REFERENCES users(id),
+      used_at TIMESTAMP,
+      max_uses INTEGER DEFAULT 1,
+      uses_count INTEGER DEFAULT 0
+    )`);
+
+    // Track which promo code a user redeemed (if any).
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_code_used TEXT`);
+
+    // Seed initial promo codes for Talon (user ID 1) if they don't exist.
+    const seedCodes = [
+      'FAMILY-2026-A1B2',
+      'FAMILY-2026-C3D4',
+      'FAMILY-2026-E5F6',
+      'FRIEND-2026-G7H8',
+      'FRIEND-2026-I9J0'
+    ];
+    for (const code of seedCodes) {
+      await client.query(
+        `INSERT INTO promo_codes (code, created_by, max_uses) VALUES ($1, 1, 1) ON CONFLICT (code) DO NOTHING`,
+        [code]
+      );
+    }
+
     console.log('Database tables initialized');
   } finally {
     client.release();
@@ -663,6 +694,92 @@ app.post('/api/subscribe', authenticateToken, async (req, res) => {
   }
 });
 
+// ---- Promo code endpoints ----
+// Free passes for friends and family. Talon creates codes, friends redeem
+// them during signup to get complimentary access without paying via Square.
+
+// Validate a promo code (check if it exists and has uses remaining).
+// POST /api/promo/validate - Public (no auth needed, used during signup)
+app.post('/api/promo/validate', async (req, res) => {
+  const { code } = req.body;
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ valid: false, message: 'Promo code is required' });
+  }
+  const codeUpper = code.trim().toUpperCase();
+  try {
+    const promo = await dbGet('SELECT * FROM promo_codes WHERE code = $1', [codeUpper]);
+    if (!promo) {
+      return res.json({ valid: false, message: 'Invalid promo code' });
+    }
+    if (promo.uses_count >= promo.max_uses) {
+      return res.json({ valid: false, message: 'This promo code has already been used' });
+    }
+    res.json({ valid: true, message: 'Promo code is valid - Free access!' });
+  } catch (err) {
+    console.error('Promo validate error:', err);
+    res.status(500).json({ valid: false, message: 'Failed to validate promo code' });
+  }
+});
+
+// Redeem a promo code (during signup/payment step).
+// POST /api/promo/redeem - Requires auth (user must be signed up first)
+app.post('/api/promo/redeem', authenticateToken, async (req, res) => {
+  const { code } = req.body;
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'Promo code is required' });
+  }
+  const codeUpper = code.trim().toUpperCase();
+  try {
+    const user = await dbGet('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.consent_given) return res.status(400).json({ error: 'Consent must be given before redeeming a promo code' });
+    if (user.subscription_status === 'active' || user.subscription_status === 'complimentary') {
+      return res.json({ message: 'Already subscribed', status: user.subscription_status });
+    }
+    // Check the promo code
+    const promo = await dbGet('SELECT * FROM promo_codes WHERE code = $1', [codeUpper]);
+    if (!promo) {
+      return res.status(400).json({ error: 'Invalid promo code' });
+    }
+    if (promo.uses_count >= promo.max_uses) {
+      return res.status(400).json({ error: 'This promo code has already been used' });
+    }
+    // Redeem it: mark code as used, give user complimentary access
+    await dbRun(
+      'UPDATE promo_codes SET uses_count = uses_count + 1, used_by = $1, used_at = CURRENT_TIMESTAMP WHERE code = $2',
+      [user.id, codeUpper]
+    );
+    await dbRun(
+      'UPDATE users SET subscription_status = $1, promo_code_used = $2 WHERE id = $3',
+      ['complimentary', codeUpper, user.id]
+    );
+    res.json({ message: 'Promo code redeemed! Welcome to H-CAR.', status: 'complimentary' });
+  } catch (err) {
+    console.error('Promo redeem error:', err);
+    res.status(500).json({ error: 'Failed to redeem promo code' });
+  }
+});
+
+// List promo codes created by the logged-in user.
+// GET /api/promo/my-codes - Requires auth
+app.get('/api/promo/my-codes', authenticateToken, async (req, res) => {
+  try {
+    const codes = await dbAll(
+      `SELECT p.code, p.created_at, p.uses_count, p.max_uses, p.used_at,
+              u.name as used_by_name, u.email as used_by_email
+       FROM promo_codes p
+       LEFT JOIN users u ON p.used_by = u.id
+       WHERE p.created_by = $1
+       ORDER BY p.created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ codes });
+  } catch (err) {
+    console.error('Promo my-codes error:', err);
+    res.status(500).json({ error: 'Failed to list promo codes' });
+  }
+});
+
 // Get user status
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
@@ -687,7 +804,18 @@ app.get('/api/me', authenticateToken, async (req, res) => {
 app.post('/api/cancel', authenticateToken, async (req, res) => {
   try {
     const user = await dbGet('SELECT * FROM users WHERE id = $1', [req.user.id]);
-    if (!user || !user.square_subscription_id) {
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // Complimentary (promo code) subscriptions have no Square subscription to cancel
+    if (user.subscription_status === 'complimentary') {
+      await dbRun(
+        'UPDATE users SET subscription_status = $1 WHERE id = $2',
+        ['canceled', user.id]
+      );
+      return res.json({ message: 'Complimentary access canceled.' });
+    }
+    if (!user.square_subscription_id) {
       return res.status(404).json({ error: 'No active subscription' });
     }
     await squareClient.subscriptionsApi.cancelSubscription(user.square_subscription_id);
