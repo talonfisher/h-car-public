@@ -1291,7 +1291,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="section-card" id="promo-codes-section">
 <p class="section-eyebrow">Free Passes</p>
 <h3>My Promo Codes</h3>
-<p style="color:var(--muted);font-size:14px;">Free pass codes to give to friends and family. Each code gives one person complimentary access to H-CAR.</p>
+<p style="color:var(--muted);font-size:14px;">Free pass codes to give out. Family and Friend passes give permanent complimentary access. Trial passes give 118 days of access (28-day baseline + 90 days live monitoring).</p>
 <div id="promo-codes-list"><p style="color:var(--muted);">Loading your promo codes...</p></div>
 <button class="secondary" onclick="loadMyPromoCodes()" style="margin-top:10px;">Refresh Codes</button>
 </div>
@@ -1642,12 +1642,24 @@ async function checkStatus() {
     if (!me.consentGiven) {
       showStep('consent-step');
     } else if (me.subscriptionStatus !== 'active' && me.subscriptionStatus !== 'complimentary') {
+      if (me.subscriptionStatus === 'expired') {
+        document.getElementById('payment-msg').innerHTML = '<div class="error">Your trial access has expired. Subscribe to continue using H-CAR.</div>';
+      }
       showStep('payment-step');
       await initSquare();
     } else {
-      const statusText = me.subscriptionStatus === 'complimentary'
-        ? 'Complimentary access (free pass).'
-        : 'Subscription active. ' + (me.subscriptionPeriodEnd ? 'Paid through ' + new Date(me.subscriptionPeriodEnd).toLocaleDateString() : '');
+      let statusText;
+      if (me.subscriptionStatus === 'complimentary') {
+        if (me.subscriptionExpiresAt) {
+          const expiresDate = new Date(me.subscriptionExpiresAt);
+          const daysLeft = Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24));
+          statusText = 'Trial access (free pass). ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left, expires ' + expiresDate.toLocaleDateString() + '.';
+        } else {
+          statusText = 'Complimentary access (free pass).';
+        }
+      } else {
+        statusText = 'Subscription active. ' + (me.subscriptionPeriodEnd ? 'Paid through ' + new Date(me.subscriptionPeriodEnd).toLocaleDateString() : '');
+      }
       document.getElementById('dash-status').innerHTML = '<div class="success">' + statusText + '</div>';
       showStep('dashboard');
       await loadDashboard();
@@ -2129,20 +2141,56 @@ async function loadMyPromoCodes() {
       listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No promo codes yet.</p>';
       return;
     }
-    listEl.innerHTML = codes.map(c => {
-      const isUsed = c.uses_count >= c.max_uses;
-      const statusColor = isUsed ? 'var(--red-ink)' : 'var(--teal)';
-      const statusText = isUsed
-        ? 'Used' + (c.used_by_name ? ' by ' + escapeHtml(c.used_by_name) : '') + (c.used_at ? ' on ' + new Date(c.used_at).toLocaleDateString() : '')
-        : 'Available (' + (c.max_uses - c.uses_count) + ' use' + (c.max_uses - c.uses_count > 1 ? 's' : '') + ' left)';
-      return '<div style="padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--line);">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
-        '<code style="font-size:15px;font-weight:700;letter-spacing:0.5px;">' + escapeHtml(c.code) + '</code>' +
-        '<span style="font-size:13px;color:' + statusColor + ';font-weight:600;">' + statusText + '</span>' +
-        '</div>' +
-        '<p style="margin:6px 0 0 0;font-size:13px;color:var(--muted);">Created ' + new Date(c.created_at).toLocaleDateString() + '</p>' +
-        '</div>';
-    }).join('');
+    // Group codes by pass type
+    const grouped = {};
+    codes.forEach(c => {
+      const type = c.pass_type || 'family';
+      if (!grouped[type]) grouped[type] = [];
+      grouped[type].push(c);
+    });
+    const typeLabels = {
+      'family': 'Family Passes (permanent)',
+      'friend': 'Friend Passes (permanent)',
+      'trial': 'Trial Guest Passes (118 days)'
+    };
+    const typeOrder = ['trial', 'family', 'friend'];
+    let html = '';
+    typeOrder.forEach(type => {
+      if (!grouped[type] || grouped[type].length === 0) return;
+      const typeCodes = grouped[type];
+      const available = typeCodes.filter(c => c.uses_count < c.max_uses).length;
+      html += '<h4 style="margin:16px 0 8px 0;font-size:14px;color:var(--ink);">' + typeLabels[type] + ' - ' + available + ' of ' + typeCodes.length + ' available</h4>';
+      html += typeCodes.map(c => {
+        const isUsed = c.uses_count >= c.max_uses;
+        const statusColor = isUsed ? 'var(--red-ink)' : 'var(--teal)';
+        let statusText;
+        if (isUsed) {
+          statusText = 'Used' + (c.used_by_name ? ' by ' + escapeHtml(c.used_by_name) : '') + (c.used_at ? ' on ' + new Date(c.used_at).toLocaleDateString() : '');
+          if (c.user_expires_at) {
+            const expiresDate = new Date(c.user_expires_at);
+            const daysLeft = Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24));
+            if (daysLeft > 0) {
+              statusText += ' (' + daysLeft + ' days left)';
+            } else {
+              statusText += ' (expired)';
+            }
+          }
+        } else {
+          statusText = 'Available';
+          if (c.duration_days) {
+            statusText += ' (' + c.duration_days + ' days)';
+          }
+        }
+        return '<div style="padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--line);">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+          '<code style="font-size:15px;font-weight:700;letter-spacing:0.5px;">' + escapeHtml(c.code) + '</code>' +
+          '<span style="font-size:13px;color:' + statusColor + ';font-weight:600;">' + statusText + '</span>' +
+          '</div>' +
+          '<p style="margin:6px 0 0 0;font-size:13px;color:var(--muted);">Created ' + new Date(c.created_at).toLocaleDateString() + '</p>' +
+          '</div>';
+      }).join('');
+    });
+    listEl.innerHTML = html;
   } catch (e) {
     listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load promo codes.</p>';
   }
