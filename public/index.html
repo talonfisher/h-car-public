@@ -159,7 +159,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <p style="margin-top:12px">Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
 
 
-<div class="price">$5<span>/month CAD</span></div>
+<div class="price">Free<span>during trial</span></div>
 <p style="text-align:center;color:var(--muted);">Cancel anytime. No hidden fees.</p>
 <div style="text-align:center;margin:16px 0;">
 <span class="pill">28-day baseline</span>
@@ -943,7 +943,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 
 <div class="learn-section">
 <h3>2. Subscription and Payment</h3>
-<p>H-CAR costs $5.00 CAD per month, billed monthly through Square. You may cancel anytime from your account settings. Cancellation takes effect at the end of your current paid period. No refunds are given for partial months.</p>
+<p>H-CAR costs Free during the 118-day trial, billed monthly through Square. You may cancel anytime from your account settings. Cancellation takes effect at the end of your current paid period. No refunds are given for partial months.</p>
 </div>
 
 <div class="learn-section">
@@ -1009,7 +1009,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 
 <div class="consent-section normal">
 <h4>7. Subscription terms</h4>
-<p>$5.00 CAD per month, auto-renewing. Cancel anytime, effective at the end of your paid period. No refunds for partial months. Payment is processed by Square. Your card details are tokenized by Square and never touch our servers.</p>
+<p>Free during the 118-day trial, auto-renewing. Cancel anytime, effective at the end of your paid period. No refunds for partial months. Payment is processed by Square. Your card details are tokenized by Square and never touch our servers.</p>
 </div>
 
 <div class="consent-section normal">
@@ -1028,7 +1028,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <label><input type="checkbox" class="ack" data-n="6"> I understand Fitbit sensors provide estimates, not clinical measurements.</label>
 <label><input type="checkbox" class="ack" data-n="7"> I use H-CAR at my own risk and accept the limitation of liability.</label>
 <label><input type="checkbox" class="ack" data-n="8"> I understand my data handling as described in the privacy notice.</label>
-<label><input type="checkbox" class="ack" data-n="9"> I understand the subscription terms ($5/month, cancel anytime, no partial refunds).</label>
+<label><input type="checkbox" class="ack" data-n="9"> I understand the subscription terms (Free during trial, cancel anytime, no partial refunds).</label>
 <label><input type="checkbox" class="ack" data-n="10"> I am 19 years of age or older, or I have guardian consent to use H-CAR.</label>
 <label><input type="checkbox" class="ack" data-n="11"> I understand my de-identified health data may be used for research to validate H-CAR's effectiveness, as described in section 8.</label>
 </div>
@@ -1043,7 +1043,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <h4>H-CAR is a general wellness tool, not a medical device.</h4>
 <p>By subscribing, you acknowledge you have read the consent form and understand H-CAR does not diagnose, treat, or monitor any disease or condition, cannot detect sudden medical emergencies, and is used at your own risk.</p>
 </div>
-<div class="price">$5<span>/month CAD</span></div>
+<div class="price">Free<span>during trial</span></div>
 <p style="text-align:center;">H-CAR Monthly - Cancel anytime</p>
 
 <div id="promo-section" style="margin:20px 0;padding:16px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;">
@@ -1058,7 +1058,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 
 <div id="payment-form-section">
 <div id="card-container"></div>
-<button id="pay-btn" onclick="processPayment()">Subscribe - $5.00/month</button>
+<button id="pay-btn" onclick="processPayment()">Subscribe - Free during trial</button>
 </div>
 <div id="pay-error" class="error hidden"></div>
 <div id="pay-success" class="success hidden"></div>
@@ -1335,7 +1335,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="footer">
 <p><a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showFooterPage('terms'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
 <p style="margin-top:12px;">H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
-<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. $5/month. Cancel anytime.</p>
+<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. Free during trial. Cancel anytime.</p>
 </div>
 </div>
 
@@ -1528,8 +1528,8 @@ async function submitConsent() {
   errEl.classList.add('hidden');
   try {
     await apiCall('/consent', 'POST', { acknowledgments: acks });
-    showStep('payment-step');
-    await initSquare();
+    // Free trial: skip payment step, go directly to dashboard
+    checkStatus();
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
@@ -1562,7 +1562,7 @@ async function initSquare() {
     squareCard = await squarePayments.card();
     await squareCard.attach('#card-container');
     payBtn.disabled = false;
-    payBtn.textContent = 'Subscribe - $5.00/month';
+    payBtn.textContent = 'Subscribe - Free during trial';
   } catch (e) {
     document.getElementById('pay-error').textContent = 'Failed to load payment form: ' + e.message + '. Please refresh the page and try again.';
     document.getElementById('pay-error').classList.remove('hidden');
@@ -1596,7 +1596,7 @@ async function processPayment() {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
     document.getElementById('pay-btn').disabled = false;
-    document.getElementById('pay-btn').textContent = 'Subscribe - $5.00/month';
+    document.getElementById('pay-btn').textContent = 'Subscribe - Free during trial';
   }
 }
 
