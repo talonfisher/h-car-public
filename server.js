@@ -12,6 +12,7 @@ require('dotenv').config();
 
 const detector = require('./detector');
 const googleHealth = require('./google-health');
+const garminHealth = require('./garmin-health');
 const alertEngine = require('./alert-engine');
 const axios = require('axios');
 
@@ -127,6 +128,22 @@ async function initDatabase() {
     // encrypted before storage; see google-health.js.
     await client.query(`CREATE TABLE IF NOT EXISTS fitbit_tokens (
       user_id INTEGER PRIMARY KEY,
+      access_token_enc TEXT,
+      refresh_token_enc TEXT,
+      expires_at BIGINT,
+      connected_at TEXT,
+      last_sync_at TEXT,
+      last_sync_error TEXT,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )`);
+
+    // Garmin Health API tokens. Tokens are AES-256-GCM encrypted before
+    // storage; see garmin-health.js. Garmin uses OAuth 2.0 with PKCE.
+    // The garmin_user_id is Garmin's internal user ID, used to match
+    // webhook push notifications to H-CAR users.
+    await client.query(`CREATE TABLE IF NOT EXISTS garmin_tokens (
+      user_id INTEGER PRIMARY KEY,
+      garmin_user_id TEXT,
       access_token_enc TEXT,
       refresh_token_enc TEXT,
       expires_at BIGINT,
@@ -452,7 +469,7 @@ function authenticateToken(req, res, next) {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'H-CAR', version: '1.3.0', googleHealthConfigured: googleHealth.isConfigured(), database: 'postgres', smsConfigured: isSmsConfigured(), pushConfigured: isPushConfigured() });
+  res.json({ status: 'ok', app: 'H-CAR', version: '1.4.0', googleHealthConfigured: googleHealth.isConfigured(), garminConfigured: garminHealth.isConfigured(), database: 'postgres', smsConfigured: isSmsConfigured(), pushConfigured: isPushConfigured() });
 });
 
 // Page visitor counter (public, no auth required)
@@ -2120,11 +2137,219 @@ app.post('/api/fitbit/sync', authenticateToken, async (req, res) => {
   }
 });
 
+// ---- Garmin Health API endpoints ----
+// Garmin uses OAuth 2.0 with PKCE. The flow:
+// 1. Frontend calls GET /api/garmin/connect, gets auth URL + code_verifier
+// 2. Frontend redirects user to Garmin auth URL
+// 3. Garmin redirects back to /api/garmin/callback with code + state
+// 4. Server exchanges code for tokens using code_verifier
+// 5. Tokens stored encrypted in garmin_tokens table
+//
+// Data delivery is PUSH-based: Garmin sends data to our webhook endpoint
+// (/api/garmin/webhook) when a user syncs their device. There is no
+// polling endpoint for Business Starter tier.
+
+app.get('/api/garmin/connect', authenticateToken, (req, res) => {
+  if (!garminHealth.isConfigured()) {
+    return res.status(503).json({ error: 'Garmin is not configured yet. The operator must set GARMIN_CLIENT_ID and GARMIN_CLIENT_SECRET.' });
+  }
+  const codeVerifier = garminHealth.generateCodeVerifier();
+  const codeChallenge = garminHealth.generateCodeChallenge(codeVerifier);
+  const state = jwt.sign(
+    { userId: req.user.id, codeVerifier, nonce: Math.random().toString(36).slice(2) },
+    JWT_SECRET,
+    { expiresIn: '10m' }
+  );
+  res.json({ url: garminHealth.getAuthUrl(state, codeChallenge) });
+});
+
+// OAuth callback from Garmin. Exchanges the code for tokens using the
+// PKCE code_verifier stored in the state JWT, then stores tokens.
+app.get('/api/garmin/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  const fail = (message) => res.redirect('/?garmin=error&message=' + encodeURIComponent(message));
+  if (error) return fail('Garmin sign-in failed: ' + error);
+  if (!code || !state) return fail('Missing code or state from Garmin.');
+  let payload;
+  try {
+    payload = jwt.verify(state, JWT_SECRET);
+  } catch (e) {
+    return fail('The connection request expired. Please try again.');
+  }
+  try {
+    const tokens = await garminHealth.exchangeCode(code, payload.codeVerifier);
+    if (!tokens.refresh_token) {
+      return fail('Garmin did not return a refresh token. Please try again.');
+    }
+    // Garmin user ID is returned in the token response or can be fetched
+    // from the API. For now, store null and update it when we receive
+    // the first webhook push.
+    await dbRun(
+      `INSERT INTO garmin_tokens (user_id, access_token_enc, refresh_token_enc, expires_at, connected_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT(user_id) DO UPDATE SET
+         access_token_enc = EXCLUDED.access_token_enc,
+         refresh_token_enc = EXCLUDED.refresh_token_enc,
+         expires_at = EXCLUDED.expires_at,
+         connected_at = EXCLUDED.connected_at,
+         last_sync_error = NULL`,
+      [
+        payload.userId,
+        garminHealth.encryptToken(tokens.access_token),
+        garminHealth.encryptToken(tokens.refresh_token),
+        Date.now() + (tokens.expires_in || 3600) * 1000,
+        new Date().toISOString(),
+      ]
+    );
+    res.redirect('/?garmin=connected');
+  } catch (e) {
+    console.error('Garmin callback error:', e.message);
+    return fail('Could not complete the Garmin connection. Please try again.');
+  }
+});
+
+app.get('/api/garmin/status', authenticateToken, async (req, res) => {
+  try {
+    const row = await dbGet('SELECT connected_at, last_sync_at, last_sync_error FROM garmin_tokens WHERE user_id = $1', [req.user.id]);
+    res.json({
+      connected: !!row,
+      connectedAt: row ? row.connected_at : null,
+      lastSyncAt: row ? row.last_sync_at : null,
+      lastSyncError: row ? row.last_sync_error : null,
+      garminConfigured: garminHealth.isConfigured(),
+    });
+  } catch (err) {
+    console.error('Garmin status error:', err);
+    res.status(500).json({ error: 'Failed to get Garmin status' });
+  }
+});
+
+app.post('/api/garmin/disconnect', authenticateToken, async (req, res) => {
+  try {
+    await dbRun('DELETE FROM garmin_tokens WHERE user_id = $1', [req.user.id]);
+    res.json({ message: 'Garmin disconnected. Your stored summaries and detector history are kept; delete your account to remove them.' });
+  } catch (err) {
+    console.error('Garmin disconnect error:', err);
+    res.status(500).json({ error: 'Failed to disconnect Garmin' });
+  }
+});
+
+// Garmin webhook endpoint. Garmin pushes data here when a user syncs
+// their device. Each data type has its own endpoint, or a single endpoint
+// receives all types with an X-Record-Type header.
+//
+// Garmin sends:
+//   POST /api/garmin/webhook/dailies
+//   POST /api/garmin/webhook/sleep
+//   POST /api/garmin/webhook/hrv
+//   POST /api/garmin/webhook/pulseox
+//   POST /api/garmin/webhook/respiration
+//   POST /api/garmin/webhook/skinTemp
+//
+// Or with a single endpoint:
+//   POST /api/garmin/webhook (with X-Record-Type header)
+//
+// The payload contains a userId (Garmin's ID) and an array of data points.
+// We look up the H-CAR user by garmin_user_id, parse the data, and store
+// it in daily_summaries. Processing must be idempotent: Garmin may send
+// the same data multiple times.
+app.post('/api/garmin/webhook/:type?', async (req, res) => {
+  try {
+    const recordType = req.params.type || req.headers['x-record-type'];
+    if (!recordType) {
+      return res.status(400).json({ error: 'Missing record type' });
+    }
+
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ error: 'Invalid payload' });
+    }
+
+    // Parse the payload into H-CAR daily summary format
+    const days = garminHealth.parseWebhookPayload(recordType, payload);
+
+    // Find the H-CAR user by Garmin user ID. The payload contains userId
+    // in each data point. We use the first one to look up the user.
+    let garminUserId = null;
+    const dataArrays = ['dailies', 'sleeps', 'hrvSummaries', 'pulseOx', 'allDayRespiration', 'skinTemp'];
+    for (const key of dataArrays) {
+      if (Array.isArray(payload[key]) && payload[key].length > 0 && payload[key][0].userId) {
+        garminUserId = payload[key][0].userId;
+        break;
+      }
+    }
+
+    if (!garminUserId) {
+      return res.status(400).json({ error: 'No Garmin user ID in payload' });
+    }
+
+    const tokenRow = await dbGet('SELECT user_id FROM garmin_tokens WHERE garmin_user_id = $1', [garminUserId]);
+    if (!tokenRow) {
+      // User not found by Garmin ID. Try to match by the first webhook:
+      // if garmin_user_id is null in the DB, update it from this payload.
+      // This handles the case where the user connected but we did not get
+      // their Garmin ID during OAuth.
+      console.log('Garmin webhook: unknown user ID ' + garminUserId + ', ignoring');
+      return res.status(200).json({ message: 'User not found, ignoring' });
+    }
+
+    const userId = tokenRow.user_id;
+    let upserted = 0;
+
+    for (const [date, s] of Object.entries(days)) {
+      const signalsPresent = [s.rhr, s.hrv, s.spo2_avg, s.breathing_rate, s.sleep_minutes, s.skin_temp_delta]
+        .filter((v) => v !== null && v !== undefined).length;
+      if (signalsPresent === 0) continue;
+
+      await dbRun(
+        `INSERT INTO daily_summaries
+           (user_id, date, rhr, hrv, spo2_avg, spo2_min, breathing_rate, sleep_minutes, sleep_efficiency, skin_temp_delta, deep_minutes, rem_minutes, signals_present)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         ON CONFLICT(user_id, date) DO UPDATE SET
+           rhr = COALESCE(EXCLUDED.rhr, daily_summaries.rhr),
+           hrv = COALESCE(EXCLUDED.hrv, daily_summaries.hrv),
+           spo2_avg = COALESCE(EXCLUDED.spo2_avg, daily_summaries.spo2_avg),
+           spo2_min = COALESCE(EXCLUDED.spo2_min, daily_summaries.spo2_min),
+           breathing_rate = COALESCE(EXCLUDED.breathing_rate, daily_summaries.breathing_rate),
+           sleep_minutes = COALESCE(EXCLUDED.sleep_minutes, daily_summaries.sleep_minutes),
+           sleep_efficiency = COALESCE(EXCLUDED.sleep_efficiency, daily_summaries.sleep_efficiency),
+           skin_temp_delta = COALESCE(EXCLUDED.skin_temp_delta, daily_summaries.skin_temp_delta),
+           deep_minutes = COALESCE(EXCLUDED.deep_minutes, daily_summaries.deep_minutes),
+           rem_minutes = COALESCE(EXCLUDED.rem_minutes, daily_summaries.rem_minutes),
+           signals_present = EXCLUDED.signals_present`,
+        [userId, date, s.rhr, s.hrv, s.spo2_avg, s.spo2_min, s.breathing_rate, s.sleep_minutes, s.sleep_efficiency, s.skin_temp_delta, s.deep_minutes, s.rem_minutes, signalsPresent]
+      );
+      upserted += 1;
+    }
+
+    if (upserted > 0) {
+      // Re-run detector with the new data
+      const det = await runDetectorForUser(userId);
+      // Check for new Act episodes and create alerts
+      try {
+        await maybeSendActAlerts(userId, det.mergedEpisodes);
+      } catch (e) {
+        console.error('Act alert check failed for Garmin user ' + userId + ':', e.message);
+      }
+    }
+
+    await dbRun('UPDATE garmin_tokens SET last_sync_at = $1, last_sync_error = NULL WHERE user_id = $2',
+      [new Date().toISOString(), userId]);
+
+    res.status(200).json({ message: 'Webhook processed', daysUpserted: upserted });
+  } catch (e) {
+    console.error('Garmin webhook error:', e);
+    res.status(500).json({ error: 'Webhook processing failed: ' + e.message });
+  }
+});
+
 // Detector status for the dashboard: baseline progress, current status,
 // baselines, and recent flags.
 app.get('/api/detector/status', authenticateToken, async (req, res) => {
   try {
-    const tokenRow = await dbGet('SELECT last_sync_at FROM fitbit_tokens WHERE user_id = $1', [req.user.id]);
+    const fitbitRow = await dbGet('SELECT last_sync_at FROM fitbit_tokens WHERE user_id = $1', [req.user.id]);
+    const garminRow = await dbGet('SELECT last_sync_at FROM garmin_tokens WHERE user_id = $1', [req.user.id]);
+    const tokenRow = fitbitRow || garminRow;
     const range = await dbGet('SELECT MIN(date) AS first_date, MAX(date) AS last_date, COUNT(*) AS n_days FROM daily_summaries WHERE user_id = $1', [req.user.id]);
     const baselines = await dbAll('SELECT signal, centre, sigma, n FROM baselines WHERE user_id = $1', [req.user.id]);
     const episodes = await dbAll('SELECT * FROM episodes WHERE user_id = $1 ORDER BY start_date DESC LIMIT 5', [req.user.id]);
@@ -2133,6 +2358,8 @@ app.get('/api/detector/status', authenticateToken, async (req, res) => {
     if (!range || !range.first_date) {
       return res.json({
         connected: !!tokenRow,
+        fitbitConnected: !!fitbitRow,
+        garminConnected: !!garminRow,
         lastSyncAt: tokenRow ? tokenRow.last_sync_at : null,
         baselineDay: 0,
         baselineDays: 0,
@@ -2158,6 +2385,8 @@ app.get('/api/detector/status', authenticateToken, async (req, res) => {
 
     res.json({
       connected: !!tokenRow,
+      fitbitConnected: !!fitbitRow,
+      garminConnected: !!garminRow,
       lastSyncAt: tokenRow ? tokenRow.last_sync_at : null,
       firstDate: range.first_date,
       lastDate: range.last_date,
@@ -2281,6 +2510,7 @@ app.get('/api/admin/trial-summary', requireAdminKey, async (req, res) => {
          (SELECT COUNT(*) FROM users WHERE consent_given = 1) AS consented_users,
          (SELECT COUNT(*) FROM users WHERE subscription_status = 'active') AS paying_users,
          (SELECT COUNT(*) FROM fitbit_tokens) AS fitbit_connected,
+         (SELECT COUNT(*) FROM garmin_tokens) AS garmin_connected,
          (SELECT COUNT(*) FROM episodes) AS total_episodes,
          (SELECT COUNT(*) FROM episodes WHERE is_act = 1) AS total_act_episodes`
     );
@@ -2291,7 +2521,8 @@ app.get('/api/admin/trial-summary', requireAdminKey, async (req, res) => {
               (SELECT MAX(date) FROM daily_summaries d WHERE d.user_id = u.id) AS last_date,
               (SELECT COUNT(*) FROM episodes e WHERE e.user_id = u.id) AS episodes,
               (SELECT COUNT(*) FROM episodes e WHERE e.user_id = u.id AND e.is_act = 1) AS act_episodes,
-              CASE WHEN EXISTS (SELECT 1 FROM fitbit_tokens f WHERE f.user_id = u.id) THEN 1 ELSE 0 END AS fitbit_connected
+              CASE WHEN EXISTS (SELECT 1 FROM fitbit_tokens f WHERE f.user_id = u.id) THEN 1 ELSE 0 END AS fitbit_connected,
+              CASE WHEN EXISTS (SELECT 1 FROM garmin_tokens g WHERE g.user_id = u.id) THEN 1 ELSE 0 END AS garmin_connected
        FROM users u ORDER BY u.id`
     );
     // Convert counts from strings to numbers (pg returns COUNT as string)
@@ -2300,6 +2531,7 @@ app.get('/api/admin/trial-summary', requireAdminKey, async (req, res) => {
       consented_users: parseInt(totals.consented_users, 10),
       paying_users: parseInt(totals.paying_users, 10),
       fitbit_connected: parseInt(totals.fitbit_connected, 10),
+      garmin_connected: parseInt(totals.garmin_connected, 10),
       total_episodes: parseInt(totals.total_episodes, 10),
       total_act_episodes: parseInt(totals.total_act_episodes, 10),
     };
@@ -2311,6 +2543,7 @@ app.get('/api/admin/trial-summary', requireAdminKey, async (req, res) => {
       episodes: parseInt(u.episodes, 10),
       act_episodes: parseInt(u.act_episodes, 10),
       fitbit_connected: parseInt(u.fitbit_connected, 10),
+      garmin_connected: parseInt(u.garmin_connected, 10),
     }));
     res.json({ totals: totalsNum, users: perUserNum });
   } catch (err) {
