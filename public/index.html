@@ -57,6 +57,14 @@ button.secondary:hover{border-color:var(--teal)}
 .success{background:var(--green-bg);color:#065F46;padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #A7F3D0;font-size:14.5px}
 @media(prefers-color-scheme:dark){.success{color:#A7F3D0}}
 .hidden{display:none}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--surface);border:3px solid var(--red);border-radius:20px;padding:28px;max-width:440px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal-box h2{color:var(--red);margin:0 0 12px;font-size:26px}
+.modal-box p{font-size:15px;line-height:1.6;margin:10px 0}
+.modal-countdown{font-family:"DM Serif Display",serif;font-size:34px;color:var(--red);margin:8px 0}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#8F1B12}
 #card-container{margin:15px 0}
 .footer{text-align:center;color:var(--muted);font-size:13px;padding:28px 20px 40px;line-height:1.6;border-top:1px solid var(--line);margin-top:20px}
 .step-indicator{display:flex;justify-content:center;gap:10px;margin:20px 0}
@@ -1064,9 +1072,30 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div id="pay-success" class="success hidden"></div>
 </div>
 
+<!-- "Are you okay?" check-in. Shown when an Act flag fires. The user has
+5 minutes to answer. "Yes, I'm fine" cancels the alert. "No, I need help"
+(or silence) alerts the emergency contact by text and email. -->
+<div id="are-you-ok-modal" class="modal-overlay hidden" role="alertdialog" aria-modal="true" aria-labelledby="are-you-ok-title">
+<div class="modal-box">
+<h2 id="are-you-ok-title">Are you okay?</h2>
+<p>H-CAR detected a serious change from your baseline. If you are fine, tap "Yes, I'm fine" and no one will be alerted.</p>
+<p id="are-you-ok-vitals" style="font-size:14px;color:var(--muted);"></p>
+<p style="font-size:14px;">If you do not answer in</p>
+<div class="modal-countdown" id="are-you-ok-timer">5:00</div>
+<p style="font-size:14px;">your emergency contact will be alerted by text and email.</p>
+<button id="btn-ok-fine" onclick="respondToAlert('fine')" style="background:var(--teal);">Yes, I'm fine</button>
+<button id="btn-need-help" class="btn-danger" onclick="respondToAlert('need_help')">No, I need help</button>
+<p style="font-size:13px;color:var(--muted);">If this is an emergency, call 911 now. Do not wait for the app.</p>
+</div>
+</div>
+
 <div id="dashboard" class="hidden">
 <h2>Welcome to H-CAR, <span id="dash-name"></span></h2>
 <div id="dash-status"></div>
+<div id="unack-banner" class="hidden" style="background:var(--red-bg);border:2px solid var(--red);border-radius:12px;padding:16px;margin:12px 0;text-align:center;">
+<p style="margin:0;font-weight:800;color:var(--red-ink);font-size:16px;">No one has acknowledged your alert yet.</p>
+<p style="margin:8px 0 0;color:var(--red-ink);font-size:14px;">Your emergency contact was alerted but has not confirmed receipt. If you need help, call 911 now. Do not wait for the app.</p>
+</div>
 <div id="fitbit-notice" class="success hidden"></div>
 <div id="fitbit-error" class="error hidden"></div>
 
@@ -1225,15 +1254,29 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="section-card">
 <p class="section-eyebrow">Safety</p>
 <h3>Emergency Contact</h3>
-<p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), we will alert this person by email. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
+<p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), you get 5 minutes to answer "Are you okay?" in the app. If you say you need help, or you do not answer, this person is alerted by text message and email. They must confirm receipt. If they do not confirm within 15 minutes, your secondary contact is alerted. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
 <div id="emergency-contact-msg"></div>
 <input type="text" id="ec-name" placeholder="Contact name (for example, Meagan Fisher)" autocomplete="name">
 <input type="text" id="ec-relationship" placeholder="Relationship (for example, Wife)" autocomplete="off">
 <input type="email" id="ec-email" placeholder="Contact email address" autocomplete="email">
-<input type="text" id="ec-phone" placeholder="Contact phone (optional)" inputmode="tel" autocomplete="tel">
-<button onclick="saveEmergencyContact()">Save Contact</button>
-<button class="secondary" onclick="sendTestAlert()">Send Test Alert</button>
-<p style="color:var(--muted);font-size:13px;margin-top:8px;">To remove your emergency contact, clear all four fields and press Save Contact.</p>
+<input type="text" id="ec-phone" placeholder="Contact phone (for text alerts)" inputmode="tel" autocomplete="tel">
+<h4 style="margin:20px 0 8px 0;font-size:15px;">Secondary Contact (backup)</h4>
+<p style="color:var(--muted);font-size:13px;margin:0 0 10px 0;">Alerted only if your primary contact does not confirm receipt within 15 minutes.</p>
+<input type="text" id="ec2-name" placeholder="Secondary contact name" autocomplete="name">
+<input type="text" id="ec2-relationship" placeholder="Relationship (for example, Brother)" autocomplete="off">
+<input type="email" id="ec2-email" placeholder="Secondary contact email address" autocomplete="email">
+<input type="text" id="ec2-phone" placeholder="Secondary contact phone" inputmode="tel" autocomplete="tel">
+<button onclick="saveEmergencyContact()">Save Contacts</button>
+<button class="secondary" onclick="sendTestAlert()">Send Test Email</button>
+<button class="secondary" onclick="testFullAlert()">Test Full Alert Flow</button>
+<button class="secondary" onclick="enablePushAlerts()">Enable Push Alerts on This Device</button>
+<div id="push-msg" style="font-size:13px;color:var(--muted);margin-top:6px;"></div>
+<p style="color:var(--muted);font-size:13px;margin-top:8px;">To remove your emergency contact, clear all four primary fields and press Save Contacts. Test Full Alert Flow creates a test alert that runs the whole system: the check-in appears, then your contact gets a TEST text and email if you ask for help or do not answer.</p>
+
+<div style="margin-top:20px;">
+<h4 style="margin:0 0 8px 0;font-size:15px;">Alert History</h4>
+<div id="alert-history"><p style="color:var(--muted);font-size:14px;">Loading alert history...</p></div>
+</div>
 
 <div style="margin-top:20px;padding:16px;background:var(--surface2);border-radius:12px;border:1px solid var(--line);">
 <h4 style="margin:0 0 8px 0;font-size:15px;">Emergency Location Sharing</h4>
@@ -1686,6 +1729,8 @@ async function loadDashboard() {
     loadSleepCheckin();
     loadFamilyDashboard();
     loadMyPromoCodes();
+    loadAlertHistory();
+    startAlertPolling();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
   }
@@ -1958,6 +2003,10 @@ async function loadEmergencyContact() {
     document.getElementById('ec-relationship').value = c.relationship || '';
     document.getElementById('ec-email').value = c.email || '';
     document.getElementById('ec-phone').value = formatPhone(c.phone) || '';
+    document.getElementById('ec2-name').value = c.secondaryName || '';
+    document.getElementById('ec2-relationship').value = c.secondaryRelationship || '';
+    document.getElementById('ec2-email').value = c.secondaryEmail || '';
+    document.getElementById('ec2-phone').value = formatPhone(c.secondaryPhone) || '';
     // Load location sharing status
     const checkbox = document.getElementById('location-sharing-checkbox');
     if (checkbox) {
@@ -2089,11 +2138,19 @@ async function saveEmergencyContact() {
   if (name) {
     name = name.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
   }
+  let secondaryName = document.getElementById('ec2-name').value.trim();
+  if (secondaryName) {
+    secondaryName = secondaryName.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+  }
   const body = {
     name: name,
     relationship: document.getElementById('ec-relationship').value.trim(),
     email: document.getElementById('ec-email').value.trim(),
     phone: document.getElementById('ec-phone').value.trim(),
+    secondaryName: secondaryName,
+    secondaryRelationship: document.getElementById('ec2-relationship').value.trim(),
+    secondaryEmail: document.getElementById('ec2-email').value.trim(),
+    secondaryPhone: document.getElementById('ec2-phone').value.trim(),
   };
   try {
     const res = await apiCall('/emergency-contact', 'PUT', body);
@@ -2110,6 +2167,202 @@ async function sendTestAlert() {
     showContactMsg(res.message, false);
   } catch (e) {
     showContactMsg(e.message, true);
+  }
+}
+
+// ---- Life-saving alert flow ----
+// Polls for an active alert (the "Are you okay?" check-in, or an
+// unacknowledged alert) and shows the modal or banner. Polls every
+// 30 seconds while the dashboard is open.
+let activeAlertId = null;
+let alertPollTimer = null;
+let alertCountdownTimer = null;
+let alertCountdownEnd = 0;
+
+function startAlertPolling() {
+  checkAlertStatus();
+  if (alertPollTimer) clearInterval(alertPollTimer);
+  alertPollTimer = setInterval(checkAlertStatus, 30000);
+}
+
+async function checkAlertStatus() {
+  try {
+    const data = await apiCall('/alerts/status', 'GET');
+    const alert = data.activeAlert;
+    const banner = document.getElementById('unack-banner');
+    if (!alert) {
+      activeAlertId = null;
+      hideAreYouOkModal();
+      if (banner) banner.classList.add('hidden');
+      return;
+    }
+    activeAlertId = alert.id;
+    if (alert.status === 'awaiting_user') {
+      showAreYouOkModal(alert);
+      if (banner) banner.classList.add('hidden');
+    } else {
+      hideAreYouOkModal();
+      if (alert.status === 'unacknowledged' && banner) {
+        banner.classList.remove('hidden');
+      } else if (banner) {
+        banner.classList.add('hidden');
+      }
+    }
+  } catch (e) {
+    // Non-critical; the next poll retries. Never break the dashboard.
+  }
+}
+
+function showAreYouOkModal(alert) {
+  const modal = document.getElementById('are-you-ok-modal');
+  if (!modal) return;
+  const vitalsEl = document.getElementById('are-you-ok-vitals');
+  if (vitalsEl) {
+    vitalsEl.textContent = (alert.is_test ? 'TEST ALERT. ' : '') + 'Latest readings: ' + (alert.vitals_summary || 'several signals moved away from baseline');
+  }
+  modal.classList.remove('hidden');
+  // Countdown from the seconds the server says are left.
+  const secondsLeft = (alert.secondsLeft !== null && alert.secondsLeft !== undefined) ? alert.secondsLeft : 300;
+  alertCountdownEnd = Date.now() + secondsLeft * 1000;
+  updateAlertCountdown();
+  if (alertCountdownTimer) clearInterval(alertCountdownTimer);
+  alertCountdownTimer = setInterval(updateAlertCountdown, 1000);
+}
+
+function updateAlertCountdown() {
+  const timerEl = document.getElementById('are-you-ok-timer');
+  if (!timerEl) return;
+  const left = Math.max(0, Math.round((alertCountdownEnd - Date.now()) / 1000));
+  const m = Math.floor(left / 60);
+  const s = String(left % 60).padStart(2, '0');
+  timerEl.textContent = m + ':' + s;
+  if (left <= 0) {
+    clearInterval(alertCountdownTimer);
+    // Time is up. Re-check status (the server will have moved the
+    // alert on to the emergency contact by now).
+    setTimeout(checkAlertStatus, 2000);
+  }
+}
+
+function hideAreYouOkModal() {
+  const modal = document.getElementById('are-you-ok-modal');
+  if (modal) modal.classList.add('hidden');
+  if (alertCountdownTimer) clearInterval(alertCountdownTimer);
+}
+
+async function respondToAlert(response) {
+  if (!activeAlertId) return;
+  const fineBtn = document.getElementById('btn-ok-fine');
+  const helpBtn = document.getElementById('btn-need-help');
+  if (fineBtn) fineBtn.disabled = true;
+  if (helpBtn) helpBtn.disabled = true;
+  try {
+    const res = await apiCall('/alerts/user-response', 'POST', { alertId: activeAlertId, response });
+    hideAreYouOkModal();
+    if (response === 'fine') {
+      showContactMsg('Thanks. The alert is cancelled and nobody was contacted.', false);
+    } else {
+      showContactMsg('Your emergency contact is being alerted now by text and email. If this is an emergency, call 911.', false);
+    }
+    await loadAlertHistory();
+  } catch (e) {
+    showContactMsg('Could not record your answer: ' + e.message + '. Try again, or call 911 if this is an emergency.', true);
+  } finally {
+    if (fineBtn) fineBtn.disabled = false;
+    if (helpBtn) helpBtn.disabled = false;
+  }
+}
+
+async function testFullAlert() {
+  showContactMsg('Creating a test alert...', false);
+  try {
+    const res = await apiCall('/alerts/test', 'POST', {});
+    showContactMsg(res.message + (res.smsConfigured ? '' : ' Note: SMS is not configured yet, so the test will reach your contact by email only.'), false);
+    // The check-in modal should appear within seconds.
+    setTimeout(checkAlertStatus, 1000);
+    await loadAlertHistory();
+  } catch (e) {
+    showContactMsg(e.message, true);
+  }
+}
+
+async function loadAlertHistory() {
+  const el = document.getElementById('alert-history');
+  if (!el) return;
+  try {
+    const data = await apiCall('/alerts/history', 'GET');
+    const alerts = data.alerts || [];
+    if (alerts.length === 0) {
+      el.innerHTML = '<p style="color:var(--muted);font-size:14px;">No alerts yet. When an Act flag fires, the full trail appears here: check-in, contact alerts, acknowledgment, and escalation.</p>';
+      return;
+    }
+    const statusLabels = {
+      awaiting_user: 'Waiting for your answer',
+      alerting: 'Contact alerted, waiting for confirmation',
+      escalated: 'Escalated to secondary contact',
+      acknowledged: 'Contact confirmed receipt',
+      cancelled_by_user: 'Cancelled by you (you said you are fine)',
+      unacknowledged: 'No one confirmed within 30 minutes',
+    };
+    let html = '';
+    for (const a of alerts) {
+      const when = new Date(a.created_at).toLocaleString();
+      html += '<div style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:8px 0;">';
+      html += '<strong>' + when + (a.is_test ? ' (TEST)' : '') + '</strong><br>';
+      html += '<span style="font-size:13px;">Status: ' + (statusLabels[a.status] || a.status) + '</span><br>';
+      if (a.vitals_summary) html += '<span style="font-size:13px;color:var(--muted);">' + a.vitals_summary + '</span>';
+      if (a.escalations && a.escalations.length > 0) {
+        html += '<div style="font-size:12px;color:var(--muted);margin-top:6px;">';
+        for (const step of a.escalations) {
+          html += new Date(step.sent_at).toLocaleTimeString() + ' - ' + step.level + ' via ' + step.channel + (step.recipient ? ' to ' + step.recipient : '') + ' (' + (step.result || 'done') + ')<br>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load alert history.</p>';
+  }
+}
+
+// Web push: let the phone wake the user for the "Are you okay?" check-in
+// even when the app is closed. Needs VAPID keys on the server.
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function enablePushAlerts() {
+  const msgEl = document.getElementById('push-msg');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (msgEl) msgEl.textContent = 'Push alerts are not supported in this browser.';
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      if (msgEl) msgEl.textContent = 'Push alerts need notification permission. Allow notifications and try again.';
+      return;
+    }
+    const keyData = await apiCall('/push/vapid-key', 'GET', null, false);
+    if (!keyData.publicKey) {
+      if (msgEl) msgEl.textContent = 'Push alerts are not set up on the server yet (no VAPID key). Email and SMS alerts still work.';
+      return;
+    }
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+    });
+    await apiCall('/push/subscribe', 'POST', { subscription: subscription.toJSON() });
+    if (msgEl) msgEl.textContent = 'Push alerts enabled on this device. Your phone will wake you for the "Are you okay?" check-in.';
+  } catch (e) {
+    if (msgEl) msgEl.textContent = 'Could not enable push alerts: ' + e.message;
   }
 }
 
@@ -2630,6 +2883,9 @@ async function changePassword() {
 function logout() {
   authToken = null;
   localStorage.removeItem('hcar_token');
+  if (alertPollTimer) clearInterval(alertPollTimer);
+  if (alertCountdownTimer) clearInterval(alertCountdownTimer);
+  hideAreYouOkModal();
   showStep('landing');
 }
 
