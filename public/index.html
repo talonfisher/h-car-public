@@ -162,13 +162,10 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 </div>
 <div id="landing" class="card hidden">
 <p class="eyebrow">General Wellness Tool</p>
-<h2>What is H-CAR?</h2>
-<p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause. It never tells you why something changed, only that it did.</p>
-<p style="margin-top:12px">Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
-
-
-<div class="price">Free<span>during trial</span></div>
-<p style="text-align:center;color:var(--muted);">Cancel anytime. No hidden fees.</p>
+<h2>Create your free account</h2>
+<p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause.</p>
+<div class="price">Free<span>for 118 days</span></div>
+<p style="text-align:center;color:var(--muted);">Then $5/month. No card required now. Cancel anytime.</p>
 <div style="text-align:center;margin:16px 0;">
 <span class="pill">28-day baseline</span>
 <span class="pill">6 signals tracked</span>
@@ -181,13 +178,19 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div id="signup-form">
 <input type="text" id="su-name" placeholder="Full name" required>
 <input type="email" id="su-email" placeholder="Email address" required>
-<input type="password" id="su-password" placeholder="Password (8+ characters)" required>
-<button onclick="signup()">Create Account</button>
+<div style="position:relative;">
+<input type="password" id="su-password" placeholder="Password (8+ characters)" required style="padding-right:70px;">
+<button type="button" onclick="togglePassword('su-password', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
+</div>
+<button id="signup-btn" onclick="signup()">Create Account</button>
 <div id="su-error" class="error hidden"></div>
 </div>
 <div id="login-form" class="hidden">
 <input type="email" id="li-email" placeholder="Email address" required>
-<input type="password" id="li-password" placeholder="Password" required>
+<div style="position:relative;">
+<input type="password" id="li-password" placeholder="Password" required style="padding-right:70px;">
+<button type="button" onclick="togglePassword('li-password', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
+</div>
 <button onclick="login()">Sign In</button>
 <div id="li-error" class="error hidden"></div>
 <p style="margin-top:12px;text-align:center"><a href="#" onclick="showForgotPassword(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Forgot password?</a></p>
@@ -199,6 +202,9 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div id="fp-message" class="hidden" style="margin-top:12px;padding:12px;border-radius:12px;font-size:14px"></div>
 <p style="margin-top:12px;text-align:center"><a href="#" onclick="showLoginForm(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Back to Sign In</a></p>
 </div>
+<h2 style="margin-top:28px;">What is H-CAR?</h2>
+<p>Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
+<p style="margin-top:12px">H-CAR spends 28 days learning your baseline from your Fitbit, then watches for sustained changes across 6 signals: resting heart rate, HRV, blood oxygen, breathing rate, sleep, and skin temperature. A single bad night means nothing. H-CAR flags a change only when 3 or more signals move together for days in a row.</p>
 </div>
 
 <div id="learn-container" class="card">
@@ -981,71 +987,31 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 </div>
 
 <div id="consent-step" class="card hidden">
-<div class="step-indicator"><div class="step done">1</div><div class="step active">2</div><div class="step">3</div><div class="step">4</div></div>
-<h2>Consent Form</h2>
-<p>Please read carefully. You must check all 11 boxes to continue.</p>
-
-<div class="consent-section">
-<h4>1. NOT A MEDICAL DEVICE - READ THIS FIRST</h4>
-<p>H-CAR is a general wellness tool, NOT a medical device. It is NOT cleared, approved, or authorized by Health Canada, the U.S. Food and Drug Administration (FDA), or any other regulatory body as a medical device. H-CAR does NOT diagnose, predict, treat, monitor, or prevent any disease, condition, illness, or medical event. H-CAR does NOT replace a doctor, nurse, paramedic, or any health care professional. H-CAR does NOT provide medical advice. If you feel unwell, seek professional medical care immediately, whether or not H-CAR has flagged anything.</p>
-</div>
+<div class="step-indicator"><div class="step done">1</div><div class="step active">2</div><div class="step">3</div></div>
+<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:-10px;">Step 2 of 3: Account done. Now consent. Next: connect your Fitbit.</p>
+<h2>Almost there</h2>
+<p>Free for 118 days. Then $5/month. No card required now. Cancel anytime.</p>
 
 <div class="consent-section normal">
-<h4>2. What H-CAR does</h4>
-<p>H-CAR is a general wellness tool. It learns your personal baseline from a consumer Fitbit and flags sustained multi-signal change over days. It names a change, never a cause. A flag means your numbers moved away from your own baseline. It does not mean you are sick. No flag does not mean you are healthy.</p>
+<h4>What you are agreeing to</h4>
+<ul style="margin:0;padding-left:20px;line-height:1.7;">
+<li>H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or predict any disease or condition, and it is not cleared by any health regulator.</li>
+<li>H-CAR cannot detect sudden medical emergencies such as heart attack, stroke, or cardiac arrest. If you feel unwell, seek professional medical care right away, whether or not H-CAR has flagged anything.</li>
+<li>H-CAR reads daily summaries from your Fitbit through Google Fit. Your data is never sold, and you can delete your account and data at any time.</li>
+<li>De-identified summaries (with your name and contact details removed) may be used for research to validate H-CAR. You can withdraw at any time by deleting your account.</li>
+</ul>
+<p style="margin-top:12px;">Full details: <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="#" onclick="showFooterPage('terms'); return false;">Terms of Service</a>, including the limitation of liability and the full research description.</p>
 </div>
 
-<div class="consent-section">
-<h4>3. What H-CAR cannot detect</h4>
-<p>H-CAR CANNOT detect sudden cardiac arrest, stroke, heart attack, severe allergic reaction, sudden collapse, or falls. H-CAR does not monitor you in real time. If you have a medical emergency, call 911 immediately. Do not wait for H-CAR to flag anything.</p>
-</div>
-
-<div class="consent-section normal">
-<h4>4. Use at your own risk</h4>
-<p>H-CAR is provided as-is without warranties of any kind. H-CAR may produce false alarms or miss real changes. Fitbit sensors provide estimates, not clinical measurements. You use H-CAR at your own risk.</p>
-</div>
-
-<div class="consent-section normal">
-<h4>5. Limitation of liability</h4>
-<p>Total liability is capped at the greater of 12 months of fees paid or $60 CAD. This excludes indirect, incidental, consequential, or punitive damages.</p>
-</div>
-
-<div class="consent-section normal">
-<h4>6. Your data</h4>
-<p>H-CAR uses edge-first processing. Your baseline is calculated on your device. Only flag summaries and daily heartbeats reach the server. Your raw Fitbit data stays on your device when possible. Your data is never sold. You can delete your account and data at any time.</p>
-</div>
-
-<div class="consent-section normal">
-<h4>7. Subscription terms</h4>
-<p>Free during the 118-day trial, auto-renewing. Cancel anytime, effective at the end of your paid period. No refunds for partial months. Payment is processed by Square. Your card details are tokenized by Square and never touch our servers.</p>
-</div>
-
-<div class="consent-section normal">
-<h4>8. Research use of de-identified data</h4>
-<p>H-CAR is being validated in a trial. Your de-identified health summaries (daily signal values, baseline statistics, and flag counts, with your name, email, and account details removed) may be used for research to validate whether H-CAR's detector works. De-identified data may be shared with research partners and published in aggregate form. Your identifiable data is never sold and never shared for research. You can withdraw from the trial at any time by cancelling your subscription and deleting your account; data already de-identified and pooled cannot be pulled back out.</p>
-</div>
-
-<h3>Your Acknowledgment</h3>
-<p>Check each box to confirm you understand:</p>
 <div class="checkbox-group" id="ack-boxes">
-<label><input type="checkbox" class="ack" data-n="1"> I understand H-CAR is NOT a medical device and is not cleared by any health regulator.</label>
-<label><input type="checkbox" class="ack" data-n="2"> I understand H-CAR does NOT diagnose, predict, treat, or monitor any disease or condition.</label>
-<label><input type="checkbox" class="ack" data-n="3"> I understand H-CAR CANNOT detect sudden medical emergencies (heart attack, stroke, cardiac arrest).</label>
-<label><input type="checkbox" class="ack" data-n="4"> I will seek professional medical care if I feel unwell, regardless of what H-CAR shows.</label>
-<label><input type="checkbox" class="ack" data-n="5"> I understand H-CAR may produce false alarms and may miss real changes.</label>
-<label><input type="checkbox" class="ack" data-n="6"> I understand Fitbit sensors provide estimates, not clinical measurements.</label>
-<label><input type="checkbox" class="ack" data-n="7"> I use H-CAR at my own risk and accept the limitation of liability.</label>
-<label><input type="checkbox" class="ack" data-n="8"> I understand my data handling as described in the privacy notice.</label>
-<label><input type="checkbox" class="ack" data-n="9"> I understand the subscription terms (Free during trial, cancel anytime, no partial refunds).</label>
-<label><input type="checkbox" class="ack" data-n="10"> I am 19 years of age or older, or I have guardian consent to use H-CAR.</label>
-<label><input type="checkbox" class="ack" data-n="11"> I understand my de-identified health data may be used for research to validate H-CAR's effectiveness, as described in section 8.</label>
+<label><input type="checkbox" id="consent-agree"> I have read the summary above and agree to the H-CAR Terms of Service and Privacy Policy.</label>
 </div>
-<button id="consent-btn" onclick="submitConsent()" disabled>I Accept - Continue to Payment</button>
+<button id="consent-btn" onclick="submitConsent()" disabled>Start My Free Trial</button>
 <div id="consent-error" class="error hidden"></div>
 </div>
 
 <div id="payment-step" class="card hidden">
-<div class="step-indicator"><div class="step done">1</div><div class="step done">2</div><div class="step active">3</div><div class="step">4</div></div>
+<div class="step-indicator"><div class="step done">1</div><div class="step done">2</div><div class="step active">3</div></div>
 <h2>Payment</h2>
 <div class="consent-section">
 <h4>H-CAR is a general wellness tool, not a medical device.</h4>
@@ -1106,6 +1072,17 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div id="baseline-section"><p>Loading baseline...</p></div>
 </div>
 
+<div id="onboarding-checklist" class="section-card hidden" style="border:2px solid var(--teal);">
+<p class="section-eyebrow">Get Started</p>
+<h3>Your first 3 steps</h3>
+<ol style="margin:10px 0;padding-left:20px;line-height:2;">
+<li><strong>Connect your Fitbit</strong> with Google Health using the button below.</li>
+<li><strong>Wear it tonight</strong>, including while you sleep.</li>
+<li><strong>Check back tomorrow</strong> for your first data. Your baseline builds over 28 days.</li>
+</ol>
+<button onclick="connectFitbit()">Connect with Google Health</button>
+</div>
+
 <div class="metric-grid">
 <div class="metric-card" title="Your heart rate while resting. Lower is generally better."><div class="m-value" id="metric-rhr">--</div><div class="m-label">Resting HR</div><div class="m-sub">bpm</div></div>
 <div class="metric-card" title="Heart Rate Variability - measures recovery. Higher is generally better."><div class="m-value" id="metric-hrv">--</div><div class="m-label">HRV (Recovery)</div><div class="m-sub">ms</div></div>
@@ -1132,7 +1109,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="section-card">
 <p class="section-eyebrow">Alerts</p>
 <h3>Recent flags</h3>
-<div id="flags-section"><p style="color:var(--teal);font-weight:700;">All clear! Your body is stable.</p></div>
+<div id="flags-section"><p style="color:var(--muted);">Loading...</p></div>
 </div>
 
 <div class="section-card">
@@ -1219,6 +1196,11 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <p class="section-eyebrow">Assistant</p>
 <h3>Ask About Your Data</h3>
 <p style="color:var(--muted);font-size:14px;">Ask questions about your H-CAR data. The assistant answers only from your actual measurements. This is not medical advice. H-CAR is a general wellness tool, not a medical device. If you feel unwell, seek professional medical care.</p>
+<div id="insights-empty" class="hidden">
+<p style="color:var(--muted);">Connect your Fitbit to see insights about your data. Once you have synced days, the assistant can answer questions about your numbers.</p>
+<button onclick="connectFitbit()" style="margin-top:10px;">Connect with Google Health</button>
+</div>
+<div id="insights-content">
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
 <button type="button" class="secondary" onclick="askAssistant('What was my resting heart rate yesterday?')" style="font-size:13px;">My heart rate yesterday?</button>
 <button type="button" class="secondary" onclick="askAssistant('How did I sleep last night?')" style="font-size:13px;">How did I sleep?</button>
@@ -1231,6 +1213,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div style="display:flex;flex-direction:column;gap:8px;">
 <input type="text" id="assistant-input" placeholder="Ask about your data... (try: what was my resting heart rate yesterday?)" style="width:100%;" onkeypress="if(event.key==='Enter')askAssistantFromInput()">
 <button onclick="askAssistantFromInput()" style="width:100%;">Ask</button>
+</div>
 </div>
 </div>
 
@@ -1251,12 +1234,18 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 </div>
 
 <div id="view-profile" class="dash-view hidden">
-<div class="section-card">
+<div id="ec-locked-note" class="section-card hidden">
+<p class="section-eyebrow">Safety</p>
+<h3>Emergency Contact</h3>
+<p style="color:var(--muted);font-size:14px;">Connect your Fitbit first, then add an emergency contact here. When H-CAR detects a serious change, this is the person who gets alerted.</p>
+<button onclick="connectFitbit()">Connect with Google Health</button>
+</div>
+<div id="emergency-contact-card" class="section-card">
 <p class="section-eyebrow">Safety</p>
 <h3>Emergency Contact</h3>
 <p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), you get 5 minutes to answer "Are you okay?" in the app. If you say you need help, or you do not answer, this person is alerted by text message and email. They must confirm receipt. If they do not confirm within 15 minutes, your secondary contact is alerted. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
 <div id="emergency-contact-msg"></div>
-<input type="text" id="ec-name" placeholder="Contact name (for example, Meagan Fisher)" autocomplete="name">
+<input type="text" id="ec-name" placeholder="Contact name (for example, Jane Doe)" autocomplete="name">
 <input type="text" id="ec-relationship" placeholder="Relationship (for example, Wife)" autocomplete="off">
 <input type="email" id="ec-email" placeholder="Contact email address" autocomplete="email">
 <input type="text" id="ec-phone" placeholder="Contact phone (for text alerts)" inputmode="tel" autocomplete="tel">
@@ -1346,7 +1335,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <h3>Account Settings</h3>
 <p>Manage your subscription and account.</p>
 <button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
-<button class="secondary" onclick="showCancelConfirm()" style="background:#B42318;color:white;border-color:#B42318;margin-top:10px;">Cancel Subscription</button>
+<button id="cancel-sub-btn" class="secondary" onclick="showCancelConfirm()" style="background:#B42318;color:white;border-color:#B42318;margin-top:10px;">Cancel Subscription</button>
 <div id="cancel-confirm" class="hidden" style="margin-top:12px;padding:16px;background:var(--red-bg);border:1px solid #FCA5A5;border-radius:12px;">
 <p style="margin:0 0 10px 0;font-size:14px;color:var(--red-ink);"><strong>Are you sure you want to cancel your H-CAR subscription?</strong></p>
 <p style="margin:0 0 12px 0;font-size:13px;color:var(--red-ink);">You will lose access to monitoring, alerts, and your baseline data. You can resubscribe anytime. Access continues until the end of your paid period.</p>
@@ -1393,6 +1382,14 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 let authToken = localStorage.getItem('hcar_token');
 let squarePayments = null;
 let squareCard = null;
+// Current user's subscription status from /api/me ('active', 'complimentary', 'expired', 'inactive').
+// Used to hide the Cancel Subscription button for trial users with nothing to cancel.
+let currentSubStatus = null;
+
+function updateCancelButton() {
+  const btn = document.getElementById('cancel-sub-btn');
+  if (btn) btn.style.display = currentSubStatus === 'active' ? '' : 'none';
+}
 
 async function apiCall(endpoint, method, body, useAuth = true) {
   const headers = { 'Content-Type': 'application/json' };
@@ -1525,12 +1522,27 @@ function showDashView(view) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function togglePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    input.type = 'password';
+    btn.textContent = 'Show';
+  }
+}
+
 async function signup() {
   const name = document.getElementById('su-name').value.trim();
   const email = document.getElementById('su-email').value.trim();
   const password = document.getElementById('su-password').value;
   const errEl = document.getElementById('su-error');
+  const btn = document.getElementById('signup-btn');
   errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
   try {
     const data = await apiCall('/signup', 'POST', { name, email, password }, false);
     authToken = data.token;
@@ -1539,7 +1551,12 @@ async function signup() {
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+    return;
   }
+  btn.disabled = false;
+  btn.textContent = 'Create Account';
 }
 
 async function login() {
@@ -1558,24 +1575,25 @@ async function login() {
   }
 }
 
-document.querySelectorAll('.ack').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const allChecked = [...document.querySelectorAll('.ack')].every(c => c.checked);
-    document.getElementById('consent-btn').disabled = !allChecked;
-  });
+document.getElementById('consent-agree').addEventListener('change', (e) => {
+  document.getElementById('consent-btn').disabled = !e.target.checked;
 });
 
 async function submitConsent() {
-  const acks = [...document.querySelectorAll('.ack')].map(c => c.checked);
   const errEl = document.getElementById('consent-error');
+  const btn = document.getElementById('consent-btn');
   errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Starting your trial...';
   try {
-    await apiCall('/consent', 'POST', { acknowledgments: acks });
+    await apiCall('/consent', 'POST', { agreed: true });
     // Free trial: skip payment step, go directly to dashboard
     checkStatus();
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Start My Free Trial';
   }
 }
 
@@ -1681,6 +1699,8 @@ async function applyPromoCode() {
 async function checkStatus() {
   try {
     const me = await apiCall('/me', 'GET');
+    currentSubStatus = me.subscriptionStatus;
+    updateCancelButton();
     document.getElementById('dash-name').textContent = me.name;
     if (!me.consentGiven) {
       showStep('consent-step');
@@ -1712,7 +1732,56 @@ async function checkStatus() {
   }
 }
 
+// Clear all user-specific dashboard content back to neutral loading states.
+// This runs synchronously before any fetch, so a previous user's data can
+// never flash on screen when a different user signs in or signs up in the
+// same tab. All server endpoints are token-scoped, so this was a stale-DOM
+// display issue, not a data leak, but it must never happen again.
+function resetDashboard() {
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('detector-status', '<p>Loading status...</p>');
+  set('baseline-section', '<p>Loading baseline...</p>');
+  set('current-vs-usual', '<p style="color:var(--muted);">Loading your comparison...</p>');
+  set('fitbit-section', '<p>Loading Fitbit status...</p>');
+  set('flags-section', '<p style="color:var(--muted);">Loading...</p>');
+  set('days-section', '<p>Loading your daily summaries...</p>');
+  set('checkin-status', '');
+  set('checkin-history', '');
+  set('symptom-history', '');
+  set('family-list', '');
+  set('family-pending-list', '');
+  set('alert-history', '');
+  set('promo-codes-list', '<p style="color:var(--muted);">Loading your promo codes...</p>');
+  set('dash-status', '');
+  set('fitbit-notice', '');
+  set('fitbit-error', '');
+  set('emergency-contact-msg', '');
+  const checklist = document.getElementById('onboarding-checklist');
+  if (checklist) checklist.classList.add('hidden');
+  // Insights defaults to the empty state until fresh data arrives
+  updateInsightsState(false);
+  ['metric-rhr', 'metric-hrv', 'metric-spo2', 'metric-breath', 'metric-sleep', 'metric-temp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '--';
+  });
+  const md = document.getElementById('metric-date');
+  if (md) md.textContent = 'Latest day: loading...';
+  // Clear emergency contact fields so a previous user's contacts never show
+  ['ec-name', 'ec-relationship', 'ec-email', 'ec-phone', 'ec2-name', 'ec2-relationship', 'ec2-email', 'ec2-phone'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const loc = document.getElementById('location-sharing-checkbox');
+  if (loc) loc.checked = false;
+}
+
+function updateInsightsState(hasData) {
+  const empty = document.getElementById('insights-empty');
+  const content = document.getElementById('insights-content');
+  if (empty) empty.classList.toggle('hidden', hasData);
+  if (content) content.classList.toggle('hidden', !hasData);
+}
+
 async function loadDashboard() {
+  resetDashboard();
   try {
     const [fitbit, det] = await Promise.all([
       apiCall('/fitbit/status', 'GET'),
@@ -1723,6 +1792,7 @@ async function loadDashboard() {
     const days = await apiCall('/days?limit=7', 'GET');
     renderDays(days.days);
     renderCurrentVsUsual(days.days, det.baselines);
+    updateInsightsState(days.days && days.days.length > 0);
     // Emergency contact, symptoms, and settings are non-critical; never let them break the dashboard.
     loadEmergencyContact();
     loadSymptoms();
@@ -2570,15 +2640,30 @@ async function removeFamilyMember(connectionId, name) {
   }
 }
 
+// Emergency Contact setup is only useful once a device is connected, so the
+// form stays hidden (with a short note instead) until Fitbit is connected.
+function setEmergencyContactVisible(visible) {
+  const card = document.getElementById('emergency-contact-card');
+  const note = document.getElementById('ec-locked-note');
+  if (card) card.classList.toggle('hidden', !visible);
+  if (note) note.classList.toggle('hidden', visible);
+}
+
 function renderFitbit(f) {
   const el = document.getElementById('fitbit-section');
+  setEmergencyContactVisible(!!f.connected);
   if (!f.googleConfigured) {
     el.innerHTML = '<p>Fitbit connection is not set up yet. The operator is still configuring the Google Health connection. Check back soon.</p>';
     return;
   }
   if (!f.connected) {
-    el.innerHTML = '<p>Your Fitbit is not connected yet. Connect it so H-CAR can read your daily summaries and build your baseline.</p>' +
-      '<button onclick="connectFitbit()">Connect Fitbit</button>';
+    el.innerHTML = '<p>Your Fitbit is not connected yet. H-CAR reads your daily summaries through Google Fit.</p>' +
+      '<ol style="margin:10px 0 14px;padding-left:20px;line-height:1.7;color:var(--muted);font-size:14px;">' +
+      '<li>You need a Google account, and your Fitbit linked to Google Fit. In the Fitbit app: Settings, Manage Data, Google Fit.</li>' +
+      '<li>We read daily summaries only, not minute-by-minute data.</li>' +
+      '<li>Tap the button below and sign in with Google to connect.</li>' +
+      '</ol>' +
+      '<button onclick="connectFitbit()">Connect with Google Health</button>';
     return;
   }
   let html = '<p><strong>Connected</strong>' + (f.connectedAt ? ' since ' + new Date(f.connectedAt).toLocaleDateString() : '') + '.</p>';
@@ -2591,7 +2676,7 @@ function renderFitbit(f) {
 
 function renderDetector(det) {
   const statusLabels = {
-    not_connected: ['Not connected', 'status-not-connected', 'Connect your Fitbit to start building your baseline.'],
+    not_connected: ['Not connected', 'status-not-connected', 'Connect with Google Health to start building your baseline.'],
     learning: ['Learning your baseline', 'status-learning', 'H-CAR is learning what is normal for you. No flags during the first 28 days.'],
     monitoring: ['Monitoring', 'status-monitoring', 'Your baseline is set. H-CAR is watching for sustained changes.'],
     watch_active: ['Watch flag active', 'status-watch', 'Your numbers have moved away from your baseline for 2 or more days. This is a change worth noticing, not a diagnosis.'],
@@ -2614,7 +2699,11 @@ function renderDetector(det) {
 
   const flagsEl = document.getElementById('flags-section');
   if (!det.recentFlags || det.recentFlags.length === 0) {
-    flagsEl.innerHTML = '<p style="color:var(--teal);font-weight:700;">All clear! Your body is stable. No sustained changes detected.</p>';
+    if (!det.daysSynced || det.daysSynced === 0) {
+      flagsEl.innerHTML = '<p style="color:var(--muted);font-weight:700;">No data yet, nothing to assess. Connect your Fitbit and sync to start.</p>';
+    } else {
+      flagsEl.innerHTML = '<p style="color:var(--teal);font-weight:700;">All clear! Your body is stable. No sustained changes detected.</p>';
+    }
   } else {
     flagsEl.innerHTML = det.recentFlags.map((f) => {
       const kind = f.isAct ? 'Act' : 'Watch';
@@ -2627,13 +2716,19 @@ function renderDetector(det) {
         '<br><span style="color:var(--muted);">' + top + '</span></div>';
     }).join('');
   }
+
+  // Onboarding checklist: only for users with no synced data yet
+  const checklist = document.getElementById('onboarding-checklist');
+  if (checklist) {
+    checklist.classList.toggle('hidden', !(!det.daysSynced || det.daysSynced === 0));
+  }
 }
 
 function renderCurrentVsUsual(days, baselines) {
   const el = document.getElementById('current-vs-usual');
   if (!el) return;
   if (!days || days.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);">No data yet. Connect your Fitbit and sync to see your comparison.</p>';
+    el.innerHTML = '<p style="color:var(--muted);">No data yet. Connect with Google Health and sync to see your comparison.</p>';
     return;
   }
   if (!baselines || baselines.length === 0) {
@@ -2681,7 +2776,7 @@ function renderMetricCards(days) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   if (!days || days.length === 0) {
     ['metric-rhr', 'metric-hrv', 'metric-spo2', 'metric-breath', 'metric-sleep', 'metric-temp'].forEach(id => set(id, '--'));
-    set('metric-date', 'No data yet. Connect your Fitbit and sync.');
+    set('metric-date', 'No data yet. Connect with Google Health and sync.');
     return;
   }
   const d = days[0];
@@ -2699,7 +2794,8 @@ function renderDays(days) {
   const el = document.getElementById('days-section');
   renderMetricCards(days);
   if (!days || days.length === 0) {
-    el.innerHTML = '<p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p>';
+    el.innerHTML = '<p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p>' +
+      '<button onclick="connectFitbit()" style="margin-top:10px;">Connect with Google Health</button>';
     return;
   }
   const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
@@ -2882,10 +2978,12 @@ async function changePassword() {
 
 function logout() {
   authToken = null;
+  currentSubStatus = null;
   localStorage.removeItem('hcar_token');
   if (alertPollTimer) clearInterval(alertPollTimer);
   if (alertCountdownTimer) clearInterval(alertCountdownTimer);
   hideAreYouOkModal();
+  resetDashboard();
   showStep('landing');
 }
 
