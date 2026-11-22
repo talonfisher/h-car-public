@@ -12,6 +12,8 @@ require('dotenv').config();
 
 const detector = require('./detector');
 const googleHealth = require('./google-health');
+const alertEngine = require('./alert-engine');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +35,7 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.static('public'));
 
 // Rate limiting
@@ -96,6 +99,14 @@ async function initDatabase() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_email TEXT`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone TEXT`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_relationship TEXT`);
+
+    // Secondary emergency contact. If the primary contact does not
+    // acknowledge an Act alert within 15 minutes, H-CAR escalates to
+    // this person by SMS and email.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS secondary_contact_name TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS secondary_contact_email TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS secondary_contact_phone TEXT`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS secondary_contact_relationship TEXT`);
 
     // Sensitivity setting (gentle, balanced, sensitive). Default balanced.
     // Gentle requires 4 signals for Watch (fewer alerts). Sensitive requires 2 signals (more alerts).
@@ -202,6 +213,61 @@ async function initDatabase() {
       recipient_email TEXT,
       status TEXT,
       PRIMARY KEY(user_id, trigger_date)
+    )`);
+
+    // Life-saving alert records. One row per Act episode (or test alert).
+    // Status flow:
+    //   awaiting_user: Act fired, user has 5 min to answer "Are you okay?"
+    //   alerting: primary contact notified, waiting for acknowledgment
+    //   escalated: secondary contact notified (no ack in 15 min)
+    //   acknowledged: a contact confirmed receipt
+    //   cancelled_by_user: user said "I'm fine" within the 5 min window
+    //   unacknowledged: no ack in 30 min, a human must call emergency services
+    // H-CAR never calls 911 automatically.
+    await client.query(`CREATE TABLE IF NOT EXISTS alerts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      trigger_date TEXT NOT NULL,
+      episode_start TEXT,
+      episode_end TEXT,
+      episode_days INTEGER,
+      top_signals TEXT,
+      vitals_summary TEXT,
+      status TEXT NOT NULL DEFAULT 'awaiting_user',
+      ack_token TEXT UNIQUE NOT NULL,
+      is_test INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      user_response TEXT,
+      user_responded_at TIMESTAMP,
+      primary_alerted_at TIMESTAMP,
+      secondary_alerted_at TIMESTAMP,
+      acknowledged_at TIMESTAMP,
+      acknowledged_by TEXT,
+      escalated_at TIMESTAMP,
+      resolved_at TIMESTAMP,
+      UNIQUE(user_id, trigger_date)
+    )`);
+
+    // Every outbound alert step, for the audit trail and the alert history view.
+    await client.query(`CREATE TABLE IF NOT EXISTS alert_escalations (
+      id SERIAL PRIMARY KEY,
+      alert_id INTEGER NOT NULL REFERENCES alerts(id),
+      level TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      recipient TEXT,
+      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      result TEXT
+    )`);
+
+    // Web push subscriptions, one row per browser or device.
+    await client.query(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      endpoint TEXT NOT NULL,
+      p256dh TEXT,
+      auth TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, endpoint)
     )`);
 
     // Symptom logs. One row per user per day. Symptoms are stored as
@@ -386,7 +452,7 @@ function authenticateToken(req, res, next) {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'H-CAR', version: '1.2.0', googleHealthConfigured: googleHealth.isConfigured(), database: 'postgres' });
+  res.json({ status: 'ok', app: 'H-CAR', version: '1.3.0', googleHealthConfigured: googleHealth.isConfigured(), database: 'postgres', smsConfigured: isSmsConfigured(), pushConfigured: isPushConfigured() });
 });
 
 // Page visitor counter (public, no auth required)
@@ -908,13 +974,17 @@ function isValidEmail(email) {
 
 app.get('/api/emergency-contact', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship, location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship, secondary_contact_name, secondary_contact_email, secondary_contact_phone, secondary_contact_relationship, location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({
       name: user.emergency_contact_name || null,
       email: user.emergency_contact_email || null,
       phone: user.emergency_contact_phone || null,
       relationship: user.emergency_contact_relationship || null,
+      secondaryName: user.secondary_contact_name || null,
+      secondaryEmail: user.secondary_contact_email || null,
+      secondaryPhone: user.secondary_contact_phone || null,
+      secondaryRelationship: user.secondary_contact_relationship || null,
       location_sharing_enabled: !!user.location_sharing_enabled,
       last_location_lat: user.last_location_lat || null,
       last_location_lng: user.last_location_lng || null,
@@ -937,19 +1007,36 @@ app.put('/api/emergency-contact', authenticateToken, async (req, res) => {
     const email = (req.body.email || '').trim();
     const phone = (req.body.phone || '').trim();
     const relationship = (req.body.relationship || '').trim();
-    // All fields blank clears the contact.
+    // Secondary contact (escalation target). All four blank clears it.
+    let secondaryName = (req.body.secondaryName || '').trim();
+    if (secondaryName) {
+      secondaryName = secondaryName.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    }
+    const secondaryEmail = (req.body.secondaryEmail || '').trim();
+    const secondaryPhone = (req.body.secondaryPhone || '').trim();
+    const secondaryRelationship = (req.body.secondaryRelationship || '').trim();
+    const hasSecondary = !!(secondaryName || secondaryEmail || secondaryPhone || secondaryRelationship);
+    if (hasSecondary) {
+      if (!secondaryName) return res.status(400).json({ error: 'Please enter your secondary contact\'s name.' });
+      if (!secondaryEmail && !secondaryPhone) return res.status(400).json({ error: 'Please enter an email or phone number for your secondary contact.' });
+      if (secondaryEmail && !isValidEmail(secondaryEmail)) return res.status(400).json({ error: 'That secondary email address does not look valid.' });
+    }
+    // All primary fields blank clears the primary contact.
     if (!name && !email && !phone && !relationship) {
-      await dbRun('UPDATE users SET emergency_contact_name = NULL, emergency_contact_email = NULL, emergency_contact_phone = NULL, emergency_contact_relationship = NULL WHERE id = $1', [req.user.id]);
+      await dbRun(
+        'UPDATE users SET emergency_contact_name = NULL, emergency_contact_email = NULL, emergency_contact_phone = NULL, emergency_contact_relationship = NULL, secondary_contact_name = $1, secondary_contact_email = $2, secondary_contact_phone = $3, secondary_contact_relationship = $4 WHERE id = $5',
+        [secondaryName || null, secondaryEmail || null, secondaryPhone || null, secondaryRelationship || null, req.user.id]
+      );
       return res.json({ message: 'Emergency contact removed.', contact: { name: null, email: null, phone: null, relationship: null } });
     }
     if (!name) return res.status(400).json({ error: 'Please enter your contact\'s name.' });
-    if (!email) return res.status(400).json({ error: 'Please enter your contact\'s email address. Alerts are sent by email.' });
-    if (!isValidEmail(email)) return res.status(400).json({ error: 'That email address does not look valid.' });
+    if (!email && !phone) return res.status(400).json({ error: 'Please enter an email address or phone number for your contact. Alerts are sent by text and email.' });
+    if (email && !isValidEmail(email)) return res.status(400).json({ error: 'That email address does not look valid.' });
     await dbRun(
-      'UPDATE users SET emergency_contact_name = $1, emergency_contact_email = $2, emergency_contact_phone = $3, emergency_contact_relationship = $4 WHERE id = $5',
-      [name, email, phone || null, relationship || null, req.user.id]
+      'UPDATE users SET emergency_contact_name = $1, emergency_contact_email = $2, emergency_contact_phone = $3, emergency_contact_relationship = $4, secondary_contact_name = $5, secondary_contact_email = $6, secondary_contact_phone = $7, secondary_contact_relationship = $8 WHERE id = $9',
+      [name, email || null, phone || null, relationship || null, secondaryName || null, secondaryEmail || null, secondaryPhone || null, secondaryRelationship || null, req.user.id]
     );
-    res.json({ message: 'Emergency contact saved.', contact: { name, email, phone: phone || null, relationship: relationship || null } });
+    res.json({ message: 'Emergency contact saved.', contact: { name, email: email || null, phone: phone || null, relationship: relationship || null } });
   } catch (err) {
     console.error('Emergency contact save error:', err);
     res.status(500).json({ error: 'Failed to save emergency contact' });
@@ -1075,6 +1162,250 @@ app.post('/api/alerts/send-test', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Test alert error:', err);
     res.status(500).json({ error: 'Failed to send test alert' });
+  }
+});
+
+// ---- Life-saving alert flow ----
+// Act flags create an alert and give the user 5 minutes to answer
+// "Are you okay?" before anyone is contacted. Contacts must acknowledge
+// receipt; no acknowledgment escalates. See alert-engine.js.
+
+// GET /api/alerts/status - The user's active alert, if any, with the
+// seconds left in the current window. Runs the escalation sweep first,
+// so a check-in here can move a timed-out alert forward even when the
+// server was asleep. Never fails the dashboard: errors return no alert.
+app.get('/api/alerts/status', authenticateToken, async (req, res) => {
+  try {
+    try {
+      await alertEngine.processEscalations(alertDb, alertContext());
+    } catch (e) {
+      console.error('Opportunistic escalation sweep failed:', e.message);
+    }
+    const alert = await alertEngine.getActiveAlert(alertDb, req.user.id);
+    if (!alert) {
+      return res.json({ activeAlert: null, smsConfigured: isSmsConfigured(), pushConfigured: isPushConfigured() });
+    }
+    const now = Date.now();
+    let secondsLeft = null;
+    let windowLabel = null;
+    if (alert.status === 'awaiting_user') {
+      secondsLeft = Math.max(0, Math.round((new Date(alert.created_at).getTime() + alertEngine.USER_CHECKIN_MS - now) / 1000));
+      windowLabel = 'answer the check-in';
+    } else if (alert.status === 'alerting' || alert.status === 'escalated') {
+      const t0 = alert.primary_alerted_at ? new Date(alert.primary_alerted_at).getTime() : now;
+      secondsLeft = Math.max(0, Math.round((t0 + alertEngine.ACK_TOTAL_MS - now) / 1000));
+      windowLabel = 'acknowledgment';
+    }
+    res.json({
+      activeAlert: {
+        id: alert.id,
+        status: alert.status,
+        trigger_date: alert.trigger_date,
+        created_at: alert.created_at,
+        vitals_summary: alert.vitals_summary,
+        is_test: alert.is_test === 1,
+        secondsLeft,
+        windowLabel,
+        user_response: alert.user_response,
+        primary_alerted_at: alert.primary_alerted_at,
+        secondary_alerted_at: alert.secondary_alerted_at,
+        acknowledged_by: alert.acknowledged_by,
+      },
+      smsConfigured: isSmsConfigured(),
+      pushConfigured: isPushConfigured(),
+    });
+  } catch (err) {
+    console.error('Alert status error:', err);
+    res.status(500).json({ error: 'Failed to get alert status' });
+  }
+});
+
+// POST /api/alerts/user-response - Answer "Are you okay?"
+// Body: { alertId, response } where response is 'fine' or 'need_help'.
+// 'fine' cancels the alert. 'need_help' alerts the primary contact now.
+app.post('/api/alerts/user-response', authenticateToken, async (req, res) => {
+  try {
+    const alertId = parseInt(req.body.alertId, 10);
+    const response = req.body.response;
+    if (!alertId || (response !== 'fine' && response !== 'need_help')) {
+      return res.status(400).json({ error: 'Provide an alertId and a response of "fine" or "need_help".' });
+    }
+    const alert = await alertEngine.getAlertById(alertDb, alertId, req.user.id);
+    if (!alert) return res.status(404).json({ error: 'Alert not found.' });
+    const user = await dbGet('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const result = await alertEngine.recordUserResponse(alertDb, alertContext(), alert, user, response);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ ok: true, status: result.status, contacted: !!result.contacted });
+  } catch (err) {
+    console.error('User response error:', err);
+    res.status(500).json({ error: 'Failed to record your answer' });
+  }
+});
+
+// GET /api/alerts/history - Past alerts with their escalation trail.
+app.get('/api/alerts/history', authenticateToken, async (req, res) => {
+  try {
+    const alerts = await alertEngine.getAlertHistory(alertDb, req.user.id, 20);
+    res.json({ alerts });
+  } catch (err) {
+    console.error('Alert history error:', err);
+    res.status(500).json({ error: 'Failed to get alert history' });
+  }
+});
+
+// POST /api/alerts/test - Create a test alert that runs the full flow:
+// the "Are you okay?" check-in appears, then (if unanswered, or on
+// "I need help") the emergency contact is alerted with a TEST message.
+// Rate limited to one active test alert at a time.
+app.post('/api/alerts/test', authenticateToken, async (req, res) => {
+  try {
+    const user = await dbGet('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const active = await alertEngine.getActiveAlert(alertDb, req.user.id);
+    if (active) {
+      return res.status(400).json({ error: 'You already have an active alert. Resolve it before starting a test.' });
+    }
+    const hasPrimary = !!(user.emergency_contact_email || user.emergency_contact_phone);
+    if (!hasPrimary) {
+      return res.status(400).json({ error: 'Add an emergency contact with an email or phone number first, so the test has someone to alert.' });
+    }
+    const triggerDate = 'test-' + new Date().toISOString().replace(/[:.]/g, '-');
+    const vitalsSummary = await alertEngine.buildVitalsSummary(
+      alertDb, req.user.id,
+      [['resting_hr', 3.1], ['rmssd', 2.8], ['spo2', 2.2]]
+    );
+    const alert = await alertEngine.createAlert(alertDb, req.user.id, {
+      trigger_date: triggerDate,
+      start: new Date().toISOString().slice(0, 10),
+      end: new Date().toISOString().slice(0, 10),
+      days: 3,
+      top_signals: [['resting_hr', 3.1], ['rmssd', 2.8], ['spo2', 2.2]],
+    }, { vitalsSummary, isTest: true });
+    if (!alert) return res.status(500).json({ error: 'Could not create the test alert. Try again.' });
+    sendPushNotification(req.user.id, {
+      title: 'H-CAR test: Are you okay?',
+      body: 'This is a test of the emergency alert system. Open the app to answer.',
+      url: '/',
+      alertId: alert.id,
+    }).catch((e) => console.error('Test check-in push failed:', e.message));
+    res.json({
+      ok: true,
+      alertId: alert.id,
+      status: alert.status,
+      message: 'Test alert created. The "Are you okay?" check-in should appear in the app now. Answer "No, I need help" to test the contact alert, or wait 5 minutes and the contact will be alerted automatically.',
+      smsConfigured: isSmsConfigured(),
+    });
+  } catch (err) {
+    console.error('Test alert error:', err);
+    res.status(500).json({ error: 'Failed to create test alert' });
+  }
+});
+
+// GET /api/alerts/acknowledge?token=... - Emergency contact taps the link
+// in the SMS or email to confirm receipt. Public (no login): the random
+// token is the authorization. Returns a plain HTML confirmation page.
+app.get('/api/alerts/acknowledge', async (req, res) => {
+  const token = req.query.token;
+  if (!token) return res.status(400).send(ackPage(false, 'That acknowledgment link is missing its token.'));
+  try {
+    const result = await alertEngine.acknowledgeByToken(alertDb, token, 'contact link');
+    if (!result.ok) return res.status(404).send(ackPage(false, result.error));
+    const user = await dbGet('SELECT name FROM users WHERE id = $1', [result.alert.user_id]);
+    return res.send(ackPage(true, 'Thank you. H-CAR now knows you got the alert for ' + (user ? user.name : 'your contact') + '. Please check in with them right away. If you cannot reach them and you are worried, call your local emergency number.'));
+  } catch (err) {
+    console.error('Acknowledge error:', err);
+    return res.status(500).send(ackPage(false, 'Something went wrong. Please try the link again, or contact the person directly.'));
+  }
+});
+
+// POST /api/alerts/acknowledge - JSON version of the same acknowledgment.
+app.post('/api/alerts/acknowledge', async (req, res) => {
+  try {
+    const token = req.body.token;
+    if (!token) return res.status(400).json({ error: 'Provide the acknowledgment token.' });
+    const result = await alertEngine.acknowledgeByToken(alertDb, token, req.body.by || 'api');
+    if (!result.ok) return res.status(404).json({ error: result.error });
+    res.json({ ok: true, status: result.alert.status, message: 'Acknowledgment recorded. Thank you.' });
+  } catch (err) {
+    console.error('Acknowledge error:', err);
+    res.status(500).json({ error: 'Failed to record acknowledgment' });
+  }
+});
+
+// Small HTML page shown to an emergency contact after they tap the ack link.
+function ackPage(success, message) {
+  const title = success ? 'Acknowledgment received' : 'Link not valid';
+  const color = success ? '#0E7A68' : '#B42318';
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+    + '<title>H-CAR - ' + title + '</title></head>'
+    + '<body style="font-family:system-ui,sans-serif;background:#F4F3EE;color:#16211C;margin:0;padding:32px 20px;">'
+    + '<div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
+    + '<h1 style="color:' + color + ';font-size:22px;margin:0 0 12px 0;">' + title + '</h1>'
+    + '<p style="font-size:16px;line-height:1.6;margin:0;">' + message + '</p>'
+    + '<p style="font-size:14px;color:#666;margin:16px 0 0 0;">H-CAR - Human Condition Analysis and Risk. This page confirms receipt only. H-CAR does not diagnose anything. If someone may be in danger, call your local emergency number.</p>'
+    + '</div></body></html>';
+}
+
+// POST /api/alerts/sms-reply - Twilio webhook for SMS replies.
+// A contact who replies YES, OK, ACK, or GOT IT acknowledges the alert.
+// Twilio posts form-encoded data (From, Body). Configure the Twilio
+// number's messaging webhook to point at this URL.
+app.post('/api/alerts/sms-reply', async (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  try {
+    const from = req.body.From || '';
+    const body = (req.body.Body || '').trim().toLowerCase();
+    const yesWords = ['yes', 'ok', 'ack', 'got it', 'gotit', 'received', 'confirm'];
+    if (!yesWords.some((w) => body === w || body.startsWith(w + ' ') || body.startsWith(w + '.'))) {
+      return res.send('<Response></Response>');
+    }
+    const digits = alertEngine.normalizePhone(from);
+    if (!digits) return res.send('<Response></Response>');
+    // Find the newest alerting alert whose primary or secondary contact phone matches.
+    const candidates = await dbAll(
+      `SELECT a.* FROM alerts a JOIN users u ON u.id = a.user_id
+       WHERE a.status IN ('alerting','escalated','unacknowledged')
+       ORDER BY a.created_at DESC LIMIT 20`
+    );
+    for (const alert of candidates) {
+      const user = await dbGet('SELECT emergency_contact_phone, secondary_contact_phone FROM users WHERE id = $1', [alert.user_id]);
+      if (!user) continue;
+      if (alertEngine.normalizePhone(user.emergency_contact_phone) === digits ||
+          alertEngine.normalizePhone(user.secondary_contact_phone) === digits) {
+        const result = await alertEngine.acknowledgeByToken(alertDb, alert.ack_token, 'SMS reply from ' + from);
+        if (result.ok) console.log('Alert ' + alert.id + ' acknowledged by SMS reply from ' + from + '.');
+        break;
+      }
+    }
+    return res.send('<Response></Response>');
+  } catch (err) {
+    console.error('SMS reply error:', err);
+    return res.send('<Response></Response>');
+  }
+});
+
+// ---- Web push subscription ----
+// GET /api/push/vapid-key - Public key the browser needs to subscribe.
+app.get('/api/push/vapid-key', (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || null });
+});
+
+// POST /api/push/subscribe - Store one browser/device subscription.
+app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
+  try {
+    const sub = req.body.subscription;
+    if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
+      return res.status(400).json({ error: 'Invalid push subscription.' });
+    }
+    await dbRun(
+      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4)
+       ON CONFLICT(user_id, endpoint) DO UPDATE SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`,
+      [req.user.id, sub.endpoint, sub.keys.p256dh, sub.keys.auth]
+    );
+    res.json({ ok: true, message: 'Push alerts enabled for this device.' });
+  } catch (err) {
+    console.error('Push subscribe error:', err);
+    res.status(500).json({ error: 'Failed to save push subscription' });
   }
 });
 
@@ -1376,78 +1707,137 @@ async function sendEmail(to, subject, text) {
   }
 }
 
-async function sendActAlert(user, episode) {
-  const contactName = user.emergency_contact_name || 'there';
-  const signals = describeTopSignals(episode.top_signals);
-  const subject = 'H-CAR alert: ' + user.name + ' has a serious baseline change';
-  
-  // Build the email text
-  const textParts = [
-    'Hi ' + contactName + ',',
-    '',
-    'You are listed as the emergency contact for ' + user.name + ' on H-CAR.',
-    '',
-    'H-CAR detected a serious, sustained change from ' + user.name + '\'s personal health baseline (an "Act" flag).',
-    '',
-    '  Change detected: ' + episode.trigger_date,
-    '  Episode: ' + episode.start + ' to ' + episode.end + ' (' + episode.days + ' days)',
-    '  Signals that moved most: ' + signals,
-    '',
-  ];
-
-  // Include last known location if user opted into emergency-only location sharing
-  if (user.location_sharing_enabled && user.last_location_lat && user.last_location_lng) {
-    const locationStr = user.last_location_address 
-      ? user.last_location_address 
-      : 'Lat: ' + user.last_location_lat + ', Lng: ' + user.last_location_lng;
-    const updatedStr = user.last_location_updated 
-      ? new Date(user.last_location_updated).toLocaleString() 
-      : 'Unknown';
-    textParts.push('Last known location: ' + locationStr);
-    textParts.push('  Coordinates: ' + user.last_location_lat + ', ' + user.last_location_lng);
-    textParts.push('  Last updated: ' + updatedStr);
-    textParts.push('');
-  }
-
-  textParts.push('What this means: ' + user.name + '\'s wearable data has moved away from their usual pattern for several days in a row. H-CAR names a change, never a cause. It does not diagnose anything, and it does not monitor in real time.');
-  textParts.push('');
-  textParts.push('What to do: check in with ' + user.name + '. If they feel unwell, or you cannot reach them and you are worried, call your local emergency number. Do not wait for the app.');
-  textParts.push('');
-  textParts.push('This is an automated message from H-CAR (https://h-car.onrender.com). Please do not reply to this email.');
-
-  const text = textParts.join('\n');
-  return sendEmail(user.emergency_contact_email, subject, text);
+// ---- SMS alerts (Twilio) ----
+// Sends Act alert texts to emergency contacts. Configure with:
+//   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+// Twilio has a free trial with $15 credit, enough for hundreds of texts.
+// If Twilio is not configured, SMS is skipped gracefully and email
+// remains the alert channel. No new dependency: plain HTTPS via axios.
+function isSmsConfigured() {
+  return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER);
 }
 
-// Send an alert for each Act episode that has not been alerted yet.
-// Deduplicated by (user, trigger date) in alerts_sent, because the
-// detector re-creates all episodes on every sync. Failures are not
-// recorded, so the next sync retries. Returns { checked, sent }.
-async function maybeSendActAlerts(userId, mergedEpisodes) {
-  const actEpisodes = (mergedEpisodes || []).filter((e) => e.is_act && e.trigger_date);
-  if (actEpisodes.length === 0) return { checked: 0, sent: 0 };
-  const user = await dbGet('SELECT id, name, email, emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship, location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [userId]);
-  if (!user || !user.emergency_contact_email) {
-    console.log('Act alert skipped for user ' + userId + ': no emergency contact email on file.');
-    return { checked: actEpisodes.length, sent: 0 };
+async function sendSms(to, body) {
+  if (!isSmsConfigured()) {
+    return { sent: false, reason: 'SMS is not configured (set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)' };
   }
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  try {
+    await axios.post(
+      'https://api.twilio.com/2010-04-01/Accounts/' + sid + '/Messages.json',
+      new URLSearchParams({ To: to, From: process.env.TWILIO_FROM_NUMBER, Body: body }).toString(),
+      {
+        auth: { username: sid, password: process.env.TWILIO_AUTH_TOKEN },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 15000,
+      }
+    );
+    console.log('SMS sent to ' + to);
+    return { sent: true };
+  } catch (e) {
+    const detail = (e.response && e.response.data && e.response.data.message) || e.message;
+    console.error('SMS send failed to ' + to + ':', detail);
+    return { sent: false, reason: 'SMS send failed: ' + detail };
+  }
+}
+
+// ---- Web push notifications ----
+// Used to wake the user's phone when an Act flag fires so they see the
+// "Are you okay?" check-in even if the app is not open. Configure with:
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY (generate with: npx web-push generate-vapid-keys)
+// If web-push is not installed or keys are missing, push is skipped.
+let webpush = null;
+let webpushTried = false;
+function getWebPush() {
+  if (webpush) return webpush;
+  if (webpushTried) return null;
+  webpushTried = true;
+  const pub = process.env.VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return null;
+  try {
+    webpush = require('web-push');
+    webpush.setVapidDetails('mailto:tfcontracting@shaw.ca', pub, priv);
+    return webpush;
+  } catch (e) {
+    console.log('Push disabled: web-push is not installed.');
+    return null;
+  }
+}
+function isPushConfigured() {
+  return !!getWebPush();
+}
+
+async function sendPushNotification(userId, payload) {
+  const wp = getWebPush();
+  if (!wp) return { sent: false, reason: 'push is not configured (set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)' };
+  const subs = await dbAll('SELECT * FROM push_subscriptions WHERE user_id = $1', [userId]);
+  if (subs.length === 0) return { sent: false, reason: 'no push subscriptions for this user' };
   let sent = 0;
-  for (const ep of actEpisodes) {
-    const already = await dbGet('SELECT 1 AS x FROM alerts_sent WHERE user_id = $1 AND trigger_date = $2', [userId, ep.trigger_date]);
-    if (already) continue;
-    const result = await sendActAlert(user, ep);
-    if (result.sent) {
-      await dbRun(
-        'INSERT INTO alerts_sent (user_id, trigger_date, sent_at, recipient_email, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(user_id, trigger_date) DO NOTHING',
-        [userId, ep.trigger_date, new Date().toISOString(), user.emergency_contact_email, 'sent']
+  for (const sub of subs) {
+    try {
+      await wp.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload)
       );
       sent += 1;
-      console.log('Act alert sent for user ' + userId + ' (trigger ' + ep.trigger_date + ') to ' + user.emergency_contact_email + '.');
-    } else {
-      console.log('Act alert NOT sent for user ' + userId + ' (trigger ' + ep.trigger_date + '): ' + result.reason);
+    } catch (e) {
+      // 410 Gone / 404 Not Found means the subscription expired; drop it.
+      if (e.statusCode === 410 || e.statusCode === 404) {
+        await dbRun('DELETE FROM push_subscriptions WHERE id = $1', [sub.id]);
+      } else {
+        console.error('Push send failed:', e.message);
+      }
     }
   }
-  return { checked: actEpisodes.length, sent };
+  return { sent: sent > 0, count: sent };
+}
+
+// Shared context for the alert engine: how to reach people.
+function alertContext() {
+  return {
+    sendEmail,
+    sendSms,
+    baseUrl: process.env.BASE_URL || 'https://h-car.onrender.com',
+    log: (msg) => console.log(msg),
+  };
+}
+
+// DB adapter for the alert engine (same promise helpers as the rest of the app).
+const alertDb = { get: dbGet, all: dbAll, run: dbRun };
+
+// Create an alert for each Act episode that has not been alerted yet.
+// Deduplicated by (user, trigger date) in the alerts table, because the
+// detector re-creates all episodes on every sync. Episodes already
+// emailed under the old email-only system (alerts_sent) are also skipped.
+// Creating an alert does NOT contact anyone yet: the user gets 5 minutes
+// to answer "Are you okay?" first. Returns { checked, created }.
+async function maybeSendActAlerts(userId, mergedEpisodes) {
+  const actEpisodes = (mergedEpisodes || []).filter((e) => e.is_act && e.trigger_date);
+  if (actEpisodes.length === 0) return { checked: 0, created: 0 };
+  const user = await dbGet('SELECT id, name, email, emergency_contact_name, emergency_contact_email, emergency_contact_phone, emergency_contact_relationship, secondary_contact_name, secondary_contact_email, secondary_contact_phone, location_sharing_enabled, last_location_lat, last_location_lng, last_location_address, last_location_updated FROM users WHERE id = $1', [userId]);
+  if (!user) return { checked: actEpisodes.length, created: 0 };
+  let created = 0;
+  for (const ep of actEpisodes) {
+    const existing = await dbGet('SELECT 1 AS x FROM alerts WHERE user_id = $1 AND trigger_date = $2', [userId, ep.trigger_date]);
+    if (existing) continue;
+    const legacy = await dbGet('SELECT 1 AS x FROM alerts_sent WHERE user_id = $1 AND trigger_date = $2', [userId, ep.trigger_date]);
+    if (legacy) continue;
+    const vitalsSummary = await alertEngine.buildVitalsSummary(alertDb, userId, ep.top_signals);
+    const alert = await alertEngine.createAlert(alertDb, userId, ep, { vitalsSummary });
+    if (alert) {
+      created += 1;
+      console.log('Act alert created for user ' + userId + ' (trigger ' + ep.trigger_date + ', alert ' + alert.id + '). Waiting 5 min for the user to answer "Are you okay?".');
+      // Wake the user's phone so they see the check-in even if the app is closed.
+      sendPushNotification(userId, {
+        title: 'H-CAR: Are you okay?',
+        body: 'H-CAR detected a serious change from your baseline. Open the app to answer.',
+        url: '/',
+        alertId: alert.id,
+      }).catch((e) => console.error('Check-in push failed:', e.message));
+    }
+  }
+  return { checked: actEpisodes.length, created };
 }
 
 // ---- Fitbit (Google Health API) integration ----
@@ -1686,13 +2076,14 @@ async function syncUser(userId, daysBack = 35) {
 
   const det = await runDetectorForUser(userId);
 
-  // Alert the emergency contact about any new Act episode (deduped by
-  // trigger date in alerts_sent). Never blocks the sync: failures are
-  // logged and retried on the next sync.
+  // Create an alert for any new Act episode (deduped by trigger date).
+  // Creating an alert does not contact anyone yet: the user gets 5
+  // minutes to answer "Are you okay?" first. Never blocks the sync:
+  // failures are logged and retried on the next sync.
   let alertsSent = 0;
   try {
     const alertResult = await maybeSendActAlerts(userId, det.mergedEpisodes);
-    alertsSent = alertResult.sent;
+    alertsSent = alertResult.created;
   } catch (e) {
     console.error('Act alert check failed for user ' + userId + ':', e.message);
   }
@@ -1860,6 +2251,20 @@ app.post('/api/admin/sync-all', requireAdminKey, async (req, res) => {
   } catch (err) {
     console.error('Sync-all error:', err);
     res.status(500).json({ error: 'Sync-all failed' });
+  }
+});
+
+// Run the alert escalation sweep on demand. The in-process interval
+// handles this while the server is awake, but the free hosting tier
+// sleeps when idle, so an external cron should hit this every few
+// minutes (same x-admin-key as sync-all) to keep escalations on time.
+app.post('/api/admin/process-alerts', requireAdminKey, async (req, res) => {
+  try {
+    const summary = await alertEngine.processEscalations(alertDb, alertContext());
+    res.json(summary);
+  } catch (err) {
+    console.error('Process-alerts error:', err);
+    res.status(500).json({ error: 'Failed to process alerts' });
   }
 });
 
@@ -2562,6 +2967,20 @@ app.get('*', (req, res) => {
 initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`H-CAR server running on port ${PORT} (Postgres)`);
+  });
+  // Alert escalation sweep: every 60 seconds while the server is awake.
+  // Each action fires once per alert (the status change guards it), so
+  // running often is safe. An external cron should also hit
+  // POST /api/admin/process-alerts every few minutes, because the free
+  // hosting tier sleeps when idle and the interval stops with it.
+  setInterval(() => {
+    alertEngine.processEscalations(alertDb, alertContext()).catch((e) => {
+      console.error('Escalation sweep failed:', e.message);
+    });
+  }, 60 * 1000);
+  // One sweep at startup, in case alerts timed out while the server slept.
+  alertEngine.processEscalations(alertDb, alertContext()).catch((e) => {
+    console.error('Startup escalation sweep failed:', e.message);
   });
 }).catch((err) => {
   console.error('Failed to initialize database:', err);

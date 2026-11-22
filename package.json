@@ -10,6 +10,9 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -22,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.10.1",
     "pg": "^8.11.3",
-    "square": "^37.0.0"
+    "square": "^37.0.0",
+    "web-push": "^4.0.0"
   }
 }
