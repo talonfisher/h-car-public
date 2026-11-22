@@ -669,11 +669,14 @@ app.post('/api/consent', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'All 11 acknowledgments must be checked' });
   }
   try {
+    // Free trial: grant complimentary access for 118 days (28-day baseline + 90 days live monitoring)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 118);
     await dbRun(
-      'UPDATE users SET consent_given = 1, consent_date = $1 WHERE id = $2',
-      [new Date().toISOString(), req.user.id]
+      'UPDATE users SET consent_given = 1, consent_date = $1, subscription_status = $2, subscription_expires_at = $3 WHERE id = $4',
+      [new Date().toISOString(), 'complimentary', expiresAt.toISOString(), req.user.id]
     );
-    res.json({ message: 'Consent recorded' });
+    res.json({ message: 'Consent recorded. Free trial activated for 118 days.' });
   } catch (err) {
     console.error('Consent error:', err);
     res.status(500).json({ error: 'Failed to record consent' });
