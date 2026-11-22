@@ -727,12 +727,15 @@ app.post('/api/change-password', authenticateToken, async (req, res) => {
   }
 });
 
-// Record consent (11 acknowledgments: the original 10 plus research use
-// of de-identified data, added when the trial data collection shipped).
+// Record consent. Current clients send { agreed: true } after a single
+// plain-language agreement checkbox. Older clients sent 11 separate
+// acknowledgments (the original 10 plus research use of de-identified
+// data); that format is still accepted.
 app.post('/api/consent', authenticateToken, async (req, res) => {
-  const { acknowledgments } = req.body;
-  if (!acknowledgments || !Array.isArray(acknowledgments) || acknowledgments.length !== 11 || !acknowledgments.every(a => a === true)) {
-    return res.status(400).json({ error: 'All 11 acknowledgments must be checked' });
+  const { acknowledgments, agreed } = req.body;
+  const legacyOk = Array.isArray(acknowledgments) && acknowledgments.length === 11 && acknowledgments.every(a => a === true);
+  if (agreed !== true && !legacyOk) {
+    return res.status(400).json({ error: 'Please agree to the consent to continue' });
   }
   try {
     // Free trial: grant complimentary access for 118 days (28-day baseline + 90 days live monitoring)
