@@ -1076,11 +1076,15 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <p class="section-eyebrow">Get Started</p>
 <h3>Your first 3 steps</h3>
 <ol style="margin:10px 0;padding-left:20px;line-height:2;">
-<li><strong>Connect your Fitbit</strong> with Google Health using the button below.</li>
+<li><strong>Connect your watch</strong> (Fitbit or Garmin) using a button below.</li>
 <li><strong>Wear it tonight</strong>, including while you sleep.</li>
 <li><strong>Check back tomorrow</strong> for your first data. Your baseline builds over 28 days.</li>
 </ol>
-<button onclick="connectFitbit()">Connect with Google Health</button>
+<div style="display:flex;gap:10px;flex-wrap:wrap;">
+<button onclick="connectFitbit()">Connect with Google Health (Fitbit)</button>
+<button onclick="connectGarmin()" class="secondary">Connect Garmin</button>
+</div>
+<p style="color:var(--muted);font-size:13px;margin-top:10px;">Fitbit users: connect through Google Health. Garmin users: connect directly with your Garmin account. You only need one watch connected.</p>
 </div>
 
 <div class="metric-grid">
@@ -1102,8 +1106,9 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 
 <div class="section-card">
 <p class="section-eyebrow">Connected Device</p>
-<h3>Your Fitbit</h3>
+<h3>Your Watch</h3>
 <div id="fitbit-section"><p>Loading Fitbit status...</p></div>
+<div id="garmin-section" style="margin-top:16px;"><p>Loading Garmin status...</p></div>
 </div>
 
 <div class="section-card">
@@ -1783,11 +1788,13 @@ function updateInsightsState(hasData) {
 async function loadDashboard() {
   resetDashboard();
   try {
-    const [fitbit, det] = await Promise.all([
+    const [fitbit, garmin, det] = await Promise.all([
       apiCall('/fitbit/status', 'GET'),
+      apiCall('/garmin/status', 'GET'),
       apiCall('/detector/status', 'GET'),
     ]);
     renderFitbit(fitbit);
+    renderGarmin(garmin);
     renderDetector(det);
     const days = await apiCall('/days?limit=7', 'GET');
     renderDays(days.days);
@@ -2653,11 +2660,11 @@ function renderFitbit(f) {
   const el = document.getElementById('fitbit-section');
   setEmergencyContactVisible(!!f.connected);
   if (!f.googleConfigured) {
-    el.innerHTML = '<p>Fitbit connection is not set up yet. The operator is still configuring the Google Health connection. Check back soon.</p>';
+    el.innerHTML = '<p><strong>Fitbit:</strong> Not set up yet. The operator is still configuring the Google Health connection.</p>';
     return;
   }
   if (!f.connected) {
-    el.innerHTML = '<p>Your Fitbit is not connected yet. H-CAR reads your daily summaries through Google Fit.</p>' +
+    el.innerHTML = '<p><strong>Fitbit:</strong> Not connected. H-CAR reads your daily summaries through Google Fit.</p>' +
       '<ol style="margin:10px 0 14px;padding-left:20px;line-height:1.7;color:var(--muted);font-size:14px;">' +
       '<li>You need a Google account, and your Fitbit linked to Google Fit. In the Fitbit app: Settings, Manage Data, Google Fit.</li>' +
       '<li>We read daily summaries only, not minute-by-minute data.</li>' +
@@ -2666,7 +2673,7 @@ function renderFitbit(f) {
       '<button onclick="connectFitbit()">Connect with Google Health</button>';
     return;
   }
-  let html = '<p><strong>Connected</strong>' + (f.connectedAt ? ' since ' + new Date(f.connectedAt).toLocaleDateString() : '') + '.</p>';
+  let html = '<p><strong>Fitbit: Connected</strong>' + (f.connectedAt ? ' since ' + new Date(f.connectedAt).toLocaleDateString() : '') + '.</p>';
   if (f.lastSyncAt) html += '<p>Last synced ' + new Date(f.lastSyncAt).toLocaleString() + '.</p>';
   if (f.lastSyncError) html += '<div class="error">Last sync had an issue: ' + f.lastSyncError + '</div>';
   html += '<button onclick="syncNow()">Sync Now</button>' +
@@ -2674,9 +2681,33 @@ function renderFitbit(f) {
   el.innerHTML = html;
 }
 
+function renderGarmin(g) {
+  const el = document.getElementById('garmin-section');
+  if (!g.garminConfigured) {
+    el.innerHTML = '<p><strong>Garmin:</strong> Not set up yet. The operator is still configuring the Garmin connection.</p>';
+    return;
+  }
+  if (!g.connected) {
+    el.innerHTML = '<p><strong>Garmin:</strong> Not connected. H-CAR reads your daily summaries directly from Garmin.</p>' +
+      '<ol style="margin:10px 0 14px;padding-left:20px;line-height:1.7;color:var(--muted);font-size:14px;">' +
+      '<li>You need a Garmin account with a compatible watch (Forerunner, Fenix, Venu, Epix, and others).</li>' +
+      '<li>We read daily summaries only, not minute-by-minute data.</li>' +
+      '<li>Tap the button below and sign in with Garmin to connect. Your watch syncs automatically when you open Garmin Connect.</li>' +
+      '</ol>' +
+      '<button onclick="connectGarmin()">Connect Garmin</button>';
+    return;
+  }
+  let html = '<p><strong>Garmin: Connected</strong>' + (g.connectedAt ? ' since ' + new Date(g.connectedAt).toLocaleDateString() : '') + '.</p>';
+  if (g.lastSyncAt) html += '<p>Last data received ' + new Date(g.lastSyncAt).toLocaleString() + '.</p>';
+  if (g.lastSyncError) html += '<div class="error">Last sync had an issue: ' + g.lastSyncError + '</div>';
+  html += '<p style="color:var(--muted);font-size:13px;">Garmin sends data automatically when your watch syncs. No manual sync needed.</p>' +
+    '<button class="secondary" onclick="disconnectGarmin()">Disconnect Garmin</button>';
+  el.innerHTML = html;
+}
+
 function renderDetector(det) {
   const statusLabels = {
-    not_connected: ['Not connected', 'status-not-connected', 'Connect with Google Health to start building your baseline.'],
+    not_connected: ['Not connected', 'status-not-connected', 'Connect your Fitbit or Garmin watch to start building your baseline.'],
     learning: ['Learning your baseline', 'status-learning', 'H-CAR is learning what is normal for you. No flags during the first 28 days.'],
     monitoring: ['Monitoring', 'status-monitoring', 'Your baseline is set. H-CAR is watching for sustained changes.'],
     watch_active: ['Watch flag active', 'status-watch', 'Your numbers have moved away from your baseline for 2 or more days. This is a change worth noticing, not a diagnosis.'],
@@ -2689,18 +2720,18 @@ function renderDetector(det) {
   const pct = Math.round((det.baselineDay / 28) * 100);
   let milestoneMsg = '';
   if (det.baselineDay >= 21 && !det.baselineComplete) milestoneMsg = ' Almost there! Just ' + (28 - det.baselineDay) + ' more days until H-CAR starts watching for changes.';
-  else if (det.baselineDay >= 14) milestoneMsg = ' Halfway there! Keep wearing your Fitbit every day.';
+  else if (det.baselineDay >= 14) milestoneMsg = ' Halfway there! Keep wearing your watch every day.';
   else if (det.baselineDay >= 7) milestoneMsg = ' One week down! Your baseline is taking shape.';
   document.getElementById('baseline-section').innerHTML =
     det.baselineComplete
       ? '<p><strong>Baseline complete!</strong> ' + det.daysSynced + ' days of data synced. H-CAR is now watching for changes.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
       : '<p><strong>Day ' + det.baselineDay + ' of 28.</strong> ' + det.daysSynced + ' days of data synced.' + milestoneMsg + '</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
-        '<p style="color:var(--muted);">Wear your Fitbit every day, including while you sleep, so the baseline learns your normal.</p>';
+        '<p style="color:var(--muted);">Wear your watch every day, including while you sleep, so the baseline learns your normal.</p>';
 
   const flagsEl = document.getElementById('flags-section');
   if (!det.recentFlags || det.recentFlags.length === 0) {
     if (!det.daysSynced || det.daysSynced === 0) {
-      flagsEl.innerHTML = '<p style="color:var(--muted);font-weight:700;">No data yet, nothing to assess. Connect your Fitbit and sync to start.</p>';
+      flagsEl.innerHTML = '<p style="color:var(--muted);font-weight:700;">No data yet, nothing to assess. Connect your watch to start.</p>';
     } else {
       flagsEl.innerHTML = '<p style="color:var(--teal);font-weight:700;">All clear! Your body is stable. No sustained changes detected.</p>';
     }
@@ -2794,8 +2825,11 @@ function renderDays(days) {
   const el = document.getElementById('days-section');
   renderMetricCards(days);
   if (!days || days.length === 0) {
-    el.innerHTML = '<p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p>' +
-      '<button onclick="connectFitbit()" style="margin-top:10px;">Connect with Google Health</button>';
+    el.innerHTML = '<p>No data yet. Connect your watch to see your daily summaries.</p>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+      '<button onclick="connectFitbit()">Connect with Google Health (Fitbit)</button>' +
+      '<button onclick="connectGarmin()" class="secondary">Connect Garmin</button>' +
+      '</div>';
     return;
   }
   const fmt = (v, digits) => (v === null || v === undefined ? '&ndash;' : Number(v).toFixed(digits === undefined ? 0 : digits));
@@ -2822,7 +2856,7 @@ function renderDays(days) {
     html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + fmt(d.breathingRate, 1) + '</td><td' + tempStyle + '>' + fmtTemp(d.skinTempDelta) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
   }
   html += '</table></div>';
-  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Outliers (red) are likely sensor errors and are excluded from baseline calculations. Missing values (&ndash;) mean your Fitbit did not record that signal that day.</p>';
+  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Outliers (red) are likely sensor errors and are excluded from baseline calculations. Missing values (&ndash;) mean your watch did not record that signal that day.</p>';
   el.innerHTML = html;
 }
 
@@ -2837,10 +2871,31 @@ async function connectFitbit() {
   }
 }
 
+async function connectGarmin() {
+  try {
+    const data = await apiCall('/garmin/connect', 'GET');
+    window.location = data.url;
+  } catch (e) {
+    const errEl = document.getElementById('fitbit-error');
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
 async function disconnectFitbit() {
   if (!confirm('Disconnect your Fitbit? H-CAR will stop syncing new data. Your stored history is kept.')) return;
   try {
     await apiCall('/fitbit/disconnect', 'POST', {});
+    await loadDashboard();
+  } catch (e) {
+    alert('Disconnect failed: ' + e.message);
+  }
+}
+
+async function disconnectGarmin() {
+  if (!confirm('Disconnect your Garmin? H-CAR will stop receiving new data. Your stored history is kept.')) return;
+  try {
+    await apiCall('/garmin/disconnect', 'POST', {});
     await loadDashboard();
   } catch (e) {
     alert('Disconnect failed: ' + e.message);
@@ -2892,6 +2947,32 @@ async function syncNow() {
     const errEl = document.getElementById('fitbit-error');
     if (errEl) {
       errEl.textContent = params.get('message') || 'Fitbit connection failed.';
+      errEl.classList.remove('hidden');
+    }
+  }
+})();
+
+// Handle the return from Garmin OAuth.
+(function handleGarminReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const garmin = params.get('garmin');
+  if (!garmin) return;
+  window.history.replaceState({}, '', window.location.pathname);
+  if (garmin === 'connected') {
+    const notice = document.getElementById('fitbit-notice');
+    if (notice) {
+      notice.textContent = 'Garmin connected. Your watch will send data automatically when it syncs with Garmin Connect.';
+      notice.classList.remove('hidden');
+    }
+    setTimeout(async () => {
+      if (authToken) {
+        await loadDashboard();
+      }
+    }, 1000);
+  } else if (garmin === 'error') {
+    const errEl = document.getElementById('fitbit-error');
+    if (errEl) {
+      errEl.textContent = params.get('message') || 'Garmin connection failed.';
       errEl.classList.remove('hidden');
     }
   }
