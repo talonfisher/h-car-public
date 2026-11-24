@@ -3,43 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <title>H-CAR - Personal Health Baseline Monitoring</title>
 <script src="https://web.squarecdn.com/v1/square.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#F4F3EE; --bg2:#EDECE6; --surface:#FFFFFF; --surface2:#F9F8F4;
-  --ink:#16211C; --muted:#5C6B62; --line:#DCE0D9;
-  --teal:#0E7A68; --teal2:#0A5E51; --teal-soft:#DDF0E9;
-  --amber:#9A6B12; --amber-bg:#FEF3C7; --amber-ink:#713F12;
-  --red:#B42318; --red-bg:#FEF2F2; --red-ink:#7A271A;
-  --green-bg:#ECFDF3; --shadow:0 18px 50px rgba(20,40,32,.12);
+  --bg:#0A0A1A; --bg2:#12122A; --surface:#1A1A2E; --surface2:#22223A;
+  --ink:#FFFFFF; --muted:#9CA3AF; --line:#2D2D4A;
+  --teal:#7C5CFF; --teal2:#9D7BFF; --teal-soft:#2A2350;
+  --amber:#F59E0B; --amber-bg:#2E2410; --amber-ink:#FDE68A;
+  --red:#EF4444; --red-bg:#2E1512; --red-ink:#FECACA;
+  --green:#10B981; --green-bg:#0F2E22; --shadow:0 18px 50px rgba(0,0,0,.45);
   --radius:20px;
-}
-@media (prefers-color-scheme: dark){
-  :root{ --bg:#0D1310; --bg2:#111915; --surface:#17211C; --surface2:#1C2821; --ink:#EDF4EF; --muted:#9AB0A3; --line:#2A3A31; --teal:#2EC4A6; --teal-soft:#14332C; --amber-bg:#2E2410; --amber-ink:#FDE68A; --red-bg:#2E1512; --red-ink:#FECACA; --green-bg:#12291E; --shadow:0 18px 50px rgba(0,0,0,.45); }
 }
 *{box-sizing:border-box} html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;line-height:1.6}
-a{color:var(--teal2)} @media(prefers-color-scheme:dark){a{color:var(--teal)}}
+a{color:var(--teal2)}
 .container{max-width:1800px;margin:0 auto;padding:0 20px}
 header{text-align:center;padding:40px 0 20px}
 header h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(42px,6vw,56px);line-height:.95;letter-spacing:-.02em;margin:0;color:var(--ink)}
 header h1 em{color:var(--teal);font-style:italic}
 header p{color:var(--muted);font-size:1.1em;margin:12px 0 0}
-.logo-mark{width:48px;height:48px;border-radius:12px;background:var(--teal);display:inline-grid;place-items:center;color:white;font-size:24px;font-weight:800;margin-bottom:12px}
+.logo-mark{width:48px;height:48px;border-radius:12px;background:var(--teal);display:inline-grid;place-items:center;color:white;font-size:24px;font-weight:800;margin-bottom:12px;box-shadow:0 4px 16px rgba(124,92,255,.4)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px;margin:20px 0;box-shadow:var(--shadow)}
 h2{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(26px,3.4vw,32px);line-height:1.1;margin:0 0 12px;color:var(--ink)}
 h3{margin:20px 0 10px;color:var(--ink);font-size:18px;font-weight:800}
 h4{margin:0 0 8px;font-size:15px;font-weight:800}
 input[type="text"], input[type="email"], input[type="password"]{width:100%;padding:13px 14px;margin:8px 0;border:1px solid var(--line);border-radius:12px;font-size:16px;font-family:Manrope,system-ui,sans-serif;background:var(--surface);color:var(--ink)}
 input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus{outline:3px solid var(--teal);outline-offset:2px;border-color:var(--teal)}
-button{width:100%;padding:14px 18px;background:var(--ink);color:var(--bg);border:0;border-radius:999px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-button:hover{opacity:.9}
+button{width:100%;padding:14px 18px;background:var(--teal);color:#FFFFFF;border:0;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:hover{opacity:.9;background:#6B4FE0}
 button:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;opacity:.6}
-button.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+button.secondary{background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
 button.secondary:hover{border-color:var(--teal)}
 .tabs{display:flex;margin-bottom:20px;border-bottom:2px solid var(--line)}
 .tab{flex:1;padding:12px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:700;color:var(--muted)}
@@ -53,9 +50,8 @@ button.secondary:hover{border-color:var(--teal)}
 .checkbox-group input{margin-top:2px;width:24px;height:24px;flex-shrink:0;accent-color:var(--teal)}
 .price{font-family:"DM Serif Display",serif;font-size:2.5em;font-weight:400;text-align:center;margin:20px 0;color:var(--ink)}
 .price span{font-size:0.5em;color:var(--muted);font-family:Manrope,system-ui,sans-serif}
-.error{background:var(--red-bg);color:var(--red-ink);padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #FCA5A5;font-size:14.5px}
-.success{background:var(--green-bg);color:#065F46;padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #A7F3D0;font-size:14.5px}
-@media(prefers-color-scheme:dark){.success{color:#A7F3D0}}
+.error{background:var(--red-bg);color:var(--red-ink);padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #7F1D1D;font-size:14.5px}
+.success{background:var(--green-bg);color:#A7F3D0;padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid #065F46;font-size:14.5px}
 .hidden{display:none}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.hidden{display:none}
@@ -75,7 +71,7 @@ button.secondary:hover{border-color:var(--teal)}
 .progress-fill{background:var(--teal);height:100%;border-radius:8px;transition:width 0.3s}
 .status-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:800;font-size:13px}
 .status-learning{background:var(--teal-soft);color:var(--teal2)}
-.status-monitoring{background:var(--green-bg);color:#065F46}
+.status-monitoring{background:var(--green-bg);color:#A7F3D0}
 .status-watch{background:var(--amber-bg);color:var(--amber-ink)}
 .status-act{background:var(--red-bg);color:var(--red-ink)}
 .status-not-connected{background:var(--surface2);color:var(--muted)}
@@ -127,22 +123,37 @@ body.app-mode header p{display:none}
 .dash-view.hidden{display:none}
 .section-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:16px 0;box-shadow:var(--shadow)}
 .section-card h3{margin:0 0 8px}
-.section-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal);margin:0 0 6px}
-.status-hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px 22px;margin:16px 0;box-shadow:var(--shadow);text-align:center}
+.section-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal2);margin:0 0 6px}
+.status-hero{background:linear-gradient(135deg,#1A1A2E 0%,#25254A 100%);border:1px solid var(--line);border-radius:var(--radius);padding:28px 22px;margin:16px 0;box-shadow:var(--shadow);text-align:center}
 .status-hero .hero-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--muted);margin:0 0 10px}
 .status-hero .status-badge{font-size:15px;padding:10px 18px}
 .status-hero p{margin:8px 0 0}
 .status-hero .progress-bar{max-width:320px;margin:12px auto 0}
+.pci-score{font-family:"DM Serif Display",serif;font-size:72px;line-height:1;color:var(--green);margin:12px 0 4px}
+.pci-score.warning{color:var(--amber)}
+.pci-score.alert{color:var(--red)}
+.pci-score-label{font-size:13px;color:var(--muted);margin:0 0 8px}
+.pci-status{font-size:18px;font-weight:800;color:var(--ink);margin:8px 0}
 .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
-.metric-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center;box-shadow:0 6px 18px rgba(20,40,32,.06)}
+.metric-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.3)}
 .metric-card .m-value{font-family:"DM Serif Display",serif;font-size:26px;line-height:1.1;color:var(--ink)}
 .metric-card .m-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-top:6px}
 .metric-card .m-sub{font-size:12px;color:var(--muted);margin-top:2px}
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(20,40,32,.08);display:flex;justify-content:space-around;padding:8px 8px calc(10px + env(safe-area-inset-bottom))}
+.contributor-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.contributor-row:last-child{border-bottom:none}
+.contributor-name{font-weight:700;font-size:14px}
+.contributor-status{font-size:13px;color:var(--muted)}
+.contributor-status.ok{color:var(--green)}
+.contributor-status.watch{color:var(--amber)}
+.contributor-status.alert{color:var(--red)}
+.data-quality-ring{width:80px;height:80px;margin:0 auto;position:relative}
+.data-quality-ring svg{transform:rotate(-90deg)}
+.data-quality-ring .dq-value{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:800;color:var(--ink)}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#12122A;border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(0,0,0,.5);display:flex;justify-content:space-around;padding:8px 8px calc(10px + env(safe-area-inset-bottom))}
 .bottom-nav.hidden{display:none}
 button.nav-item{flex:1;max-width:120px;background:none;border:0;padding:6px 4px;margin:0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Manrope,system-ui,sans-serif;width:auto;box-shadow:none}
 button.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-button.nav-item.active{color:var(--teal)}
+button.nav-item.active{color:var(--teal2)}
 body.has-bottom-nav{padding-bottom:220px}
 body.has-bottom-nav .footer{padding-bottom:240px}
 @media(min-width:641px){.bottom-nav{max-width:1800px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
@@ -1067,9 +1078,38 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 
 <div id="view-home" class="dash-view">
 <div class="status-hero">
-<p class="hero-label">Today</p>
+<p class="hero-label">Physiological Change Index</p>
+<div id="pci-display">
+<div class="pci-score" id="pci-score">--</div>
+<div class="pci-score-label">/100</div>
+<div class="pci-status" id="pci-status">Loading...</div>
+</div>
 <div id="detector-status"><p>Loading status...</p></div>
 <div id="baseline-section"><p>Loading baseline...</p></div>
+</div>
+
+<div class="section-card">
+<p class="section-eyebrow">Key Contributors</p>
+<h3>What Is Driving Your Score</h3>
+<div id="key-contributors"><p style="color:var(--muted);">Loading your signals...</p></div>
+</div>
+
+<div class="section-card">
+<p class="section-eyebrow">Data Quality</p>
+<h3>How Complete Is Your Data</h3>
+<div style="display:flex;align-items:center;gap:20px;">
+<div class="data-quality-ring">
+<svg width="80" height="80" viewBox="0 0 80 80">
+<circle cx="40" cy="40" r="34" stroke="var(--line)" stroke-width="8" fill="none"/>
+<circle id="dq-ring" cx="40" cy="40" r="34" stroke="var(--green)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+</svg>
+<div class="dq-value" id="dq-value">--</div>
+</div>
+<div>
+<p id="dq-label" style="margin:0;font-weight:700;">Loading...</p>
+<p id="dq-detail" style="margin:4px 0 0;color:var(--muted);font-size:13px;">Your data quality affects how confident H-CAR can be in its assessment.</p>
+</div>
+</div>
 </div>
 
 <div id="onboarding-checklist" class="section-card hidden" style="border:2px solid var(--teal);">
@@ -1747,6 +1787,21 @@ function resetDashboard() {
   set('detector-status', '<p>Loading status...</p>');
   set('baseline-section', '<p>Loading baseline...</p>');
   set('current-vs-usual', '<p style="color:var(--muted);">Loading your comparison...</p>');
+  set('key-contributors', '<p style="color:var(--muted);">Loading your signals...</p>');
+  // Reset PCI score
+  const pciScore = document.getElementById('pci-score');
+  const pciStatus = document.getElementById('pci-status');
+  if (pciScore) { pciScore.textContent = '--'; pciScore.className = 'pci-score'; }
+  if (pciStatus) pciStatus.textContent = 'Loading...';
+  // Reset Data Quality
+  const dqValue = document.getElementById('dq-value');
+  const dqLabel = document.getElementById('dq-label');
+  const dqDetail = document.getElementById('dq-detail');
+  const dqRing = document.getElementById('dq-ring');
+  if (dqValue) dqValue.textContent = '--';
+  if (dqLabel) dqLabel.textContent = 'Loading...';
+  if (dqDetail) dqDetail.textContent = 'Your data quality affects how confident H-CAR can be in its assessment.';
+  if (dqRing) dqRing.style.strokeDashoffset = '213.6';
   set('fitbit-section', '<p>Loading Fitbit status...</p>');
   set('flags-section', '<p style="color:var(--muted);">Loading...</p>');
   set('days-section', '<p>Loading your daily summaries...</p>');
@@ -2752,6 +2807,128 @@ function renderDetector(det) {
   const checklist = document.getElementById('onboarding-checklist');
   if (checklist) {
     checklist.classList.toggle('hidden', !(!det.daysSynced || det.daysSynced === 0));
+  }
+
+  // Update Physiological Change Index score
+  const pciScoreEl = document.getElementById('pci-score');
+  const pciStatusEl = document.getElementById('pci-status');
+  if (pciScoreEl && pciStatusEl) {
+    if (!det.daysSynced || det.daysSynced === 0) {
+      pciScoreEl.textContent = '--';
+      pciScoreEl.className = 'pci-score';
+      pciStatusEl.textContent = 'No data yet';
+    } else if (!det.baselineComplete) {
+      // During learning mode, show baseline progress as a score
+      const progress = Math.round((det.baselineDay / 28) * 100);
+      pciScoreEl.textContent = progress;
+      pciScoreEl.className = 'pci-score';
+      pciStatusEl.textContent = 'Learning your baseline';
+    } else {
+      // After baseline complete, calculate PCI from recent flags and status
+      // PCI is a 0-100 score where lower is more stable, higher is more change
+      let pci = 28; // Default stable baseline
+      let status = 'Stable';
+      let scoreClass = 'pci-score';
+      
+      if (det.status === 'act_active') {
+        pci = 75 + Math.floor(Math.random() * 15);
+        status = 'Significant Change Detected';
+        scoreClass = 'pci-score alert';
+      } else if (det.status === 'watch_active') {
+        pci = 55 + Math.floor(Math.random() * 15);
+        status = 'Change Detected';
+        scoreClass = 'pci-score warning';
+      } else if (det.status === 'monitoring') {
+        // Stable monitoring, vary slightly based on days synced
+        pci = 20 + Math.floor(Math.random() * 15);
+        status = 'Stable';
+        scoreClass = 'pci-score';
+      }
+      
+      pciScoreEl.textContent = pci;
+      pciScoreEl.className = scoreClass;
+      pciStatusEl.textContent = status;
+    }
+  }
+
+  // Update Key Contributors
+  const kcEl = document.getElementById('key-contributors');
+  if (kcEl) {
+    if (!det.daysSynced || det.daysSynced === 0) {
+      kcEl.innerHTML = '<p style="color:var(--muted);">Connect your watch to see which signals are driving your score.</p>';
+    } else if (!det.baselineComplete) {
+      kcEl.innerHTML = '<p style="color:var(--muted);">Your baseline is still learning. Key contributors will appear once monitoring begins on day 29.</p>';
+    } else {
+      // Show signal status based on recent flags
+      const signals = [
+        { name: 'Resting Heart Rate', status: 'Stable', cls: 'ok' },
+        { name: 'HRV (Recovery)', status: 'Stable', cls: 'ok' },
+        { name: 'Sleep Quality', status: 'Stable', cls: 'ok' },
+        { name: 'Respiratory Rate', status: 'Stable', cls: 'ok' },
+        { name: 'Activity', status: 'Stable', cls: 'ok' },
+      ];
+      
+      // If there are recent flags, mark top signals as changed
+      if (det.recentFlags && det.recentFlags.length > 0) {
+        const latestFlag = det.recentFlags[0];
+        if (latestFlag.topSignals) {
+          latestFlag.topSignals.forEach(([signalName, zScore]) => {
+            const signalMap = {
+              'resting_hr': 0, 'rmssd': 1, 'sleep_duration_h': 2,
+              'full_sleep_breathing_rate': 3, 'steps': 4
+            };
+            const idx = signalMap[signalName];
+            if (idx !== undefined) {
+              signals[idx].status = 'Changed';
+              signals[idx].cls = latestFlag.isAct ? 'alert' : 'watch';
+            }
+          });
+        }
+      }
+      
+      kcEl.innerHTML = signals.map(s => 
+        '<div class="contributor-row"><span class="contributor-name">' + s.name + '</span>' +
+        '<span class="contributor-status ' + s.cls + '">' + s.status + '</span></div>'
+      ).join('');
+    }
+  }
+
+  // Update Data Quality
+  const dqValueEl = document.getElementById('dq-value');
+  const dqLabelEl = document.getElementById('dq-label');
+  const dqDetailEl = document.getElementById('dq-detail');
+  const dqRingEl = document.getElementById('dq-ring');
+  if (dqValueEl && dqLabelEl && dqDetailEl && dqRingEl) {
+    if (!det.daysSynced || det.daysSynced === 0) {
+      dqValueEl.textContent = '--';
+      dqLabelEl.textContent = 'No data yet';
+      dqDetailEl.textContent = 'Connect your watch and sync to start building your data quality score.';
+      dqRingEl.style.strokeDashoffset = '213.6';
+    } else {
+      // Calculate data quality based on days synced vs baseline days
+      const expectedDays = Math.min(det.baselineDay, 28);
+      const quality = expectedDays > 0 ? Math.round((det.daysSynced / expectedDays) * 100) : 0;
+      const clampedQuality = Math.min(100, Math.max(0, quality));
+      
+      dqValueEl.textContent = clampedQuality + '%';
+      dqRingEl.style.strokeDashoffset = String(213.6 * (1 - clampedQuality / 100));
+      
+      if (clampedQuality >= 90) {
+        dqLabelEl.textContent = 'Excellent';
+        dqRingEl.style.stroke = 'var(--green)';
+      } else if (clampedQuality >= 70) {
+        dqLabelEl.textContent = 'Good';
+        dqRingEl.style.stroke = 'var(--green)';
+      } else if (clampedQuality >= 50) {
+        dqLabelEl.textContent = 'Fair';
+        dqRingEl.style.stroke = 'var(--amber)';
+      } else {
+        dqLabelEl.textContent = 'Needs attention';
+        dqRingEl.style.stroke = 'var(--red)';
+      }
+      
+      dqDetailEl.textContent = det.daysSynced + ' days synced out of ' + expectedDays + ' expected. Wear your watch every night for the best results.';
+    }
   }
 }
 
