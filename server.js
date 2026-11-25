@@ -2552,6 +2552,38 @@ app.get('/api/admin/trial-summary', requireAdminKey, async (req, res) => {
   }
 });
 
+app.get('/api/admin/users', requireAdminKey, async (req, res) => {
+  try {
+    const users = await dbAll(
+      `SELECT u.id AS user_id,
+              u.name,
+              u.email,
+              u.created_at,
+              (SELECT COUNT(*) FROM daily_summaries d WHERE d.user_id = u.id) AS days_synced,
+              (SELECT MAX(date) FROM daily_summaries d WHERE d.user_id = u.id) AS last_date,
+              CASE WHEN EXISTS (SELECT 1 FROM fitbit_tokens f WHERE f.user_id = u.id) THEN 1 ELSE 0 END AS fitbit_connected,
+              CASE WHEN EXISTS (SELECT 1 FROM garmin_tokens g WHERE g.user_id = u.id) THEN 1 ELSE 0 END AS garmin_connected,
+              u.subscription_status
+       FROM users u ORDER BY u.created_at DESC`
+    );
+    const usersNum = users.map((u) => ({
+      user_id: u.user_id,
+      name: u.name,
+      email: u.email,
+      created_at: u.created_at,
+      days_synced: parseInt(u.days_synced, 10),
+      last_date: u.last_date,
+      fitbit_connected: parseInt(u.fitbit_connected, 10),
+      garmin_connected: parseInt(u.garmin_connected, 10),
+      subscription_status: u.subscription_status,
+    }));
+    res.json({ users: usersNum });
+  } catch (err) {
+    console.error('Admin users error:', err);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
 // Symptom logging
 // POST /api/symptoms - Save symptoms for today (or a specific date).
 // Accepts: { symptoms: ["Tired / poor sleep", "Dizzy"], notes: "...", date: "2026-11-17" (optional, defaults to today) }
