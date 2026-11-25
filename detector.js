@@ -20,6 +20,30 @@
 //   a new episode can start once the previous ends.
 // - Episodes <= 14 days apart merge into one for paging counts.
 // - A gap in dates breaks a run.
+// - Cycle adjustment (optional): when opts.phaseByDate maps a date to
+//   'luteal', the expected luteal rises in resting heart rate and skin
+//   temperature are subtracted before z-scoring, so normal cycle
+//   changes are not flagged as abnormal. Baseline learning always uses
+//   the original values. Without opts.phaseByDate the detector behaves
+//   exactly as before. See cycle.js for magnitudes and limits.
+// - Pregnancy adjustment (optional): opts.pregnancyByDate maps a date
+//   to { weeks }. The expected gradual resting heart rate rise is
+//   subtracted before z-scoring. See context.js.
+// - Altitude adjustment (optional): opts.altitudeByDate maps a date to
+//   metres. At or above 1500 m the expected SpO2 drop is corrected
+//   before z-scoring. See context.js.
+// - Menopause adjustment (optional): opts.sigmaFloorOverrides can widen
+//   the nightly temperature sigma floor for perimenopausal users, so
+//   normal temperature swings are less likely to trigger a flag.
+// - Medication context (optional): opts.medChangeByDate maps a date to
+//   true when a medication was started within the last 14 days. It is
+//   recorded as context only; no value is changed and no effect is
+//   predicted. See context.js.
+// All context fields are recorded on each dayResult so a user can see
+// why a flag was or was not raised on a given day.
+
+const cycle = require('./cycle');
+const context = require('./context');
 
 const SIGNALS = {
   resting_hr: +1,
@@ -53,13 +77,14 @@ function median(values) {
   return n % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function baselineStats(vals, signal) {
+function baselineStats(vals, signal, floors) {
   if (vals.length < MIN_BASELINE_N) return null;
   const centre = median(vals);
   const deviations = vals.map((v) => Math.abs(v - centre));
   const mad = median(deviations);
   let sigma = 1.4826 * mad;
-  sigma = Math.max(sigma, SIGMA_FLOORS[signal]);
+  const floor = (floors && floors[signal] !== undefined) ? floors[signal] : SIGMA_FLOORS[signal];
+  sigma = Math.max(sigma, floor);
   return { centre, sigma };
 }
 
@@ -124,10 +149,24 @@ function mergeEpisodes(eps, gapDays = 14) {
 
 // Run the detector over one person's days.
 // dayRows: [{ date: 'YYYY-MM-DD', vals: { signal: number } }] in date order.
+// opts.phaseByDate (optional): { 'YYYY-MM-DD': 'follicular' | 'luteal' | null }.
+//   On luteal days, the expected luteal rises are corrected before scoring.
+// opts.pregnancyByDate (optional): { 'YYYY-MM-DD': { weeks: number } }.
+// opts.altitudeByDate (optional): { 'YYYY-MM-DD': metres }.
+// opts.medChangeByDate (optional): { 'YYYY-MM-DD': true }.
+// opts.sigmaFloorOverrides (optional): { signal: floor }.
+// opts.menopauseStatus (optional): 'pre' | 'peri' | 'post' | null, recorded as context.
 // Returns { scoredDays, episodes, mergedEpisodes, dayResults, baseline, baselineDays }.
 // dayResults: one entry per input day with { date, zs, composite, nOff, nSignals,
-//   watch, scored, inBaseline }.
-function runPerson(dayRows) {
+//   watch, scored, inBaseline, cyclePhase, pregnant, pregnantWeeks, altitudeM,
+//   medChangeRecent, menopauseStatus }.
+function runPerson(dayRows, opts) {
+  const phaseByDate = (opts && opts.phaseByDate) || {};
+  const pregnancyByDate = (opts && opts.pregnancyByDate) || {};
+  const altitudeByDate = (opts && opts.altitudeByDate) || {};
+  const medChangeByDate = (opts && opts.medChangeByDate) || {};
+  const sigmaFloors = { ...SIGMA_FLOORS, ...((opts && opts.sigmaFloorOverrides) || {}) };
+  const menopauseStatus = (opts && opts.menopauseStatus) || null;
   const baseline = {};
   for (const s of Object.keys(SIGNALS)) baseline[s] = [];
 
@@ -184,7 +223,7 @@ function runPerson(dayRows) {
 
     if (di < BASELINE_DAYS) {
       addToBaseline(vals);
-      dayResults.push({ date, zs: {}, composite: null, nOff: 0, nSignals: 0, watch: false, scored: false, inBaseline: true });
+      dayResults.push({ date, zs: {}, composite: null, nOff: 0, nSignals: 0, watch: false, scored: false, inBaseline: true, cyclePhase: phaseByDate[date] || null, pregnant: !!(pregnancyByDate[date] && pregnancyByDate[date].weeks !== undefined), pregnantWeeks: (pregnancyByDate[date] && pregnancyByDate[date].weeks !== undefined) ? pregnancyByDate[date].weeks : null, altitudeM: (altitudeByDate[date] !== undefined ? altitudeByDate[date] : null), medChangeRecent: !!medChangeByDate[date], menopauseStatus });
       prevOrd = ord;
       continue;
     }
@@ -195,12 +234,41 @@ function runPerson(dayRows) {
       run = [];
     }
 
+    const cyclePhase = phaseByDate[date] || null;
+    const pregInfo = pregnancyByDate[date] || null;
+    const pregnant = !!(pregInfo && pregInfo.weeks !== undefined);
+    const pregnantWeeks = pregnant ? pregInfo.weeks : null;
+    const altitudeM = altitudeByDate[date] !== undefined ? altitudeByDate[date] : null;
+    const medChangeRecent = !!medChangeByDate[date];
+    // Luteal-phase correction: subtract the expected luteal rises so
+    // normal cycle changes do not inflate z-scores. Baseline learning
+    // and run records keep the original values.
+    const scoreVals = { ...vals };
+    if (cyclePhase === 'luteal') {
+      if (typeof scoreVals.resting_hr === 'number') {
+        scoreVals.resting_hr -= cycle.LUTEAL_RHR_CORRECTION_BPM;
+      }
+      if (typeof scoreVals.nightly_temperature === 'number') {
+        scoreVals.nightly_temperature -= cycle.LUTEAL_TEMP_CORRECTION_C;
+      }
+    }
+    // Pregnancy correction: subtract the expected gradual resting heart
+    // rate rise for the gestational week.
+    if (pregnant && typeof scoreVals.resting_hr === 'number') {
+      scoreVals.resting_hr -= context.pregnancyRhrCorrection(pregnantWeeks);
+    }
+    // Altitude correction: at or above 1500 m, add back the expected
+    // SpO2 drop so an expected altitude drop is not flagged.
+    if (typeof altitudeM === 'number' && typeof scoreVals.spo2 === 'number') {
+      scoreVals.spo2 += context.altitudeSpo2Correction(altitudeM);
+    }
+
     const zs = {};
     for (const [s, direction] of Object.entries(SIGNALS)) {
-      if (!(s in vals)) continue;
-      const st = baselineStats(baseline[s], s);
+      if (!(s in scoreVals)) continue;
+      const st = baselineStats(baseline[s], s, sigmaFloors);
       if (!st) continue;
-      let z = ((vals[s] - st.centre) / st.sigma) * direction;
+      let z = ((scoreVals[s] - st.centre) / st.sigma) * direction;
       z = Math.max(-Z_CAP, Math.min(Z_CAP, z));
       zs[s] = Math.round(z * 1000) / 1000;
     }
@@ -227,6 +295,12 @@ function runPerson(dayRows) {
       watch,
       scored,
       inBaseline: false,
+      cyclePhase,
+      pregnant,
+      pregnantWeeks,
+      altitudeM,
+      medChangeRecent,
+      menopauseStatus,
     });
 
     if (watch) {
@@ -249,7 +323,7 @@ function runPerson(dayRows) {
   // Final baseline stats per signal (for display and audit).
   const baselineOut = {};
   for (const s of Object.keys(SIGNALS)) {
-    const st = baselineStats(baseline[s], s);
+    const st = baselineStats(baseline[s], s, sigmaFloors);
     if (st) {
       baselineOut[s] = {
         centre: Math.round(st.centre * 1000) / 1000,

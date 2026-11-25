@@ -11,6 +11,8 @@ const path = require('path');
 require('dotenv').config();
 
 const detector = require('./detector');
+const cycle = require('./cycle');
+const context = require('./context');
 const googleHealth = require('./google-health');
 const garminHealth = require('./garmin-health');
 const alertEngine = require('./alert-engine');
@@ -114,6 +116,17 @@ async function initDatabase() {
     // Balanced requires 3 signals (the tested default).
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sensitivity TEXT DEFAULT 'balanced'`);
 
+    // Biological sex, optional and private. Used only to adjust the
+    // detector for cycle-related changes in female users (see cycle.js).
+    // Values: 'male', 'female', 'prefer_not_to_say', or NULL (not set).
+    // It is never shown to other users and never used for anything else.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS biological_sex TEXT`);
+
+    // Menopause status, optional and private. Values: 'pre', 'peri',
+    // 'post', or NULL (not set). Used only to widen the temperature
+    // sigma floor for perimenopausal users (see context.js).
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS menopause_status TEXT`);
+
     // Emergency-only location sharing. When enabled, H-CAR captures the
     // user's location when they sync their Fitbit, and includes their last
     // known location in Act alert emails to their emergency contact.
@@ -171,6 +184,12 @@ async function initDatabase() {
       PRIMARY KEY(user_id, date)
     )`);
 
+    // Elevation in metres for that day, when the user provides it.
+    // Above 1500 m, blood oxygen runs lower and the detector corrects
+    // for it (see context.js). Added after launch, so ALTER in case
+    // the table already exists in production.
+    await client.query(`ALTER TABLE daily_summaries ADD COLUMN IF NOT EXISTS altitude_m REAL`);
+
     // Detector v2 output, one row per user per scored/baseline day.
     await client.query(`CREATE TABLE IF NOT EXISTS detector_results (
       user_id INTEGER NOT NULL,
@@ -184,6 +203,64 @@ async function initDatabase() {
       in_baseline INTEGER DEFAULT 0,
       scored INTEGER DEFAULT 0,
       PRIMARY KEY(user_id, date)
+    )`);
+
+    // Cycle phase recorded for each scored day ('follicular', 'luteal',
+    // or NULL when unknown). Lets users see why a flag was or was not
+    // raised on a given day. Added after launch, so ALTER in case the
+    // table already exists in production.
+    await client.query(`ALTER TABLE detector_results ADD COLUMN IF NOT EXISTS cycle_phase TEXT`);
+
+    // Full health context recorded for each day as JSON: cycle phase,
+    // pregnancy status and week, altitude in metres, whether a
+    // medication was started recently, and menopause status. Lets users
+    // see why a flag was or was not raised on a given day.
+    await client.query(`ALTER TABLE detector_results ADD COLUMN IF NOT EXISTS context_json TEXT`);
+
+    // Menstrual cycle start dates, logged by the user. Private to the
+    // user, used only to estimate cycle phase for baseline adjustment
+    // (see cycle.js). Never shared, never sold, never used for ads.
+    // end_date is optional; a cycle with no end date is treated as
+    // ongoing until the next cycle start is logged.
+    await client.query(`CREATE TABLE IF NOT EXISTS menstrual_cycles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      start_date DATE NOT NULL,
+      end_date DATE,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, start_date)
+    )`);
+
+    // Pregnancies, logged by the user. Private to the user, used only
+    // to adjust the expected resting heart rate rise during pregnancy
+    // (see context.js). Never shared, never sold, never used for ads.
+    // start_date is the estimated conception date or first positive
+    // test. due_date is the estimated due date. end_date is set when
+    // the pregnancy ends. status is 'active', 'completed', or 'ended'.
+    await client.query(`CREATE TABLE IF NOT EXISTS pregnancies (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      start_date DATE NOT NULL,
+      due_date DATE,
+      end_date DATE,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Medications, logged by the user. Private to the user. A medication
+    // started within the last 14 days is noted as context on detector
+    // results only; no effect is predicted (see context.js). Never
+    // shared, never sold, never used for ads.
+    await client.query(`CREATE TABLE IF NOT EXISTS medications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      name TEXT NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE,
+      dosage TEXT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
     // Merged episodes (episodes <= 14 days apart count as one for paging).
@@ -928,7 +1005,7 @@ app.get('/api/promo/my-codes', authenticateToken, async (req, res) => {
 // Get user status
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at, biological_sex, menopause_status FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     // Check if trial subscription has expired
     let subscriptionStatus = user.subscription_status;
@@ -946,7 +1023,9 @@ app.get('/api/me', authenticateToken, async (req, res) => {
       subscriptionPeriodEnd: user.subscription_period_end,
       subscriptionExpiresAt: user.subscription_expires_at,
       promoCodeUsed: user.promo_code_used,
-      createdAt: user.created_at
+      createdAt: user.created_at,
+      biologicalSex: user.biological_sex || null,
+      menopauseStatus: user.menopause_status || null
     });
   } catch (err) {
     console.error('Me error:', err);
@@ -2014,10 +2093,94 @@ function rowToDetectorVals(row) {
 // Re-run detector v2 over all of a user's days and store the results.
 // The detector is deterministic, so a full re-run after each sync is
 // correct and keeps baselines, episodes and flags consistent.
+// Health context the user optionally provides (cycle dates, pregnancy,
+// altitude, medications, menopause status) adjusts expectations so
+// normal, expected changes are not flagged as abnormal. Without any
+// context the detector behaves exactly as before.
 async function runDetectorForUser(userId) {
   const rows = await dbAll('SELECT * FROM daily_summaries WHERE user_id = $1 ORDER BY date ASC', [userId]);
   const dayRows = rows.map((r) => ({ date: r.date, vals: rowToDetectorVals(r) }));
-  const result = detector.runPerson(dayRows);
+
+  // Build the optional context maps for the detector. Each map is keyed
+  // by date and only covers days the user has context for.
+  let phaseByDate = {};
+  let pregnancyByDate = {};
+  let altitudeByDate = {};
+  let medChangeByDate = {};
+  let sigmaFloorOverrides = {};
+  let menopauseStatus = null;
+  try {
+    const userCtx = await dbGet('SELECT biological_sex, menopause_status FROM users WHERE id = $1', [userId]);
+    if (userCtx) {
+      menopauseStatus = userCtx.menopause_status || null;
+      const periFloor = context.tempSigmaFloorForMenopause(menopauseStatus);
+      if (periFloor !== null) {
+        sigmaFloorOverrides = { nightly_temperature: periFloor };
+      }
+      if (userCtx.biological_sex === 'female') {
+        const cycleRows = await dbAll(
+          'SELECT start_date, end_date FROM menstrual_cycles WHERE user_id = $1 ORDER BY start_date ASC',
+          [userId]
+        );
+        if (cycleRows.length > 0) {
+          const cycles = cycleRows.map((r) => ({ start_date: toDateStr(r.start_date), end_date: toDateStr(r.end_date) }));
+          for (const row of rows) {
+            const phase = cycle.getCyclePhase(cycles, row.date);
+            if (phase) phaseByDate[row.date] = phase;
+          }
+        }
+      }
+    }
+    const pregRows = await dbAll(
+      'SELECT start_date, due_date, end_date, status FROM pregnancies WHERE user_id = $1 ORDER BY start_date DESC',
+      [userId]
+    );
+    if (pregRows.length > 0) {
+      const pregnancies = pregRows.map((r) => ({
+        start_date: toDateStr(r.start_date),
+        due_date: toDateStr(r.due_date),
+        end_date: toDateStr(r.end_date),
+        status: r.status,
+      }));
+      for (const row of rows) {
+        const info = context.pregnancyInfoOn(pregnancies, row.date);
+        if (info.pregnant) pregnancyByDate[row.date] = { weeks: info.weeks };
+      }
+    }
+    for (const row of rows) {
+      if (row.altitude_m !== null && row.altitude_m !== undefined) {
+        altitudeByDate[row.date] = row.altitude_m;
+      }
+    }
+    const medRows = await dbAll('SELECT start_date FROM medications WHERE user_id = $1', [userId]);
+    if (medRows.length > 0) {
+      const medStarts = medRows.map((r) => toDateStr(r.start_date)).filter(Boolean);
+      for (const row of rows) {
+        if (context.medChangeRecentOn(medStarts, row.date, 14)) {
+          medChangeByDate[row.date] = true;
+        }
+      }
+    }
+  } catch (e) {
+    // Context is optional. If it fails to load, run the detector
+    // without it rather than failing the sync.
+    console.error('Health context load failed for user ' + userId + ':', e.message);
+    phaseByDate = {};
+    pregnancyByDate = {};
+    altitudeByDate = {};
+    medChangeByDate = {};
+    sigmaFloorOverrides = {};
+    menopauseStatus = null;
+  }
+
+  const result = detector.runPerson(dayRows, {
+    phaseByDate,
+    pregnancyByDate,
+    altitudeByDate,
+    medChangeByDate,
+    sigmaFloorOverrides,
+    menopauseStatus,
+  });
 
   await dbRun('DELETE FROM detector_results WHERE user_id = $1', [userId]);
   await dbRun('DELETE FROM episodes WHERE user_id = $1', [userId]);
@@ -2025,13 +2188,22 @@ async function runDetectorForUser(userId) {
 
   const actTriggerDates = new Set(result.episodes.filter((e) => e.is_act && e.trigger_date).map((e) => e.trigger_date));
   for (const d of result.dayResults) {
+    const dayContext = {
+      cyclePhase: d.cyclePhase || null,
+      pregnant: !!d.pregnant,
+      pregnantWeeks: d.pregnantWeeks !== undefined ? d.pregnantWeeks : null,
+      altitudeM: d.altitudeM !== undefined ? d.altitudeM : null,
+      medChangeRecent: !!d.medChangeRecent,
+      menopauseStatus: d.menopauseStatus || null,
+    };
     await dbRun(
-      `INSERT INTO detector_results (user_id, date, z_scores, composite, n_off, n_signals, watch, act, in_baseline, scored)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      `INSERT INTO detector_results (user_id, date, z_scores, composite, n_off, n_signals, watch, act, in_baseline, scored, cycle_phase, context_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         userId, d.date, JSON.stringify(d.zs), d.composite, d.nOff, d.nSignals,
         d.watch ? 1 : 0, actTriggerDates.has(d.date) ? 1 : 0,
         d.inBaseline ? 1 : 0, d.scored ? 1 : 0,
+        d.cyclePhase || null, JSON.stringify(dayContext),
       ]
     );
   }
@@ -2417,7 +2589,7 @@ app.get('/api/days', authenticateToken, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 30, 120);
     const rows = await dbAll(
-      `SELECT s.*, r.composite, r.n_off, r.n_signals, r.watch, r.act, r.in_baseline, r.scored, r.z_scores
+      `SELECT s.*, r.composite, r.n_off, r.n_signals, r.watch, r.act, r.in_baseline, r.scored, r.z_scores, r.cycle_phase, r.context_json
        FROM daily_summaries s
        LEFT JOIN detector_results r ON r.user_id = s.user_id AND r.date = s.date
        WHERE s.user_id = $1
@@ -2436,6 +2608,7 @@ app.get('/api/days', authenticateToken, async (req, res) => {
         sleepEfficiency: r.sleep_efficiency,
         skinTempDelta: r.skin_temp_delta,
         signalsPresent: r.signals_present,
+        altitudeM: r.altitude_m !== undefined ? r.altitude_m : null,
         composite: r.composite,
         nOff: r.n_off,
         nSignals: r.n_signals,
@@ -2444,6 +2617,8 @@ app.get('/api/days', authenticateToken, async (req, res) => {
         inBaseline: !!r.in_baseline,
         scored: !!r.scored,
         zScores: r.z_scores ? JSON.parse(r.z_scores) : {},
+        cyclePhase: r.cycle_phase || null,
+        context: r.context_json ? JSON.parse(r.context_json) : null,
       })),
     });
   } catch (err) {
@@ -2743,6 +2918,302 @@ app.get('/api/sleep-checkin', authenticateToken, async (req, res) => {
   }
 });
 
+// ---- Health context endpoints (all optional, all private) ----
+// Cycle dates, pregnancies, medications, and altitude are used only to
+// adjust detector expectations or to note context on flags. They are
+// never shared with family members or emergency contacts, never used
+// for advertising, and never sold. Nothing here diagnoses anything.
+
+function toDateStr(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v.toISOString().split('T')[0];
+  return String(v).split('T')[0];
+}
+
+function isValidDateStr(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
+function isFutureDateStr(s) {
+  const today = new Date().toISOString().split('T')[0];
+  return s > today;
+}
+
+// POST /api/cycle - Log a menstrual cycle start date.
+// Body: { start_date (required, YYYY-MM-DD, not in future),
+//         end_date (optional, YYYY-MM-DD, on or after start_date),
+//         notes (optional) }
+app.post('/api/cycle', authenticateToken, async (req, res) => {
+  try {
+    const { start_date, end_date, notes } = req.body;
+    if (!isValidDateStr(start_date)) {
+      return res.status(400).json({ error: 'start_date must be a valid date (YYYY-MM-DD)' });
+    }
+    if (isFutureDateStr(start_date)) {
+      return res.status(400).json({ error: 'start_date cannot be in the future' });
+    }
+    if (end_date !== undefined && end_date !== null && end_date !== '') {
+      if (!isValidDateStr(end_date) || end_date < start_date) {
+        return res.status(400).json({ error: 'end_date must be a valid date on or after start_date' });
+      }
+    }
+    const row = await dbGet(
+      `INSERT INTO menstrual_cycles (user_id, start_date, end_date, notes)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, start_date)
+       DO UPDATE SET end_date = EXCLUDED.end_date, notes = EXCLUDED.notes
+       RETURNING id, start_date, end_date, notes, created_at`,
+      [req.user.id, start_date, end_date || null, notes ? String(notes).slice(0, 500) : null]
+    );
+    // Re-run the detector so the new cycle history adjusts past flags.
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true, cycle: { id: row.id, start_date: toDateStr(row.start_date), end_date: toDateStr(row.end_date), notes: row.notes } });
+  } catch (err) {
+    console.error('Log cycle error:', err);
+    res.status(500).json({ error: 'Failed to log cycle' });
+  }
+});
+
+// GET /api/cycle - Recent cycles plus current phase info.
+app.get('/api/cycle', authenticateToken, async (req, res) => {
+  try {
+    const rows = await dbAll(
+      `SELECT id, start_date, end_date, notes, created_at
+       FROM menstrual_cycles WHERE user_id = $1 ORDER BY start_date DESC LIMIT 12`,
+      [req.user.id]
+    );
+    const cycles = rows.map((r) => ({
+      id: r.id,
+      start_date: toDateStr(r.start_date),
+      end_date: toDateStr(r.end_date),
+      notes: r.notes,
+    }));
+    const today = new Date().toISOString().split('T')[0];
+    const info = cycle.currentPhaseInfo(cycles, today);
+    res.json({ cycles, currentPhase: info.phase, cycleDay: info.cycleDay, averageCycleLength: info.averageCycleLength });
+  } catch (err) {
+    console.error('Get cycles error:', err);
+    res.status(500).json({ error: 'Failed to get cycles' });
+  }
+});
+
+// DELETE /api/cycle/:id - Remove a cycle entry.
+app.delete('/api/cycle/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid cycle id' });
+    await dbRun('DELETE FROM menstrual_cycles WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete cycle error:', err);
+    res.status(500).json({ error: 'Failed to delete cycle' });
+  }
+});
+
+// POST /api/pregnancy - Log a pregnancy.
+// Body: { start_date (required, estimated conception or first positive
+//         test, YYYY-MM-DD, not in future),
+//         due_date (optional, YYYY-MM-DD),
+//         end_date (optional, YYYY-MM-DD),
+//         status (optional, 'active', 'completed', or 'ended') }
+app.post('/api/pregnancy', authenticateToken, async (req, res) => {
+  try {
+    const { start_date, due_date, end_date, status } = req.body;
+    if (!isValidDateStr(start_date)) {
+      return res.status(400).json({ error: 'start_date must be a valid date (YYYY-MM-DD)' });
+    }
+    if (isFutureDateStr(start_date)) {
+      return res.status(400).json({ error: 'start_date cannot be in the future' });
+    }
+    if (due_date !== undefined && due_date !== null && due_date !== '') {
+      if (!isValidDateStr(due_date)) {
+        return res.status(400).json({ error: 'due_date must be a valid date (YYYY-MM-DD)' });
+      }
+    }
+    if (end_date !== undefined && end_date !== null && end_date !== '') {
+      if (!isValidDateStr(end_date) || end_date < start_date) {
+        return res.status(400).json({ error: 'end_date must be a valid date on or after start_date' });
+      }
+    }
+    const st = status || 'active';
+    if (!['active', 'completed', 'ended'].includes(st)) {
+      return res.status(400).json({ error: "status must be active, completed, or ended" });
+    }
+    const row = await dbGet(
+      `INSERT INTO pregnancies (user_id, start_date, due_date, end_date, status)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, start_date, due_date, end_date, status, created_at`,
+      [req.user.id, start_date, due_date || null, end_date || null, st]
+    );
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true, pregnancy: { id: row.id, start_date: toDateStr(row.start_date), due_date: toDateStr(row.due_date), end_date: toDateStr(row.end_date), status: row.status } });
+  } catch (err) {
+    console.error('Log pregnancy error:', err);
+    res.status(500).json({ error: 'Failed to log pregnancy' });
+  }
+});
+
+// GET /api/pregnancy - All pregnancies for the user, most recent first.
+app.get('/api/pregnancy', authenticateToken, async (req, res) => {
+  try {
+    const rows = await dbAll(
+      `SELECT id, start_date, due_date, end_date, status, created_at
+       FROM pregnancies WHERE user_id = $1 ORDER BY start_date DESC`,
+      [req.user.id]
+    );
+    res.json({
+      pregnancies: rows.map((r) => ({
+        id: r.id,
+        start_date: toDateStr(r.start_date),
+        due_date: toDateStr(r.due_date),
+        end_date: toDateStr(r.end_date),
+        status: r.status,
+      })),
+    });
+  } catch (err) {
+    console.error('Get pregnancies error:', err);
+    res.status(500).json({ error: 'Failed to get pregnancies' });
+  }
+});
+
+// DELETE /api/pregnancy/:id - Remove a pregnancy entry.
+app.delete('/api/pregnancy/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid pregnancy id' });
+    await dbRun('DELETE FROM pregnancies WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete pregnancy error:', err);
+    res.status(500).json({ error: 'Failed to delete pregnancy' });
+  }
+});
+
+// POST /api/medication - Log a medication.
+// Body: { name (required), start_date (required, YYYY-MM-DD, not in
+//         future), end_date (optional), dosage (optional text),
+//         notes (optional) }
+app.post('/api/medication', authenticateToken, async (req, res) => {
+  try {
+    const { name, start_date, end_date, dosage, notes } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Medication name is required' });
+    }
+    if (!isValidDateStr(start_date)) {
+      return res.status(400).json({ error: 'start_date must be a valid date (YYYY-MM-DD)' });
+    }
+    if (isFutureDateStr(start_date)) {
+      return res.status(400).json({ error: 'start_date cannot be in the future' });
+    }
+    if (end_date !== undefined && end_date !== null && end_date !== '') {
+      if (!isValidDateStr(end_date) || end_date < start_date) {
+        return res.status(400).json({ error: 'end_date must be a valid date on or after start_date' });
+      }
+    }
+    const row = await dbGet(
+      `INSERT INTO medications (user_id, name, start_date, end_date, dosage, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, start_date, end_date, dosage, notes, created_at`,
+      [req.user.id, name.trim().slice(0, 200), start_date, end_date || null, dosage ? String(dosage).slice(0, 200) : null, notes ? String(notes).slice(0, 500) : null]
+    );
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true, medication: { id: row.id, name: row.name, start_date: toDateStr(row.start_date), end_date: toDateStr(row.end_date), dosage: row.dosage, notes: row.notes } });
+  } catch (err) {
+    console.error('Log medication error:', err);
+    res.status(500).json({ error: 'Failed to log medication' });
+  }
+});
+
+// GET /api/medication - All medications for the user, most recent first.
+app.get('/api/medication', authenticateToken, async (req, res) => {
+  try {
+    const rows = await dbAll(
+      `SELECT id, name, start_date, end_date, dosage, notes, created_at
+       FROM medications WHERE user_id = $1 ORDER BY start_date DESC`,
+      [req.user.id]
+    );
+    res.json({
+      medications: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        start_date: toDateStr(r.start_date),
+        end_date: toDateStr(r.end_date),
+        dosage: r.dosage,
+        notes: r.notes,
+      })),
+    });
+  } catch (err) {
+    console.error('Get medications error:', err);
+    res.status(500).json({ error: 'Failed to get medications' });
+  }
+});
+
+// DELETE /api/medication/:id - Remove a medication entry.
+app.delete('/api/medication/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid medication id' });
+    await dbRun('DELETE FROM medications WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete medication error:', err);
+    res.status(500).json({ error: 'Failed to delete medication' });
+  }
+});
+
+// POST /api/altitude - Record the elevation for a day.
+// Body: { date (optional, YYYY-MM-DD, defaults to today),
+//         altitude_m (required, number from -500 to 9000) }
+app.post('/api/altitude', authenticateToken, async (req, res) => {
+  try {
+    const { date, altitude_m } = req.body;
+    const day = date || new Date().toISOString().split('T')[0];
+    if (!isValidDateStr(day)) {
+      return res.status(400).json({ error: 'date must be a valid date (YYYY-MM-DD)' });
+    }
+    if (isFutureDateStr(day)) {
+      return res.status(400).json({ error: 'date cannot be in the future' });
+    }
+    const alt = Number(altitude_m);
+    if (!Number.isFinite(alt) || alt < -500 || alt > 9000) {
+      return res.status(400).json({ error: 'altitude_m must be a number from -500 to 9000' });
+    }
+    await dbRun(
+      `INSERT INTO daily_summaries (user_id, date, altitude_m, signals_present)
+       VALUES ($1, $2, $3, 0)
+       ON CONFLICT(user_id, date) DO UPDATE SET altitude_m = EXCLUDED.altitude_m`,
+      [req.user.id, day, alt]
+    );
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true, date: day, altitude_m: alt });
+  } catch (err) {
+    console.error('Log altitude error:', err);
+    res.status(500).json({ error: 'Failed to log altitude' });
+  }
+});
+
+// GET /api/altitude - Recent altitude entries.
+app.get('/api/altitude', authenticateToken, async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days, 10) || 7, 30);
+    const rows = await dbAll(
+      `SELECT date, altitude_m FROM daily_summaries
+       WHERE user_id = $1 AND altitude_m IS NOT NULL
+       ORDER BY date DESC LIMIT $2`,
+      [req.user.id, days]
+    );
+    res.json({ altitudes: rows.map((r) => ({ date: r.date, altitude_m: r.altitude_m })) });
+  } catch (err) {
+    console.error('Get altitude error:', err);
+    res.status(500).json({ error: 'Failed to get altitude' });
+  }
+});
+
 // Clinician report download
 // GET /api/report - Generate a text report for sharing with a clinician
 app.get('/api/report', authenticateToken, async (req, res) => {
@@ -2955,9 +3426,9 @@ app.get('/api/export', authenticateToken, async (req, res) => {
 // GET /api/settings - Get user settings
 app.get('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT sensitivity FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT sensitivity, biological_sex, menopause_status FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ sensitivity: user.sensitivity || 'balanced' });
+    res.json({ sensitivity: user.sensitivity || 'balanced', biologicalSex: user.biological_sex || null, menopauseStatus: user.menopause_status || null });
   } catch (err) {
     console.error('Get settings error:', err);
     res.status(500).json({ error: 'Failed to get settings' });
@@ -2967,7 +3438,7 @@ app.get('/api/settings', authenticateToken, async (req, res) => {
 // PUT /api/settings - Update user settings
 app.put('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const { sensitivity } = req.body;
+    const { sensitivity, biologicalSex } = req.body;
     if (sensitivity !== undefined) {
       const allowed = ['gentle', 'balanced', 'sensitive'];
       if (!allowed.includes(sensitivity)) {
@@ -2975,7 +3446,30 @@ app.put('/api/settings', authenticateToken, async (req, res) => {
       }
       await dbRun('UPDATE users SET sensitivity = $1 WHERE id = $2', [sensitivity, req.user.id]);
     }
-    res.json({ ok: true, sensitivity: sensitivity || 'balanced' });
+    // Biological sex is optional and private. It is used only to adjust
+    // the detector for cycle-related changes. Null clears the value.
+    if (biologicalSex !== undefined) {
+      const allowedSex = ['male', 'female', 'prefer_not_to_say', null, ''];
+      if (!allowedSex.includes(biologicalSex)) {
+        return res.status(400).json({ error: 'Biological sex must be male, female, or prefer not to say' });
+      }
+      const value = biologicalSex === '' ? null : biologicalSex;
+      await dbRun('UPDATE users SET biological_sex = $1 WHERE id = $2', [value, req.user.id]);
+    }
+    // Menopause status is optional and private. It is used only to
+    // widen the temperature sigma floor for perimenopausal users.
+    // Null clears the value.
+    const { menopauseStatus } = req.body;
+    if (menopauseStatus !== undefined) {
+      const allowedMeno = ['pre', 'peri', 'post', null, ''];
+      if (!allowedMeno.includes(menopauseStatus)) {
+        return res.status(400).json({ error: 'Menopause status must be pre, peri, or post' });
+      }
+      const value = menopauseStatus === '' ? null : menopauseStatus;
+      await dbRun('UPDATE users SET menopause_status = $1 WHERE id = $2', [value, req.user.id]);
+    }
+    const updated = await dbGet('SELECT sensitivity, biological_sex, menopause_status FROM users WHERE id = $1', [req.user.id]);
+    res.json({ ok: true, sensitivity: updated.sensitivity || 'balanced', biologicalSex: updated.biological_sex || null, menopauseStatus: updated.menopause_status || null });
   } catch (err) {
     console.error('Update settings error:', err);
     res.status(500).json({ error: 'Failed to update settings' });
