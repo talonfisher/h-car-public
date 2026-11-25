@@ -1195,6 +1195,12 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <button type="button" class="symptom-chip checkin-factor" data-factor="sick people around me" onclick="toggleCheckinFactor(this)">Sick people around me</button>
 <button type="button" class="symptom-chip checkin-factor" data-factor="none" onclick="toggleCheckinFactor(this)">None</button>
 </div>
+<p style="font-weight:700;margin:14px 0 6px;">5. Altitude today (optional)</p>
+<p style="color:var(--muted);font-size:13px;margin:0 0 8px 0;">If you are at high altitude (above 1500 m), your blood oxygen runs lower than usual. Logging it helps H-CAR avoid flagging an expected drop.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+<label style="display:flex;align-items:center;gap:6px;font-size:14px;"><input type="checkbox" id="checkin-high-altitude" style="width:20px;height:20px;"> I am at high altitude today</label>
+<input type="number" id="checkin-altitude-m" placeholder="Elevation in metres (for example, 1800)" min="-500" max="9000" style="width:220px;">
+</div>
 <button onclick="saveSleepCheckin()" style="margin-top:14px;">Save Check-In</button>
 <div id="checkin-msg" style="margin-top:10px;"></div>
 </div>
@@ -1279,6 +1285,89 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 </div>
 
 <div id="view-profile" class="dash-view hidden">
+<div class="section-card" id="about-you-card">
+<p class="section-eyebrow">About You</p>
+<h3>About You</h3>
+<p style="color:var(--muted);font-size:14px;">Optional details that help H-CAR adjust to your body. Everything here is private to you. It is never shown to family members or your emergency contact, never used for advertising, and never sold. You can leave it all blank and the app works fine.</p>
+<div id="about-you-msg"></div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Biological sex</label>
+<select id="bio-sex-select" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;width:100%;max-width:320px;">
+<option value="">Not set</option>
+<option value="female">Female</option>
+<option value="male">Male</option>
+<option value="prefer_not_to_say">Prefer not to say</option>
+</select>
+<div id="menopause-row" class="hidden" style="margin-top:12px;">
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Menopause status</label>
+<select id="menopause-select" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;width:100%;max-width:320px;">
+<option value="">Not set</option>
+<option value="pre">Pre-menopause</option>
+<option value="peri">Peri-menopause</option>
+<option value="post">Post-menopause</option>
+</select>
+<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">Peri-menopause brings more temperature variation. Setting this helps H-CAR avoid flagging normal temperature swings.</p>
+</div>
+<button onclick="saveAboutYou()" style="margin-top:12px;">Save</button>
+</div>
+
+<div class="section-card hidden" id="cycle-card">
+<p class="section-eyebrow">Cycle Tracking</p>
+<h3>Menstrual Cycle</h3>
+<p style="color:var(--muted);font-size:14px;">Log the first day of your period. H-CAR uses it to tell which phase you are in, so normal cycle changes in heart rate and temperature are not flagged as abnormal. This does not diagnose menstrual disorders and does not predict ovulation or fertility.</p>
+<div id="cycle-phase-display" style="margin-bottom:10px;"></div>
+<div id="cycle-msg"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+<div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">First day of period</label>
+<input type="date" id="cycle-start-date" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
+</div>
+<button onclick="logCycle()">Log Cycle Start</button>
+</div>
+<div id="cycle-list" style="margin-top:12px;"></div>
+</div>
+
+<div class="section-card hidden" id="pregnancy-card">
+<p class="section-eyebrow">Pregnancy</p>
+<h3>Pregnancy</h3>
+<p style="color:var(--muted);font-size:14px;">Log a pregnancy so H-CAR can account for the expected gradual rise in resting heart rate. This does not monitor the pregnancy or diagnose complications. Always follow your clinician's advice.</p>
+<div id="pregnancy-msg"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+<div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Start date (conception or first positive test)</label>
+<input type="date" id="pregnancy-start-date" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
+</div>
+<div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Due date (optional)</label>
+<input type="date" id="pregnancy-due-date" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
+</div>
+<button onclick="logPregnancy()">Log Pregnancy</button>
+</div>
+<div id="pregnancy-list" style="margin-top:12px;"></div>
+</div>
+
+<div class="section-card" id="medication-card">
+<p class="section-eyebrow">Medications</p>
+<h3>Medications</h3>
+<p style="color:var(--muted);font-size:14px;">Log medications you take. If you start a new medication, H-CAR notes it alongside any flags for 14 days so you have the context. H-CAR does not predict medication effects or give medication advice.</p>
+<div id="medication-msg"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+<div style="flex:1;min-width:160px;">
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Medication name</label>
+<input type="text" id="med-name" placeholder="For example, Metoprolol" style="width:100%;">
+</div>
+<div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Start date</label>
+<input type="date" id="med-start-date" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
+</div>
+<div>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Dosage (optional)</label>
+<input type="text" id="med-dosage" placeholder="For example, 25 mg daily" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
+</div>
+<button onclick="logMedication()">Add Medication</button>
+</div>
+<div id="medication-list" style="margin-top:12px;"></div>
+</div>
+
 <div id="ec-locked-note" class="section-card hidden">
 <p class="section-eyebrow">Safety</p>
 <h3>Emergency Contact</h3>
@@ -1862,6 +1951,8 @@ async function loadDashboard() {
     loadFamilyDashboard();
     loadMyPromoCodes();
     loadAlertHistory();
+    loadAboutYou();
+    loadMedications();
     startAlertPolling();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
@@ -2000,6 +2091,22 @@ async function saveSleepCheckin() {
       sore: checkinState.sore,
       yesterday_factors: Array.from(checkinState.factors)
     });
+    // Altitude is optional and saved separately. It is only used to
+    // adjust expectations for blood oxygen at high altitude.
+    const highAlt = document.getElementById('checkin-high-altitude');
+    const altInput = document.getElementById('checkin-altitude-m');
+    if (highAlt && highAlt.checked && altInput && altInput.value !== '') {
+      const altM = Number(altInput.value);
+      if (Number.isFinite(altM) && altM >= -500 && altM <= 9000) {
+        try {
+          await apiCall('/altitude', 'POST', { altitude_m: altM });
+        } catch (altErr) {
+          msgEl.innerHTML = '<div class="success">Check-in saved.</div><div class="error">Altitude could not be saved: ' + altErr.message + '</div>';
+          await loadSleepCheckin();
+          return;
+        }
+      }
+    }
     msgEl.innerHTML = '<div class="success">Check-in saved.</div>';
     await loadSleepCheckin();
   } catch (e) {
@@ -2578,6 +2685,226 @@ async function loadMyPromoCodes() {
     listEl.innerHTML = html;
   } catch (e) {
     listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load promo codes.</p>';
+  }
+}
+
+// ---- Health context: About You, cycles, pregnancy, medications ----
+// All of this is optional and private. It is used only to adjust
+// detector expectations or to note context on flags.
+
+let currentBiologicalSex = null;
+
+async function loadAboutYou() {
+  try {
+    const settings = await apiCall('/settings', 'GET');
+    currentBiologicalSex = settings.biologicalSex || null;
+    const sexSelect = document.getElementById('bio-sex-select');
+    if (sexSelect) sexSelect.value = currentBiologicalSex || '';
+    const menoSelect = document.getElementById('menopause-select');
+    if (menoSelect) menoSelect.value = settings.menopauseStatus || '';
+    updateFemaleSections();
+  } catch (e) {
+    // Non-critical; leave the fields unset.
+  }
+}
+
+function updateFemaleSections() {
+  const isFemale = currentBiologicalSex === 'female';
+  const menoRow = document.getElementById('menopause-row');
+  if (menoRow) menoRow.classList.toggle('hidden', !isFemale);
+  const cycleCard = document.getElementById('cycle-card');
+  if (cycleCard) cycleCard.classList.toggle('hidden', !isFemale);
+  const pregCard = document.getElementById('pregnancy-card');
+  if (pregCard) pregCard.classList.toggle('hidden', !isFemale);
+  if (isFemale) {
+    loadCycles();
+    loadPregnancies();
+  }
+}
+
+async function saveAboutYou() {
+  const msgEl = document.getElementById('about-you-msg');
+  const sex = document.getElementById('bio-sex-select').value || null;
+  const meno = document.getElementById('menopause-select').value || null;
+  try {
+    const res = await apiCall('/settings', 'PUT', { biologicalSex: sex, menopauseStatus: meno });
+    currentBiologicalSex = res.biologicalSex || null;
+    updateFemaleSections();
+    msgEl.innerHTML = '<div class="success">Saved. Your details are private and only used to adjust the detector.</div>';
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not save: ' + e.message + '</div>';
+  }
+}
+
+async function loadCycles() {
+  const listEl = document.getElementById('cycle-list');
+  const phaseEl = document.getElementById('cycle-phase-display');
+  if (!listEl) return;
+  try {
+    const data = await apiCall('/cycle', 'GET');
+    if (phaseEl) {
+      if (data.currentPhase) {
+        const dayText = data.cycleDay ? ' (day ' + data.cycleDay + ')' : '';
+        const avgText = data.averageCycleLength ? ' Average cycle: ' + data.averageCycleLength + ' days.' : '';
+        phaseEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Current phase: <strong>' + data.currentPhase + '</strong>' + dayText + '.' + avgText + '</p>';
+      } else {
+        phaseEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No cycle phase known yet. Log a cycle start date below.</p>';
+      }
+    }
+    const cycles = data.cycles || [];
+    if (cycles.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No cycles logged yet.</p>';
+      return;
+    }
+    listEl.innerHTML = cycles.map(c => {
+      const endText = c.end_date ? ' to ' + c.end_date : '';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;">' +
+        '<div style="flex:1;"><strong>' + c.start_date + '</strong>' + endText + '</div>' +
+        '<button class="secondary" onclick="deleteCycle(' + c.id + ')" style="padding:6px 12px;font-size:13px;">Delete</button>' +
+        '</div>';
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load cycles.</p>';
+  }
+}
+
+async function logCycle() {
+  const msgEl = document.getElementById('cycle-msg');
+  const startDate = document.getElementById('cycle-start-date').value;
+  if (!startDate) {
+    msgEl.innerHTML = '<div class="error">Please pick the first day of your period.</div>';
+    return;
+  }
+  try {
+    await apiCall('/cycle', 'POST', { start_date: startDate });
+    document.getElementById('cycle-start-date').value = '';
+    msgEl.innerHTML = '<div class="success">Cycle logged.</div>';
+    await loadCycles();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not log cycle: ' + e.message + '</div>';
+  }
+}
+
+async function deleteCycle(id) {
+  const msgEl = document.getElementById('cycle-msg');
+  try {
+    await apiCall('/cycle/' + id, 'DELETE');
+    msgEl.innerHTML = '<div class="success">Cycle removed.</div>';
+    await loadCycles();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not remove cycle: ' + e.message + '</div>';
+  }
+}
+
+async function loadPregnancies() {
+  const listEl = document.getElementById('pregnancy-list');
+  if (!listEl) return;
+  try {
+    const data = await apiCall('/pregnancy', 'GET');
+    const pregnancies = data.pregnancies || [];
+    if (pregnancies.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No pregnancies logged.</p>';
+      return;
+    }
+    listEl.innerHTML = pregnancies.map(p => {
+      const dueText = p.due_date ? ' Due ' + p.due_date + '.' : '';
+      const statusText = p.status && p.status !== 'active' ? ' (' + p.status + ')' : '';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;">' +
+        '<div style="flex:1;"><strong>' + p.start_date + '</strong>' + dueText + statusText + '</div>' +
+        '<button class="secondary" onclick="deletePregnancy(' + p.id + ')" style="padding:6px 12px;font-size:13px;">Delete</button>' +
+        '</div>';
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load pregnancies.</p>';
+  }
+}
+
+async function logPregnancy() {
+  const msgEl = document.getElementById('pregnancy-msg');
+  const startDate = document.getElementById('pregnancy-start-date').value;
+  const dueDate = document.getElementById('pregnancy-due-date').value || null;
+  if (!startDate) {
+    msgEl.innerHTML = '<div class="error">Please pick a start date.</div>';
+    return;
+  }
+  try {
+    await apiCall('/pregnancy', 'POST', { start_date: startDate, due_date: dueDate });
+    document.getElementById('pregnancy-start-date').value = '';
+    document.getElementById('pregnancy-due-date').value = '';
+    msgEl.innerHTML = '<div class="success">Pregnancy logged.</div>';
+    await loadPregnancies();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not log pregnancy: ' + e.message + '</div>';
+  }
+}
+
+async function deletePregnancy(id) {
+  const msgEl = document.getElementById('pregnancy-msg');
+  try {
+    await apiCall('/pregnancy/' + id, 'DELETE');
+    msgEl.innerHTML = '<div class="success">Pregnancy removed.</div>';
+    await loadPregnancies();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not remove pregnancy: ' + e.message + '</div>';
+  }
+}
+
+async function loadMedications() {
+  const listEl = document.getElementById('medication-list');
+  if (!listEl) return;
+  try {
+    const data = await apiCall('/medication', 'GET');
+    const meds = data.medications || [];
+    if (meds.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No medications logged.</p>';
+      return;
+    }
+    listEl.innerHTML = meds.map(m => {
+      const doseText = m.dosage ? ' (' + escapeHtml(m.dosage) + ')' : '';
+      const endText = m.end_date ? ' to ' + m.end_date : '';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;">' +
+        '<div style="flex:1;"><strong>' + escapeHtml(m.name) + '</strong>' + doseText + '<br><span style="font-size:13px;color:var(--muted);">From ' + m.start_date + endText + '</span></div>' +
+        '<button class="secondary" onclick="deleteMedication(' + m.id + ')" style="padding:6px 12px;font-size:13px;">Delete</button>' +
+        '</div>';
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load medications.</p>';
+  }
+}
+
+async function logMedication() {
+  const msgEl = document.getElementById('medication-msg');
+  const name = document.getElementById('med-name').value.trim();
+  const startDate = document.getElementById('med-start-date').value;
+  const dosage = document.getElementById('med-dosage').value.trim() || null;
+  if (!name) {
+    msgEl.innerHTML = '<div class="error">Please enter the medication name.</div>';
+    return;
+  }
+  if (!startDate) {
+    msgEl.innerHTML = '<div class="error">Please pick a start date.</div>';
+    return;
+  }
+  try {
+    await apiCall('/medication', 'POST', { name: name, start_date: startDate, dosage: dosage });
+    document.getElementById('med-name').value = '';
+    document.getElementById('med-start-date').value = '';
+    document.getElementById('med-dosage').value = '';
+    msgEl.innerHTML = '<div class="success">Medication logged.</div>';
+    await loadMedications();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not log medication: ' + e.message + '</div>';
+  }
+}
+
+async function deleteMedication(id) {
+  const msgEl = document.getElementById('medication-msg');
+  try {
+    await apiCall('/medication/' + id, 'DELETE');
+    msgEl.innerHTML = '<div class="success">Medication removed.</div>';
+    await loadMedications();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not remove medication: ' + e.message + '</div>';
   }
 }
 
