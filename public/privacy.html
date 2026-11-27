@@ -3,14 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<script>
+// Apply the stored theme before first paint. Same tiny snippet as the
+// main app. Default is Dark. This page is standalone, so it reads
+// localStorage only and never calls the server for the theme.
+(function(){try{var p=(localStorage.getItem('hcar_theme')||'dark').trim().toLowerCase();if(p!=='dark'&&p!=='light'&&p!=='auto')p='dark';var r=p==='auto'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);var m=document.querySelector('meta[name="color-scheme"]');if(m)m.setAttribute('content',r);}catch(e){}})();
+</script>
 <title>Privacy Policy - H-CAR</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0A0A1A; color: #FFFFFF; margin: 0; padding: 24px 16px 64px; line-height: 1.6; }
+  :root {
+    --bg: #0A0A1A; --ink: #FFFFFF; --muted: #9CA3AF; --accent: #9D7BFF;
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F3EE; --ink: #16211C; --muted: #5C6B62; --accent: #0A5C4C;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 24px 16px 64px; line-height: 1.6; }
   .wrap { max-width: 720px; margin: 0 auto; }
-  h1 { color: #9D7BFF; font-size: 28px; }
-  h2 { color: #9D7BFF; font-size: 20px; margin-top: 32px; }
-  a { color: #9D7BFF; }
-  .meta { color: #9CA3AF; font-size: 14px; }
+  h1 { color: var(--accent); font-size: 28px; }
+  h2 { color: var(--accent); font-size: 20px; margin-top: 32px; }
+  a { color: var(--accent); }
+  .meta { color: var(--muted); font-size: 14px; }
   .back { display: inline-block; margin-bottom: 16px; }
 </style>
 </head>
@@ -27,7 +40,7 @@ Contact: <a href="mailto:talonfisher66@gmail.com">talonfisher66@gmail.com</a></p
 <h2>1. Information We Collect</h2>
 <p><strong>Account information.</strong> When you sign up, we collect your name, email address, and a password (stored as a one-way hash, never in plain text).</p>
 <p><strong>Wearable data.</strong> If you connect a Fitbit through Google Fit, we receive daily summaries only: resting heart rate, heart rate variability (HRV), blood oxygen saturation (SpO2), breathing rate, sleep duration, and skin temperature. We do not receive minute-by-minute or raw sensor data.</p>
-<p><strong>Information you enter.</strong> Symptom logs, morning check-in answers (sleep quality, body feeling, soreness, and context such as alcohol, exertion, illness, or travel), and sensitivity settings.</p>
+<p><strong>Information you enter.</strong> Symptom logs, morning check-in answers (sleep quality, body feeling, soreness, and context such as alcohol, exertion, illness, or travel), and sensitivity settings. Display settings, such as your light or dark theme choice, are also stored on your account so they follow you across devices.</p>
 <p><strong>Health context you choose to share (optional, off by default).</strong> If you choose to provide it, we store your biological sex, menopause status, menstrual cycle start dates, pregnancy dates, medications, and elevation for a day. This is used only to adjust what the app expects from your baseline (for example, so a normal cycle change or a high-altitude day is not flagged as abnormal). It is never shown to family members or your emergency contact, never used for advertising, and never sold. You can leave all of it blank and the app works fine.</p>
 <p><strong>Emergency contacts.</strong> If you add an emergency contact, we store the name, email address, phone number, and relationship you provide, plus an optional secondary contact. We use this only to send alerts as described below.</p>
 <p><strong>Location (optional, off by default).</strong> If you turn on emergency-only location sharing, the app records your last known location (latitude, longitude, and a street address if available). Location is included in an emergency alert email only when this setting is on.</p>
