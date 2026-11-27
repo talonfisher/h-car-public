@@ -1478,7 +1478,13 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="section-card">
 <p class="section-eyebrow">Family</p>
 <h3>Family Dashboard</h3>
-<p style="color:var(--muted);font-size:14px;">See the health status of your loved ones at a glance. Green means all good, yellow means a change was detected, red means a serious change. No detailed health data is shared, just the status.</p>
+<p style="color:var(--muted);font-size:14px;">See the health status of your loved ones at a glance. Green means all good, yellow means a change was detected, red means a serious change, grey means they are still learning their baseline or there is no recent data. No detailed health data is shared, just the status.</p>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin:0 0 16px 0;font-size:13px;">
+<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--green);display:inline-block;"></span>All good</span>
+<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--amber);display:inline-block;"></span>Change detected</span>
+<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--red);display:inline-block;"></span>Serious change</span>
+<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--muted);display:inline-block;"></span>Learning baseline or no recent data</span>
+</div>
 
 <div id="family-pending-section" class="hidden" style="margin-bottom:16px;">
 <h4 style="margin:0 0 10px 0;">Pending Invites</h4>
