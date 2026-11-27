@@ -133,6 +133,12 @@ async function initDatabase() {
     // (in daily_summaries.altitude_m). Coordinates are never stored.
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_elevation BOOLEAN DEFAULT FALSE`);
 
+    // Theme preference: 'dark', 'light', or 'auto' (follow the device).
+    // Dark is the default, so existing users see no change unless they
+    // choose otherwise. Stored here so it follows the user across
+    // devices; localStorage holds the same value for instant load.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_preference TEXT DEFAULT 'dark'`);
+
     // Emergency-only location sharing. When enabled, H-CAR captures the
     // user's location when they sync their Fitbit, and includes their last
     // known location in Act alert emails to their emergency contact.
@@ -1011,7 +1017,7 @@ app.get('/api/promo/my-codes', authenticateToken, async (req, res) => {
 // Get user status
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at, biological_sex, menopause_status, auto_elevation FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at, biological_sex, menopause_status, auto_elevation, theme_preference FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     // Check if trial subscription has expired
     let subscriptionStatus = user.subscription_status;
@@ -1032,7 +1038,8 @@ app.get('/api/me', authenticateToken, async (req, res) => {
       createdAt: user.created_at,
       biologicalSex: user.biological_sex || null,
       menopauseStatus: user.menopause_status || null,
-      autoElevation: !!user.auto_elevation
+      autoElevation: !!user.auto_elevation,
+      themePreference: user.theme_preference || 'dark'
     });
   } catch (err) {
     console.error('Me error:', err);
@@ -3433,9 +3440,9 @@ app.get('/api/export', authenticateToken, async (req, res) => {
 // GET /api/settings - Get user settings
 app.get('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT sensitivity, biological_sex, menopause_status, auto_elevation FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT sensitivity, biological_sex, menopause_status, auto_elevation, theme_preference FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ sensitivity: user.sensitivity || 'balanced', biologicalSex: user.biological_sex || null, menopauseStatus: user.menopause_status || null, autoElevation: !!user.auto_elevation });
+    res.json({ sensitivity: user.sensitivity || 'balanced', biologicalSex: user.biological_sex || null, menopauseStatus: user.menopause_status || null, autoElevation: !!user.auto_elevation, themePreference: user.theme_preference || 'dark' });
   } catch (err) {
     console.error('Get settings error:', err);
     res.status(500).json({ error: 'Failed to get settings' });
@@ -3485,8 +3492,18 @@ app.put('/api/settings', authenticateToken, async (req, res) => {
       }
       await dbRun('UPDATE users SET auto_elevation = $1 WHERE id = $2', [autoElevation, req.user.id]);
     }
-    const updated = await dbGet('SELECT sensitivity, biological_sex, menopause_status, auto_elevation FROM users WHERE id = $1', [req.user.id]);
-    res.json({ ok: true, sensitivity: updated.sensitivity || 'balanced', biologicalSex: updated.biological_sex || null, menopauseStatus: updated.menopause_status || null, autoElevation: !!updated.auto_elevation });
+    // Theme preference: 'dark', 'light', or 'auto' (follow the device).
+    // Dark is the default. Unknown values are rejected, never stored.
+    const { themePreference } = req.body;
+    if (themePreference !== undefined) {
+      const allowedThemes = ['dark', 'light', 'auto'];
+      if (!allowedThemes.includes(themePreference)) {
+        return res.status(400).json({ error: 'themePreference must be dark, light, or auto' });
+      }
+      await dbRun('UPDATE users SET theme_preference = $1 WHERE id = $2', [themePreference, req.user.id]);
+    }
+    const updated = await dbGet('SELECT sensitivity, biological_sex, menopause_status, auto_elevation, theme_preference FROM users WHERE id = $1', [req.user.id]);
+    res.json({ ok: true, sensitivity: updated.sensitivity || 'balanced', biologicalSex: updated.biological_sex || null, menopauseStatus: updated.menopause_status || null, autoElevation: !!updated.auto_elevation, themePreference: updated.theme_preference || 'dark' });
   } catch (err) {
     console.error('Update settings error:', err);
     res.status(500).json({ error: 'Failed to update settings' });
