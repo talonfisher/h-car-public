@@ -127,6 +127,12 @@ async function initDatabase() {
     // sigma floor for perimenopausal users (see context.js).
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS menopause_status TEXT`);
 
+    // Automatic elevation detection, opt-in and off by default. When
+    // enabled, the app looks up ground elevation from the phone
+    // location on the device. Only the elevation in metres is stored
+    // (in daily_summaries.altitude_m). Coordinates are never stored.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_elevation BOOLEAN DEFAULT FALSE`);
+
     // Emergency-only location sharing. When enabled, H-CAR captures the
     // user's location when they sync their Fitbit, and includes their last
     // known location in Act alert emails to their emergency contact.
@@ -1005,7 +1011,7 @@ app.get('/api/promo/my-codes', authenticateToken, async (req, res) => {
 // Get user status
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at, biological_sex, menopause_status FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT id, name, email, consent_given, subscription_status, subscription_period_end, subscription_expires_at, promo_code_used, created_at, biological_sex, menopause_status, auto_elevation FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     // Check if trial subscription has expired
     let subscriptionStatus = user.subscription_status;
@@ -1025,7 +1031,8 @@ app.get('/api/me', authenticateToken, async (req, res) => {
       promoCodeUsed: user.promo_code_used,
       createdAt: user.created_at,
       biologicalSex: user.biological_sex || null,
-      menopauseStatus: user.menopause_status || null
+      menopauseStatus: user.menopause_status || null,
+      autoElevation: !!user.auto_elevation
     });
   } catch (err) {
     console.error('Me error:', err);
@@ -3426,9 +3433,9 @@ app.get('/api/export', authenticateToken, async (req, res) => {
 // GET /api/settings - Get user settings
 app.get('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet('SELECT sensitivity, biological_sex, menopause_status FROM users WHERE id = $1', [req.user.id]);
+    const user = await dbGet('SELECT sensitivity, biological_sex, menopause_status, auto_elevation FROM users WHERE id = $1', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ sensitivity: user.sensitivity || 'balanced', biologicalSex: user.biological_sex || null, menopauseStatus: user.menopause_status || null });
+    res.json({ sensitivity: user.sensitivity || 'balanced', biologicalSex: user.biological_sex || null, menopauseStatus: user.menopause_status || null, autoElevation: !!user.auto_elevation });
   } catch (err) {
     console.error('Get settings error:', err);
     res.status(500).json({ error: 'Failed to get settings' });
@@ -3468,8 +3475,18 @@ app.put('/api/settings', authenticateToken, async (req, res) => {
       const value = menopauseStatus === '' ? null : menopauseStatus;
       await dbRun('UPDATE users SET menopause_status = $1 WHERE id = $2', [value, req.user.id]);
     }
-    const updated = await dbGet('SELECT sensitivity, biological_sex, menopause_status FROM users WHERE id = $1', [req.user.id]);
-    res.json({ ok: true, sensitivity: updated.sensitivity || 'balanced', biologicalSex: updated.biological_sex || null, menopauseStatus: updated.menopause_status || null });
+    // Automatic elevation detection is opt-in and off by default.
+    // When on, the app looks up ground elevation on the phone and
+    // saves only the elevation in metres. Coordinates are never stored.
+    const { autoElevation } = req.body;
+    if (autoElevation !== undefined) {
+      if (typeof autoElevation !== 'boolean') {
+        return res.status(400).json({ error: 'autoElevation must be true or false' });
+      }
+      await dbRun('UPDATE users SET auto_elevation = $1 WHERE id = $2', [autoElevation, req.user.id]);
+    }
+    const updated = await dbGet('SELECT sensitivity, biological_sex, menopause_status, auto_elevation FROM users WHERE id = $1', [req.user.id]);
+    res.json({ ok: true, sensitivity: updated.sensitivity || 'balanced', biologicalSex: updated.biological_sex || null, menopauseStatus: updated.menopause_status || null, autoElevation: !!updated.auto_elevation });
   } catch (err) {
     console.error('Update settings error:', err);
     res.status(500).json({ error: 'Failed to update settings' });

@@ -96,6 +96,35 @@ only flags changes that are unusual for that person in that situation.
   pregnancy, medication, or altitude change) recomputes all context
   from scratch, so corrections apply retroactively to past days.
 
+## Automatic elevation detection
+
+Altitude used to be manual only (the morning check-in question). It
+can now be detected automatically, because people will not remember
+to log it. The Fitbit and Google Health sync does not carry
+elevation, so the phone location is the source, not the wearable.
+
+- Opt-in toggle in Profile, About You: "Automatically detect
+  elevation". Off by default.
+- When on, the app runs one detection when the dashboard loads and
+  when the morning check-in loads. It asks the phone for its
+  position, looks up ground elevation on the phone through Open-Meteo
+  (free, no key), with OpenTopoData as a fallback, then posts only
+  the elevation in metres to the existing POST /api/altitude
+  endpoint. At most one attempt per day, and a value is recorded
+  only when it is a new day or moved by more than 100 m.
+- The check-in shows "Detected elevation: X m" and prefills the
+  manual input when it is empty. A manual value always wins.
+- Privacy: coordinates are sent only to the elevation lookup service
+  to get the number back. They are never sent to H-CAR servers,
+  never stored in the database, logs, or localStorage. Only the date
+  and the elevation in metres are stored. When detection is off, or
+  geolocation is denied, unavailable, or times out, nothing happens
+  and the manual check-in question is the fallback.
+- The existing SpO2 correction is unchanged: at or above 1500 m the
+  detector still adds 3 points before scoring, whether the value was
+  typed in or detected.
+- Tests: test-elevation.js, 35 tests.
+
 ## What this is NOT
 
 - It does not diagnose menstrual disorders, pregnancy complications,
@@ -127,7 +156,14 @@ only flags changes that are unusual for that person in that situation.
 - `server.js`: schema, API endpoints, and context loading in
   `runDetectorForUser`.
 - `public/index.html`: About You card, Cycle card, Pregnancy card,
-  Medications card, and the altitude question in the morning check-in.
+  Medications card, the altitude question in the morning check-in,
+  the automatic elevation toggle, and the detected elevation note.
+- `public/elevation.js`: client-side elevation lookup, dedupe, and
+  recording. Coordinates never leave the device except to the lookup
+  service; only the elevation in metres is saved.
 - `test-cycle.js`: 14 tests for cycle phase and the luteal adjustment.
 - `test-context.js`: 17 tests for pregnancy, altitude, menopause,
   medication context, and the detector adjustments.
+- `test-elevation.js`: 35 tests for lookup parsing, the 1500 m
+  correction on detected values, coordinates never being persisted,
+  and geolocation failure falling back to manual.
