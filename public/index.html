@@ -1201,6 +1201,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <label style="display:flex;align-items:center;gap:6px;font-size:14px;"><input type="checkbox" id="checkin-high-altitude" style="width:20px;height:20px;"> I am at high altitude today</label>
 <input type="number" id="checkin-altitude-m" placeholder="Elevation in metres (for example, 1800)" min="-500" max="9000" style="width:220px;">
 </div>
+<div id="auto-elevation-note" style="color:var(--muted);font-size:13px;margin-top:6px;"></div>
 <button onclick="saveSleepCheckin()" style="margin-top:14px;">Save Check-In</button>
 <div id="checkin-msg" style="margin-top:10px;"></div>
 </div>
@@ -1306,6 +1307,10 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <option value="post">Post-menopause</option>
 </select>
 <p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">Peri-menopause brings more temperature variation. Setting this helps H-CAR avoid flagging normal temperature swings.</p>
+</div>
+<div style="margin-top:12px;">
+<label style="display:flex;align-items:flex-start;gap:8px;font-size:14px;"><input type="checkbox" id="auto-elevation-toggle" style="width:20px;height:20px;margin-top:2px;"> Automatically detect elevation</label>
+<p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">When this is on, the app uses your phone location to look up the elevation where you are, so high altitude days are handled without you having to remember. Only the elevation in metres is saved. Your location itself is never stored or shared, and the lookup happens on your phone. You can turn this off any time.</p>
 </div>
 <button onclick="saveAboutYou()" style="margin-top:12px;">Save</button>
 </div>
@@ -1512,6 +1517,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <button type="button" class="nav-item" data-view="profile" onclick="showDashView('profile')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg><span>Profile</span></button>
 </nav>
 
+<script src="/elevation.js"></script>
 <script>
 let authToken = localStorage.getItem('hcar_token');
 let squarePayments = null;
@@ -1951,9 +1957,13 @@ async function loadDashboard() {
     loadFamilyDashboard();
     loadMyPromoCodes();
     loadAlertHistory();
-    loadAboutYou();
+    await loadAboutYou();
     loadMedications();
     startAlertPolling();
+    // Automatic elevation detection (opt-in, non-critical). Runs after
+    // settings load so the opt-in flag is known. Never breaks the
+    // dashboard when it fails.
+    maybeDetectElevation();
   } catch (e) {
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
   }
@@ -2145,6 +2155,9 @@ async function loadSleepCheckin() {
   } catch (e) {
     historyEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load check-ins.</p>';
   }
+  // Morning check-in trigger for automatic elevation detection. The
+  // per-day guard in the module makes a repeat call a no-op.
+  maybeDetectElevation();
 }
 
 // Clinician report download
@@ -2693,6 +2706,7 @@ async function loadMyPromoCodes() {
 // detector expectations or to note context on flags.
 
 let currentBiologicalSex = null;
+let currentAutoElevation = false;
 
 async function loadAboutYou() {
   try {
@@ -2702,10 +2716,15 @@ async function loadAboutYou() {
     if (sexSelect) sexSelect.value = currentBiologicalSex || '';
     const menoSelect = document.getElementById('menopause-select');
     if (menoSelect) menoSelect.value = settings.menopauseStatus || '';
+    currentAutoElevation = settings.autoElevation === true;
+    const autoToggle = document.getElementById('auto-elevation-toggle');
+    if (autoToggle) autoToggle.checked = currentAutoElevation;
     updateFemaleSections();
+    return settings;
   } catch (e) {
     // Non-critical; leave the fields unset.
   }
+  return null;
 }
 
 function updateFemaleSections() {
@@ -2726,13 +2745,55 @@ async function saveAboutYou() {
   const msgEl = document.getElementById('about-you-msg');
   const sex = document.getElementById('bio-sex-select').value || null;
   const meno = document.getElementById('menopause-select').value || null;
+  const autoToggle = document.getElementById('auto-elevation-toggle');
+  const autoElevation = autoToggle ? autoToggle.checked : currentAutoElevation;
   try {
-    const res = await apiCall('/settings', 'PUT', { biologicalSex: sex, menopauseStatus: meno });
+    const res = await apiCall('/settings', 'PUT', { biologicalSex: sex, menopauseStatus: meno, autoElevation: autoElevation });
     currentBiologicalSex = res.biologicalSex || null;
+    currentAutoElevation = res.autoElevation === true;
     updateFemaleSections();
     msgEl.innerHTML = '<div class="success">Saved. Your details are private and only used to adjust the detector.</div>';
+    // If automatic elevation was just turned on, run it now so the
+    // user sees it work right away.
+    if (currentAutoElevation) maybeDetectElevation();
   } catch (e) {
     msgEl.innerHTML = '<div class="error">Could not save: ' + e.message + '</div>';
+  }
+}
+
+// ---- Automatic elevation detection (opt-in) ----
+// Uses the phone location to look up ground elevation, then records
+// only the elevation in metres. Coordinates are never stored or sent
+// to H-CAR. When detection fails or is off, the manual check-in
+// question is the fallback and nothing changes.
+function updateAutoElevationNote(elevationM) {
+  const noteEl = document.getElementById('auto-elevation-note');
+  const altInput = document.getElementById('checkin-altitude-m');
+  const highAlt = document.getElementById('checkin-high-altitude');
+  // Prefill the manual input only when the user has not typed their
+  // own value, so a correction always wins.
+  if (altInput && altInput.value === '') altInput.value = String(Math.round(elevationM));
+  if (highAlt && elevationM >= 1500) highAlt.checked = true;
+  if (noteEl) {
+    let text = 'Detected elevation: ' + Math.round(elevationM) + ' m.';
+    if (elevationM >= 1500) text += ' This is high altitude, so H-CAR adjusts blood oxygen expectations for today.';
+    text += ' You can correct it above.';
+    noteEl.textContent = text;
+  }
+}
+
+function maybeDetectElevation() {
+  try {
+    if (!currentAutoElevation) return;
+    if (typeof HCAR_Elevation === 'undefined' || !HCAR_Elevation.autoDetectElevation) return;
+    HCAR_Elevation.autoDetectElevation({
+      enabled: true,
+      apiCall: apiCall,
+      onDetected: function (elevationM) { updateAutoElevationNote(elevationM); },
+      onUnavailable: function () { /* Silent fallback to the manual check-in question. */ }
+    });
+  } catch (e) {
+    // Non-critical; manual check-in still works.
   }
 }
 
