@@ -214,7 +214,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <body>
 <div class="container">
 <header>
-<button type="button" id="theme-quick-toggle" class="theme-quick-btn" onclick="cycleTheme()" title="Switch between dark and light" aria-label="Switch theme"><span id="theme-quick-icon"></span><span id="theme-quick-label">Dark</span></button>
+<button type="button" id="theme-quick-toggle" class="theme-quick-btn" onclick="cycleTheme()" title="Switch theme (this turns Auto off)" aria-label="Switch theme (this turns Auto off)"><span id="theme-quick-icon"></span><span id="theme-quick-label">Dark</span></button>
 <div class="logo-mark">H</div>
 <h1>H-CAR</h1>
 <p>Your personal health baseline. We notice change, so you can act.</p>
@@ -223,17 +223,24 @@ body.app-mode .bottom-nav{max-width:860px}
 <div id="loading" class="card" style="text-align:center;padding:60px 20px;">
 <div class="spinner" role="status" aria-label="Loading"></div>
 <p style="font-size:18px;color:var(--muted);">Loading H-CAR...</p>
+<p id="loading-note" style="font-size:14px;color:var(--muted);margin-top:8px;">Waking H-CAR up. This can take up to a minute the first time the app has been asleep.</p>
+<button id="loading-retry" class="secondary hidden" onclick="location.reload()" style="margin-top:12px;">Try again</button>
 </div>
 <div id="landing" class="card hidden">
 <p class="eyebrow">General Wellness Tool</p>
 <h2>Create your free account</h2>
-<p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit and flags sustained changes over days. It names a change, never a cause.</p>
+<p>H-CAR is a smoke detector for your body. It learns your personal baseline from your Fitbit or Garmin and flags sustained changes over days. It names a change, never a cause.</p>
 <div class="price">Free<span>for 118 days</span></div>
 <p style="text-align:center;color:var(--muted);">Then $5/month. No card required now. Cancel anytime.</p>
+<ol style="text-align:left;max-width:420px;margin:16px auto 0;line-height:1.9;font-size:15px;">
+<li><strong>1. Create your account.</strong> Free for 118 days.</li>
+<li><strong>2. Connect your watch.</strong> Fitbit or Garmin.</li>
+<li><strong>3. Wear it tonight,</strong> including while you sleep. Your first day of data shows tomorrow.</li>
+</ol>
 <div style="text-align:center;margin:16px 0;">
 <span class="pill">28-day baseline</span>
 <span class="pill">6 signals tracked</span>
-<span class="pill">Private by design</span>
+<span class="pill">Your data is never sold</span>
 </div>
 <div class="tabs">
 <div class="tab active" onclick="showTab('signup', this)">Sign Up</div>
@@ -250,6 +257,11 @@ body.app-mode .bottom-nav{max-width:860px}
 <input type="password" id="su-password" placeholder="At least 8 characters" autocomplete="new-password" enterkeyhint="go" required style="padding-right:70px;">
 <button type="button" onclick="togglePassword('su-password', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
 </div>
+<label class="field-label" for="su-password-confirm">Confirm password</label>
+<div style="position:relative;">
+<input type="password" id="su-password-confirm" placeholder="Type the same password again" autocomplete="new-password" enterkeyhint="go" required style="padding-right:70px;">
+<button type="button" onclick="togglePassword('su-password-confirm', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
+</div>
 <button id="signup-btn" onclick="signup()">Create Account</button>
 <div id="su-error" class="error hidden" role="alert"></div>
 </div>
@@ -261,7 +273,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <input type="password" id="li-password" placeholder="Your password" autocomplete="current-password" enterkeyhint="go" required style="padding-right:70px;">
 <button type="button" onclick="togglePassword('li-password', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
 </div>
-<button onclick="login()">Sign In</button>
+<button id="login-btn" onclick="login()">Sign In</button>
 <div id="li-error" class="error hidden" role="alert"></div>
 <p style="margin-top:12px;text-align:center"><a href="#" onclick="showForgotPassword(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Forgot password?</a></p>
 </div>
@@ -269,12 +281,12 @@ body.app-mode .bottom-nav{max-width:860px}
 <p style="margin-bottom:12px;font-size:14px;color:var(--muted)">Enter your email address and we will send you a link to reset your password.</p>
 <label class="field-label" for="fp-email">Email address</label>
 <input type="email" id="fp-email" placeholder="you@example.com" autocomplete="email" enterkeyhint="send" required>
-<button onclick="forgotPassword()">Send Reset Link</button>
+<button id="forgot-btn" onclick="forgotPassword()">Send Reset Link</button>
 <div id="fp-message" class="hidden" role="status" style="margin-top:12px;padding:12px;border-radius:12px;font-size:14px"></div>
 <p style="margin-top:12px;text-align:center"><a href="#" onclick="showLoginForm(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Back to Sign In</a></p>
 </div>
 <h2 style="margin-top:28px;">What is H-CAR?</h2>
-<p>Like a smoke detector, H-CAR warns early, rarely cries wolf, and makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
+<p>Like a smoke detector, H-CAR warns early, and only flags a change when several signals move together for days, so one bad night does not set it off. When it does flag a serious change, it makes sure someone who can act hears it. It watches quietly in the background, day after day, learning what is normal for you.</p>
 <p style="margin-top:12px">H-CAR spends 28 days learning your baseline from your Fitbit, then watches for sustained changes across 6 signals: resting heart rate, HRV, blood oxygen, breathing rate, sleep, and skin temperature. A single bad night means nothing. H-CAR flags a change only when 3 or more signals move together for days in a row.</p>
 </div>
 
@@ -302,8 +314,8 @@ body.app-mode .bottom-nav{max-width:860px}
 <div id="learn-overview" class="learn-tab-content">
 <div class="learn-section">
 <h3>The Smoke Detector for Your Body</h3>
-<p>Your body has a normal. H-CAR helps you act when it shifts. It is a smoke detector for the body, not a diagnosis machine. It learns from heart rate, HRV, oxygen, temperature, breathing, sleep and movement, and it names a change, never a cause.</p>
-<p style="margin-top:10px">The mission: be the smoke detector that saves lives. Three jobs: warn early, rarely cry wolf, and be heard by someone who can act.</p>
+<p>Your body has a normal. H-CAR helps you act when it shifts. It is a smoke detector for the body, not a diagnosis machine. It learns from heart rate, HRV, oxygen, temperature, breathing and sleep, and it names a change, never a cause.</p>
+<p style="margin-top:10px">The mission: be the smoke detector that warns in time. Three jobs: warn early, rarely cry wolf, and be heard by someone who can act.</p>
 <p style="margin-top:10px">A single bad night means nothing. A single high heart rate means nothing. But when three or more signals move away from your baseline for days in a row, that is worth noticing. H-CAR notices it, so you can act.</p>
 <div class="stats-grid" style="margin-top:16px;">
 <div class="stat-card"><div class="stat-num">180</div><div class="stat-label">Days of example data showing how H-CAR learns your baseline</div></div>
@@ -337,7 +349,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <text x="100" y="95" text-anchor="middle" font-family="DM Serif Display, serif" font-size="34" style="fill:var(--chart-ink)">58</text>
 <text x="100" y="112" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" style="fill:var(--chart-muted)">usual 84</text>
 </svg>
-<p>Recovery score 58 out of 100, vs usual 84. Sleep, HRV and resting heart rate are all pulling it down together.</p>
+<p>Recovery score 58 out of 100, vs usual 84. For recovery, higher is better, which is the opposite of the change index on your dashboard. Sleep, HRV and resting heart rate are all pulling it down together.</p>
 </div>
 <p><strong>Signals vs. baseline:</strong></p>
 <ul style="margin:10px 0 10px 20px;">
@@ -1002,7 +1014,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <div class="learn-section">
 <h3>Your Data Rights</h3>
 <p><strong>Export my data:</strong> download all your H-CAR data as a JSON file.</p>
-<p style="margin-top:10px"><strong>Delete my data:</strong> contact support to delete your account and all associated data.</p>
+<p style="margin-top:10px"><strong>Delete my data:</strong> email talonfisher66@gmail.com to delete your account and all associated data.</p>
 </div>
 
 <div class="learn-section" style="border-left:4px solid var(--red);">
@@ -1028,7 +1040,7 @@ body.app-mode .bottom-nav{max-width:860px}
 
 <div class="learn-section">
 <h3>2. Subscription and Payment</h3>
-<p>H-CAR costs Free during the 118-day trial, billed monthly through Square. You may cancel anytime from your account settings. Cancellation takes effect at the end of your current paid period. No refunds are given for partial months.</p>
+<p>H-CAR is free for the first 118 days. After that it costs $5 a month, billed monthly through Square. You may cancel anytime from your account settings. Cancellation takes effect at the end of your current paid period. No refunds are given for partial months.</p>
 </div>
 
 <div class="learn-section">
@@ -1068,8 +1080,8 @@ body.app-mode .bottom-nav{max-width:860px}
 <ul style="margin:0;padding-left:20px;line-height:1.7;">
 <li>H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or predict any disease or condition, and it is not cleared by any health regulator.</li>
 <li>H-CAR cannot detect sudden medical emergencies such as heart attack, stroke, or cardiac arrest. If you feel unwell, seek professional medical care right away, whether or not H-CAR has flagged anything.</li>
-<li>H-CAR reads daily summaries from your Fitbit through Google Fit. Your data is never sold, and you can delete your account and data at any time.</li>
-<li>De-identified summaries (with your name and contact details removed) may be used for research to validate H-CAR. You can withdraw at any time by deleting your account.</li>
+<li>H-CAR reads daily summaries from your Fitbit through Google Fit, or from Garmin. Your data is never sold. To delete your account and data, email talonfisher66@gmail.com and it will be deleted within 30 days.</li>
+<li>Your data is not used for research unless you agree to that separately. Research sharing is off unless you give that separate consent.</li>
 </ul>
 <p style="margin-top:12px;">Full details: <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="#" onclick="showFooterPage('terms'); return false;">Terms of Service</a>, including the limitation of liability and the full research description.</p>
 </div>
@@ -1078,6 +1090,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <label><input type="checkbox" id="consent-agree"> I have read the summary above and agree to the H-CAR Terms of Service and Privacy Policy.</label>
 </div>
 <button id="consent-btn" onclick="submitConsent()" disabled>Start My Free Trial</button>
+<p style="color:var(--muted);font-size:13px;text-align:center;margin-top:8px;">Tick the box above to start your free trial.</p>
 <div id="consent-error" class="error hidden" role="alert"></div>
 </div>
 
@@ -1089,8 +1102,8 @@ body.app-mode .bottom-nav{max-width:860px}
 <h4>H-CAR is a general wellness tool, not a medical device.</h4>
 <p>By subscribing, you acknowledge you have read the consent form and understand H-CAR does not diagnose, treat, or monitor any disease or condition, cannot detect sudden medical emergencies, and is used at your own risk.</p>
 </div>
-<div class="price">Free<span>during trial</span></div>
-<p style="text-align:center;">H-CAR Monthly - Cancel anytime</p>
+<div class="price">$5<span>per month, after your free trial</span></div>
+<p style="text-align:center;">H-CAR Monthly, $5 a month. Your first 118 days are free, so you are not charged today. Cancel anytime.</p>
 
 <div id="promo-section" style="margin:20px 0;padding:16px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;">
 <p style="margin:0 0 10px 0;font-weight:700;">Have a promo code?</p>
@@ -1104,7 +1117,7 @@ body.app-mode .bottom-nav{max-width:860px}
 
 <div id="payment-form-section">
 <div id="card-container"></div>
-<button id="pay-btn" onclick="processPayment()">Subscribe - Free during trial</button>
+<button id="pay-btn" onclick="processPayment()">Subscribe - $5 a month after your free trial</button>
 </div>
 <div id="pay-error" class="error hidden" role="alert"></div>
 <div id="pay-success" class="success hidden"></div>
@@ -1112,7 +1125,7 @@ body.app-mode .bottom-nav{max-width:860px}
 
 <!-- "Are you okay?" check-in. Shown when an Act flag fires. The user has
 5 minutes to answer. "Yes, I'm fine" cancels the alert. "No, I need help"
-(or silence) alerts the emergency contact by text and email. -->
+(or silence) alerts the emergency contact by email or text. -->
 <div id="are-you-ok-modal" class="modal-overlay hidden" role="alertdialog" aria-modal="true" aria-labelledby="are-you-ok-title">
 <div class="modal-box">
 <h2 id="are-you-ok-title">Are you okay?</h2>
@@ -1120,9 +1133,10 @@ body.app-mode .bottom-nav{max-width:860px}
 <p id="are-you-ok-vitals" style="font-size:14px;color:var(--muted);"></p>
 <p style="font-size:14px;">If you do not answer in</p>
 <div class="modal-countdown" id="are-you-ok-timer">5:00</div>
-<p style="font-size:14px;">your emergency contact will be alerted by text and email.</p>
+<p style="font-size:14px;">your emergency contact will be alerted using the email or phone number you gave in Profile.</p>
 <button id="btn-ok-fine" onclick="respondToAlert('fine')" style="background:var(--teal);">Yes, I'm fine</button>
 <button id="btn-need-help" class="btn-danger" onclick="respondToAlert('need_help')">No, I need help</button>
+<p style="font-size:13px;">Tapping "No, I need help" alerts your contact right away. It does not wait for the 5 minutes.</p>
 <p style="font-size:13px;color:var(--muted);">If this is an emergency, call 911 now. Do not wait for the app.</p>
 </div>
 </div>
@@ -1132,7 +1146,11 @@ body.app-mode .bottom-nav{max-width:860px}
 <div id="dash-status"></div>
 <div id="unack-banner" class="hidden" style="background:var(--red-bg);border:2px solid var(--red);border-radius:12px;padding:16px;margin:12px 0;text-align:center;">
 <p style="margin:0;font-weight:800;color:var(--red-ink);font-size:16px;">No one has acknowledged your alert yet.</p>
-<p style="margin:8px 0 0;color:var(--red-ink);font-size:14px;">Your emergency contact was alerted but has not confirmed receipt. If you need help, call 911 now. Do not wait for the app.</p>
+<p style="margin:8px 0 0;color:var(--red-ink);font-size:14px;">No one confirmed they got your alert yet. If you need help, call 911 now. Do not wait for the app.</p>
+</div>
+<div id="alert-confirm" class="hidden" style="background:var(--green-bg);border:1px solid var(--green);border-radius:12px;padding:16px;margin:12px 0;text-align:center;">
+<p id="alert-confirm-text" style="margin:0;font-size:15px;color:var(--green-ink);"></p>
+<button class="secondary" onclick="document.getElementById('alert-confirm').classList.add('hidden')" style="margin-top:10px;padding:8px 16px;font-size:13px;width:auto;">Close</button>
 </div>
 <div id="fitbit-notice" class="success hidden"></div>
 <div id="fitbit-error" class="error hidden"></div>
@@ -1146,6 +1164,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <div class="pci-score-label">/100</div>
 <div class="pci-status" id="pci-status">Loading...</div>
 </div>
+<p id="pci-explainer" style="color:var(--muted);font-size:13px;margin:8px 0 0;">Your change number appears here once monitoring starts on day 29.</p>
 <div id="baseline-section"><p>Loading baseline...</p></div>
 </div>
 
@@ -1196,7 +1215,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <div class="metric-card" title="Total sleep time. Adults need 7-9 hours."><div class="m-value" id="metric-sleep">--</div><div class="m-label">Sleep</div><div class="m-sub">hours</div></div>
 <div class="metric-card" title="Skin temperature change from your normal. Small changes are normal."><div class="m-value" id="metric-temp">--</div><div class="m-label">Skin Temp</div><div class="m-sub">vs baseline</div></div>
 </div>
-<p style="text-align:center;color:var(--muted);font-size:13px;margin:0 0 4px;">Tap a number to compare it with your usual.</p>
+<p id="metric-tap-hint" style="text-align:center;color:var(--muted);font-size:13px;margin:0 0 4px;">Tap a number to compare it with your usual.</p>
 <p id="metric-date" style="text-align:center;color:var(--muted);font-size:13px;margin:-6px 0 4px;">Latest day: loading...</p>
 
 <div class="section-card">
@@ -1293,14 +1312,14 @@ body.app-mode .bottom-nav{max-width:860px}
 <div id="view-trends" class="dash-view hidden">
 <div class="section-card">
 <p class="section-eyebrow">History</p>
-<h3>Recent days</h3>
+<h3>Your last 7 days</h3>
 <div id="days-section"><p>No data yet. Connect your Fitbit and sync to see your daily summaries.</p></div>
 </div>
 
 <div class="section-card">
 <p class="section-eyebrow">Baseline</p>
 <h3>How your baseline works</h3>
-<p>H-CAR spends 28 days learning what is normal for you, then watches for sustained changes. Your baseline is anchored, it does not drift with slow changes, so a gradual decline is still caught.</p>
+<p>H-CAR spends 28 days learning what is normal for you, then watches for sustained changes. Monitoring starts on day 29. Your baseline is anchored, it does not drift with slow changes, so a gradual decline is still caught.</p>
 <p style="margin-top:10px">A single bad night means nothing. H-CAR flags a change only when 3 or more signals move together for days in a row.</p>
 </div>
 </div>
@@ -1311,13 +1330,13 @@ body.app-mode .bottom-nav{max-width:860px}
 <h3>Ask About Your Data</h3>
 <p style="color:var(--muted);font-size:14px;">Ask questions about your H-CAR data. The assistant answers only from your actual measurements. This is not medical advice. H-CAR is a general wellness tool, not a medical device. If you feel unwell, seek professional medical care.</p>
 <div id="insights-empty" class="hidden">
-<p style="color:var(--muted);">Connect your Fitbit to see insights about your data. Once you have synced days, the assistant can answer questions about your numbers.</p>
+<p style="color:var(--muted);">Connect your watch (Fitbit or Garmin) and sync a few days first. The assistant needs real days to answer from.</p>
 <button onclick="connectFitbit()" style="margin-top:10px;">Connect with Google Health</button>
 </div>
 <div id="insights-content">
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
-<button type="button" class="secondary" onclick="askAssistant('What was my resting heart rate yesterday?')" style="font-size:13px;">My heart rate yesterday?</button>
-<button type="button" class="secondary" onclick="askAssistant('How did I sleep last night?')" style="font-size:13px;">How did I sleep?</button>
+<button type="button" class="secondary" onclick="askAssistant('What was my resting heart rate on my latest day with data?')" style="font-size:13px;">My heart rate on my latest day?</button>
+<button type="button" class="secondary" onclick="askAssistant('How did I sleep on my latest night with data?')" style="font-size:13px;">How did I sleep?</button>
 <button type="button" class="secondary" onclick="askAssistant('What should I do next?')" style="font-size:13px;">What should I do next?</button>
 <button type="button" class="secondary" onclick="askAssistant('What don\'t you know?')" style="font-size:13px;">What don't you know?</button>
 </div>
@@ -1325,7 +1344,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <p style="color:var(--muted);font-size:14px;">Hi, I can explain your H-CAR data. Try a question above, or type your own below.</p>
 </div>
 <div style="display:flex;flex-direction:column;gap:8px;">
-<input type="text" id="assistant-input" placeholder="Ask about your data... (try: what was my resting heart rate yesterday?)" style="width:100%;" onkeypress="if(event.key==='Enter')askAssistantFromInput()">
+<input type="text" id="assistant-input" placeholder="Ask about your data... (try: what was my resting heart rate on my latest day?)" style="width:100%;" onkeypress="if(event.key==='Enter')askAssistantFromInput()">
 <button onclick="askAssistantFromInput()" style="width:100%;">Ask</button>
 </div>
 </div>
@@ -1337,6 +1356,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <p style="color:var(--muted);font-size:14px;">Download your data to share with your clinician or keep for your records.</p>
 <button class="secondary" onclick="downloadReport()">Download Clinician Report</button>
 <button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
+<div id="report-msg" style="margin-top:10px;"></div>
 </div>
 
 <div class="section-card">
@@ -1360,6 +1380,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <option value="male">Male</option>
 <option value="prefer_not_to_say">Prefer not to say</option>
 </select>
+<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">H-CAR only uses this to allow for normal cycle changes in heart rate and temperature, so they are not flagged as a change. If you choose Female, two more sections appear below: Menstrual Cycle and Pregnancy. If you choose Male or Prefer not to say, they stay hidden.</p>
 <div id="menopause-row" class="hidden" style="margin-top:12px;">
 <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Menopause status</label>
 <select id="menopause-select" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;width:100%;max-width:320px;">
@@ -1368,11 +1389,12 @@ body.app-mode .bottom-nav{max-width:860px}
 <option value="peri">Peri-menopause</option>
 <option value="post">Post-menopause</option>
 </select>
-<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">Peri-menopause brings more temperature variation. Setting this helps H-CAR avoid flagging normal temperature swings.</p>
+<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">Pre-menopause: your periods are still regular. Peri-menopause: your periods are changing or irregular, and your temperature varies more. Post-menopause: your periods have stopped for a year or more. Pick the one that fits best, or leave it blank. It only helps H-CAR allow for normal temperature changes.</p>
 </div>
 <div style="margin-top:12px;">
 <label style="display:flex;align-items:flex-start;gap:8px;font-size:14px;"><input type="checkbox" id="auto-elevation-toggle" style="width:20px;height:20px;margin-top:2px;"> Automatically detect elevation</label>
 <p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">When this is on, the app uses your phone location to look up the elevation where you are, so high altitude days are handled without you having to remember. Only the elevation in metres is saved. Your location itself is never stored or shared, and the lookup happens on your phone. You can turn this off any time.</p>
+<p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">Press Save below to turn this on. Your phone will then ask if H-CAR can use your location. If you say no, nothing changes and you can still enter your elevation by hand in the morning check-in.</p>
 </div>
 <button onclick="saveAboutYou()" style="margin-top:12px;">Save</button>
 </div>
@@ -1387,7 +1409,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <button type="button" class="sensitivity-btn theme-btn" data-theme-pref="light" onclick="setThemePreference('light')">Light</button>
 <button type="button" class="sensitivity-btn theme-btn" data-theme-pref="auto" onclick="setThemePreference('auto')">Auto</button>
 </div>
-<p style="color:var(--muted);font-size:13px;margin:10px 0 0 0;">Auto means the app uses Light during the day and Dark at night, matching your phone.</p>
+<p style="color:var(--muted);font-size:13px;margin:10px 0 0 0;">Auto means the app follows your phone's own Dark or Light setting. If you change that setting on your phone, the app changes too. It does not change by the time of day.</p>
 </div>
 
 <div class="section-card hidden" id="cycle-card">
@@ -1413,7 +1435,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <div id="pregnancy-msg"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
 <div>
-<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Start date (conception or first positive test)</label>
+<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Start date (conception, or first positive test if you do not know that)</label>
 <input type="date" id="pregnancy-start-date" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;">
 </div>
 <div>
@@ -1422,18 +1444,19 @@ body.app-mode .bottom-nav{max-width:860px}
 </div>
 <button onclick="logPregnancy()">Log Pregnancy</button>
 </div>
+<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">H-CAR counts weeks from this date. If your pregnancy has ended, delete the entry above so H-CAR stops adjusting for it.</p>
 <div id="pregnancy-list" style="margin-top:12px;"></div>
 </div>
 
 <div class="section-card" id="medication-card">
 <p class="section-eyebrow">Medications</p>
 <h3>Medications</h3>
-<p style="color:var(--muted);font-size:14px;">Log medications you take. If you start a new medication, H-CAR notes it alongside any flags for 14 days so you have the context. H-CAR does not predict medication effects or give medication advice.</p>
+<p style="color:var(--muted);font-size:14px;">Log medications you take, with the date you started. If you stop one, delete it here. H-CAR keeps a note of it next to any flags for 14 days after you start it, so you can see what changed at the same time. H-CAR does not predict medication effects or give medication advice.</p>
 <div id="medication-msg"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
 <div style="flex:1;min-width:160px;">
 <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Medication name</label>
-<input type="text" id="med-name" placeholder="For example, Metoprolol" style="width:100%;">
+<input type="text" id="med-name" placeholder="For example, your daily tablet name" style="width:100%;">
 </div>
 <div>
 <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Start date</label>
@@ -1451,13 +1474,13 @@ body.app-mode .bottom-nav{max-width:860px}
 <div id="ec-locked-note" class="section-card hidden">
 <p class="section-eyebrow">Safety</p>
 <h3>Emergency Contact</h3>
-<p style="color:var(--muted);font-size:14px;">Connect your Fitbit first, then add an emergency contact here. When H-CAR detects a serious change, this is the person who gets alerted.</p>
+<p style="color:var(--muted);font-size:14px;">Connect a watch first, Fitbit or Garmin, then add an emergency contact here. When H-CAR detects a serious change, this is the person who gets alerted.</p>
 <button onclick="connectFitbit()">Connect with Google Health</button>
 </div>
 <div id="emergency-contact-card" class="section-card">
 <p class="section-eyebrow">Safety</p>
 <h3>Emergency Contact</h3>
-<p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), you get 5 minutes to answer "Are you okay?" in the app. If you say you need help, or you do not answer, this person is alerted by text message and email. They must confirm receipt. If they do not confirm within 15 minutes, your secondary contact is alerted. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
+<p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), you get 5 minutes to answer "Are you okay?" in the app. If you say you need help, or you do not answer in 5 minutes, this person is alerted using the email or phone number you gave below. If you gave both, they get both. They must tap the link in the message, or reply YES to the text, to confirm they got it. If they do not confirm within 15 minutes, your secondary contact below is alerted, if you added one. If you did not add a secondary contact, no one else is alerted. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
 <div id="emergency-contact-msg"></div>
 <label class="field-label" for="ec-name">Primary contact name</label>
 <input type="text" id="ec-name" placeholder="For example, Jane Doe" autocomplete="name">
@@ -1478,11 +1501,12 @@ body.app-mode .bottom-nav{max-width:860px}
 <label class="field-label" for="ec2-phone">Phone</label>
 <input type="text" id="ec2-phone" placeholder="Secondary contact phone" inputmode="tel" autocomplete="tel">
 <button onclick="saveEmergencyContact()">Save Contacts</button>
-<button class="secondary" onclick="sendTestAlert()">Send Test Email</button>
-<button class="secondary" onclick="testFullAlert()">Test Full Alert Flow</button>
-<button class="secondary" onclick="enablePushAlerts()">Enable Push Alerts on This Device</button>
+<button class="secondary" onclick="removeEmergencyContact()">Remove Primary Contact</button>
+<button class="secondary" onclick="sendTestAlert()">1. Send a test email only</button>
+<button class="secondary" onclick="testFullAlert()">2. Run a full practice alert</button>
+<button class="secondary" onclick="enablePushAlerts()">Enable push alerts on this device</button>
 <div id="push-msg" style="font-size:13px;color:var(--muted);margin-top:6px;"></div>
-<p style="color:var(--muted);font-size:13px;margin-top:8px;">To remove your emergency contact, clear all four primary fields and press Save Contacts. Test Full Alert Flow creates a test alert that runs the whole system: the check-in appears, then your contact gets a TEST text and email if you ask for help or do not answer.</p>
+<p style="color:var(--muted);font-size:13px;margin-top:8px;">To remove your primary contact, press Remove Primary Contact above. Your secondary contact stays saved unless you clear those fields too. If you remove your only contact, H-CAR cannot alert anyone. Start with the test email. If that arrives, run the full practice alert. The full practice sends a TEST text only if text alerts are set up; if not, your contact gets email only.</p>
 
 <div style="margin-top:20px;">
 <h4 style="margin:0 0 8px 0;font-size:15px;">Alert History</h4>
@@ -1502,7 +1526,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <button onclick="cancelLocationOff()" class="secondary" style="padding:8px 16px;font-size:13px;width:auto;margin:0;">Keep It On</button>
 </div>
 </div>
-<p style="color:var(--muted);font-size:13px;margin:8px 0 0 28px;line-height:1.5;">When you sync your Fitbit, H-CAR will save your location. If an Act flag fires, your emergency contact will receive your last known location in the alert email so they know where to send help. Your location is never shared otherwise, and never tracked continuously. You can turn this off at any time.</p>
+<p style="color:var(--muted);font-size:13px;margin:8px 0 0 28px;line-height:1.5;">If you use a Fitbit, H-CAR saves your location when you press Sync Now. If you use a Garmin, it is saved only when you turn this on, so check it is up to date. If an Act flag fires, your emergency contact gets your last known location, with the date and time it was saved, so they know how fresh it is. The location sent is map coordinates, not a street address. Your location is never shared otherwise, and never tracked continuously. You can turn this off at any time.</p>
 <div id="location-status" style="margin:8px 0 0 28px;font-size:13px;color:var(--muted);"></div>
 <div id="location-msg" style="margin-top:8px;"></div>
 </div>
@@ -1511,7 +1535,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <div class="section-card">
 <p class="section-eyebrow">Family</p>
 <h3>Family Dashboard</h3>
-<p style="color:var(--muted);font-size:14px;">See the health status of your loved ones at a glance. Green means all good, yellow means a change was detected, red means a serious change, grey means they are still learning their baseline or there is no recent data. No detailed health data is shared, just the status.</p>
+<p style="color:var(--muted);font-size:14px;">Two things happen here. Below, you see the status of family members who share theirs with you. If you invite someone below, you share your status with them: they will see your green, yellow or red dot, not your detailed health data. Green means all good, yellow means a change was detected, red means a serious change, grey means they are still learning their baseline or there is no recent data.</p>
 <div style="display:flex;gap:16px;flex-wrap:wrap;margin:0 0 16px 0;font-size:13px;">
 <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--green);display:inline-block;"></span>All good</span>
 <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--amber);display:inline-block;"></span>Change detected</span>
@@ -1545,7 +1569,7 @@ body.app-mode .bottom-nav{max-width:860px}
 </div>
 <button onclick="sendFamilyInvite()" style="white-space:nowrap;">Send Invite</button>
 </div>
-<p style="color:var(--muted);font-size:13px;margin-top:8px;">They must have an H-CAR account. They will need to accept your invite before you can see their status.</p>
+<p style="color:var(--muted);font-size:13px;margin-top:8px;">They must have an H-CAR account and accept in the app. H-CAR does not email them, so tell them you invited them.</p>
 </div>
 
 <div class="section-card" id="promo-codes-section">
@@ -1556,23 +1580,26 @@ body.app-mode .bottom-nav{max-width:860px}
 <button class="secondary" onclick="loadMyPromoCodes()" style="margin-top:10px;">Refresh Codes</button>
 </div>
 
-<button class="secondary" onclick="showSettings()">Settings</button>
+<button class="secondary" onclick="showSettings()">Account Settings</button>
 <button class="secondary" onclick="logout()">Sign Out</button>
 
 <div id="settings-section" class="card hidden" style="margin-top:20px;">
 <h3>Account Settings</h3>
 <p>Manage your subscription and account.</p>
+<p style="font-size:14px;color:var(--muted);">Need help? Email talonfisher66@gmail.com. Forgot your password? Sign out, then tap "Forgot password" on the sign-in screen. To delete your account and data, email talonfisher66@gmail.com.</p>
+<p id="trial-cancel-note" style="font-size:14px;color:var(--muted);"></p>
 <button class="secondary" onclick="exportData()">Export My Data (JSON)</button>
 <button id="cancel-sub-btn" class="secondary" onclick="showCancelConfirm()" style="background:var(--red);color:white;border-color:var(--red);margin-top:10px;">Cancel Subscription</button>
 <div id="cancel-confirm" class="hidden" style="margin-top:12px;padding:16px;background:var(--red-bg);border:1px solid var(--error-border);border-radius:12px;">
 <p style="margin:0 0 10px 0;font-size:14px;color:var(--red-ink);"><strong>Are you sure you want to cancel your H-CAR subscription?</strong></p>
-<p style="margin:0 0 12px 0;font-size:13px;color:var(--red-ink);">You will lose access to monitoring, alerts, and your baseline data. You can resubscribe anytime. Access continues until the end of your paid period.</p>
+<p id="cancel-confirm-text" style="margin:0 0 12px 0;font-size:13px;color:var(--red-ink);">Cancel your subscription? You keep using H-CAR until the end of the period you have already paid for. After that, monitoring and alerts stop. Your past data stays on your account, so if you come back it is still there.</p>
 <div style="display:flex;gap:8px;flex-wrap:wrap;">
 <button onclick="confirmCancelSub()" style="background:var(--red);color:white;padding:10px 18px;font-size:14px;width:auto;margin:0;">Yes, Cancel Subscription</button>
 <button onclick="hideCancelConfirm()" class="secondary" style="padding:10px 18px;font-size:14px;width:auto;margin:0;">Keep My Subscription</button>
 </div>
 </div>
 <p style="font-size:0.85em;color:var(--muted);margin-top:10px;">Cancelling stops future charges. You keep access until the end of your current billing period. No partial refunds.</p>
+<div id="cancel-msg" style="margin-top:10px;"></div>
 
 <h3 style="margin-top:24px;">Change Password</h3>
 <div style="display:grid;gap:10px;max-width:400px;">
@@ -1595,7 +1622,7 @@ body.app-mode .bottom-nav{max-width:860px}
 <div class="footer">
 <p><a href="#" onclick="showFooterPage('privacy'); return false;" style="margin:0 8px;">Privacy Policy</a> | <a href="#" onclick="showFooterPage('terms'); return false;" style="margin:0 8px;">Terms of Service</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Support</a> | <a href="mailto:tfcontracting@shaw.ca" style="margin:0 8px;">Contact</a></p>
 <p style="margin-top:12px;">H-CAR is a general wellness tool, not a medical device. It does not diagnose, treat, or monitor any disease or condition. It cannot detect sudden medical emergencies. If you feel unwell, seek professional medical care immediately. Use at your own risk.</p>
-<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. Free during trial. Cancel anytime.</p>
+<p style="margin-top:10px;">Operated by Talon Fisher Contracting, Courtenay BC. $5 a month after your 118-day free trial. Cancel anytime.</p>
 </div>
 </div>
 
@@ -1615,6 +1642,13 @@ let squareCard = null;
 // Current user's subscription status from /api/me ('active', 'complimentary', 'expired', 'inactive').
 // Used to hide the Cancel Subscription button for trial users with nothing to cancel.
 let currentSubStatus = null;
+let currentSubExpiresAt = null;
+let currentSubPeriodEnd = null;
+// Which watch is connected. The emergency contact form unlocks when
+// either watch is connected, not Fitbit alone.
+let fitbitConnectedFlag = false;
+let garminConnectedFlag = false;
+function updateECVisibility() { setEmergencyContactVisible(fitbitConnectedFlag || garminConnectedFlag); }
 
 // ---- Theme: Dark, Light, Auto ----
 // The choice lives in localStorage (instant, works signed out) and on
@@ -1710,15 +1744,62 @@ updateThemeControls();
 
 function updateCancelButton() {
   const btn = document.getElementById('cancel-sub-btn');
-  if (btn) btn.style.display = currentSubStatus === 'active' ? '' : 'none';
+  const note = document.getElementById('trial-cancel-note');
+  if (btn) {
+    if (currentSubStatus === 'active') {
+      btn.style.display = '';
+      btn.textContent = 'Cancel Subscription';
+    } else if (currentSubStatus === 'complimentary') {
+      btn.style.display = '';
+      btn.textContent = 'End Free Trial';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+  if (note) {
+    if (currentSubStatus === 'complimentary') {
+      note.textContent = currentSubExpiresAt
+        ? 'You are on a free trial until ' + new Date(currentSubExpiresAt).toLocaleDateString() + '. There is nothing to cancel and you will not be charged. After that, monitoring stops unless you subscribe.'
+        : 'You are on complimentary access. There is nothing to cancel.';
+    } else if (currentSubStatus === 'canceled') {
+      note.textContent = currentSubPeriodEnd
+        ? 'Your subscription is already canceled. You keep access until ' + new Date(currentSubPeriodEnd).toLocaleDateString() + '.'
+        : 'Your subscription is already canceled.';
+    } else {
+      note.textContent = '';
+    }
+  }
+}
+
+// Plain-language errors: a plain user should never see "Failed to fetch"
+// or a raw server string with no next step.
+function friendlyApiError(message) {
+  if (!message) return 'Something went wrong. Please try again.';
+  if (/failed to fetch|networkerror|network request failed/i.test(message)) {
+    return 'H-CAR could not be reached. Check your connection and try again.';
+  }
+  if (/invalid token|jwt expired|token expired/i.test(message)) {
+    return 'Your sign-in expired. Please sign in again.';
+  }
+  return message;
 }
 
 async function apiCall(endpoint, method, body, useAuth = true) {
   const headers = { 'Content-Type': 'application/json' };
   if (useAuth && authToken) headers['Authorization'] = 'Bearer ' + authToken;
-  const res = await fetch('/api' + endpoint, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  let res;
+  try {
+    res = await fetch('/api' + endpoint, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  } catch (e) {
+    throw new Error('H-CAR could not be reached. Check your connection and try again.');
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error('H-CAR gave an unexpected answer. Please try again.');
+  }
+  if (!res.ok) throw new Error(friendlyApiError(data.error || 'Request failed'));
   return data;
 }
 
@@ -1759,9 +1840,11 @@ async function forgotPassword() {
     msgEl.classList.remove('hidden');
     return;
   }
+  const btn = document.getElementById('forgot-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
   try {
     const data = await apiCall('/forgot-password', 'POST', { email }, false);
-    msgEl.textContent = data.message;
+    msgEl.textContent = data.message + ' The link works for 1 hour. If it does not arrive, check your spam folder.';
     msgEl.style.background = 'var(--green-bg)';
     msgEl.style.color = 'var(--green-ink)';
     msgEl.classList.remove('hidden');
@@ -1771,6 +1854,8 @@ async function forgotPassword() {
     msgEl.style.background = 'var(--red-bg)';
     msgEl.style.color = 'var(--red-ink)';
     msgEl.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Reset Link'; }
   }
 }
 
@@ -1893,16 +1978,27 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// An email that is already registered is not a dead end: offer Sign In
+// with the email already filled in.
+function goToSignIn(email) {
+  const tabs = document.querySelectorAll('.tab');
+  if (tabs[1]) showTab('login', tabs[1]);
+  if (email) document.getElementById('li-email').value = email;
+  document.getElementById('li-password').focus();
+}
+
 async function signup() {
   const name = document.getElementById('su-name').value.trim();
   const email = document.getElementById('su-email').value.trim();
   const password = document.getElementById('su-password').value;
+  const confirmPassword = document.getElementById('su-password-confirm').value;
   const errEl = document.getElementById('su-error');
   const btn = document.getElementById('signup-btn');
   errEl.classList.add('hidden');
   if (!name) { showFormError(errEl, 'Please enter your name.'); return; }
   if (!isValidEmail(email)) { showFormError(errEl, 'That email address does not look right. Please check it and try again.'); return; }
   if (password.length < 8) { showFormError(errEl, 'Your password needs at least 8 characters.'); return; }
+  if (password !== confirmPassword) { showFormError(errEl, 'The two passwords do not match. Please type the same password twice.'); return; }
   btn.disabled = true;
   btn.textContent = 'Creating account...';
   try {
@@ -1911,7 +2007,11 @@ async function signup() {
     localStorage.setItem('hcar_token', authToken);
     showStep('consent-step');
   } catch (e) {
-    errEl.textContent = e.message;
+    if (/already registered/i.test(e.message)) {
+      errEl.innerHTML = 'That email already has an account. <button type="button" class="secondary" style="width:auto;margin:0;padding:6px 12px;font-size:13px;" onclick="goToSignIn(\'' + email.replace(/'/g, "\\'") + '\')">Go to Sign In</button>';
+    } else {
+      errEl.textContent = e.message;
+    }
     errEl.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = 'Create Account';
@@ -1925,10 +2025,12 @@ async function login() {
   const email = document.getElementById('li-email').value.trim();
   const password = document.getElementById('li-password').value;
   const errEl = document.getElementById('li-error');
+  const btn = document.getElementById('login-btn');
   errEl.classList.add('hidden');
   if (!email) { showFormError(errEl, 'Please enter your email address.'); return; }
   if (!isValidEmail(email)) { showFormError(errEl, 'That email address does not look right. Please check it and try again.'); return; }
   if (!password) { showFormError(errEl, 'Please enter your password.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
   try {
     const data = await apiCall('/login', 'POST', { email, password }, false);
     authToken = data.token;
@@ -1937,6 +2039,8 @@ async function login() {
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
   }
 }
 
@@ -1988,7 +2092,7 @@ async function initSquare() {
     squareCard = await squarePayments.card();
     await squareCard.attach('#card-container');
     payBtn.disabled = false;
-    payBtn.textContent = 'Subscribe - Free during trial';
+    payBtn.textContent = 'Subscribe - $5 a month after your free trial';
   } catch (e) {
     document.getElementById('pay-error').textContent = 'Failed to load payment form: ' + e.message + '. Please refresh the page and try again.';
     document.getElementById('pay-error').classList.remove('hidden');
@@ -2022,7 +2126,7 @@ async function processPayment() {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
     document.getElementById('pay-btn').disabled = false;
-    document.getElementById('pay-btn').textContent = 'Subscribe - Free during trial';
+    document.getElementById('pay-btn').textContent = 'Subscribe - $5 a month after your free trial';
   }
 }
 
@@ -2065,14 +2169,30 @@ async function checkStatus() {
   try {
     const me = await apiCall('/me', 'GET');
     currentSubStatus = me.subscriptionStatus;
+    currentSubExpiresAt = me.subscriptionExpiresAt || null;
+    currentSubPeriodEnd = me.subscriptionPeriodEnd || null;
     syncThemeFromServer(me.themePreference);
     updateCancelButton();
     document.getElementById('dash-name').textContent = me.name;
     if (!me.consentGiven) {
       showStep('consent-step');
     } else if (me.subscriptionStatus !== 'active' && me.subscriptionStatus !== 'complimentary') {
+      const periodEnd = me.subscriptionPeriodEnd ? new Date(me.subscriptionPeriodEnd) : null;
+      // Canceled but still inside the paid period: the user keeps access
+      // until that date, so they stay on the dashboard with a plain banner.
+      if (me.subscriptionStatus === 'canceled' && periodEnd && periodEnd > new Date()) {
+        document.getElementById('dash-status').innerHTML = '<div class="success">Your subscription is canceled. You keep access until ' + periodEnd.toLocaleDateString() + '. After that, monitoring stops.</div>';
+        showStep('dashboard');
+        await loadDashboard();
+        return;
+      }
+      const exportBtn = '<button class="secondary" onclick="exportData()" style="margin-top:10px;">Download my data first</button>';
       if (me.subscriptionStatus === 'expired') {
-        document.getElementById('payment-msg').innerHTML = '<div class="error">Your trial access has expired. Subscribe to continue using H-CAR.</div>';
+        document.getElementById('payment-msg').innerHTML = '<div class="error">Your trial has ended. Your baseline and past days are saved. Subscribe to keep monitoring.</div>' + exportBtn;
+      } else if (me.subscriptionStatus === 'canceled') {
+        document.getElementById('payment-msg').innerHTML = '<div class="error">Your subscription ended' + (periodEnd ? ' on ' + periodEnd.toLocaleDateString() : '') + '. Your baseline and past days are saved. Subscribe to keep monitoring.</div>' + exportBtn;
+      } else {
+        document.getElementById('payment-msg').innerHTML = '<div class="error">Your subscription is not active. Subscribe to start monitoring.</div>';
       }
       showStep('payment-step');
       await initSquare();
@@ -2082,7 +2202,7 @@ async function checkStatus() {
         if (me.subscriptionExpiresAt) {
           const expiresDate = new Date(me.subscriptionExpiresAt);
           const daysLeft = Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24));
-          statusText = 'Trial access (free pass). ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left, expires ' + expiresDate.toLocaleDateString() + '.';
+          statusText = 'Your free trial: ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left. It ends on ' + expiresDate.toLocaleDateString() + '. After that it is $5 a month.';
         } else {
           statusText = 'Complimentary access (free pass).';
         }
@@ -2094,7 +2214,19 @@ async function checkStatus() {
       await loadDashboard();
     }
   } catch (e) {
-    showStep('landing');
+    // An expired sign-in used to dump the user at Sign Up with no
+    // explanation. Say so plainly, on the Sign In tab.
+    if (e.message && e.message.indexOf('sign-in expired') !== -1) {
+      authToken = null;
+      localStorage.removeItem('hcar_token');
+      showStep('landing');
+      const tabs = document.querySelectorAll('.tab');
+      if (tabs[1]) showTab('login', tabs[1]);
+      const errEl = document.getElementById('li-error');
+      if (errEl) { errEl.textContent = 'Your sign-in expired. Please sign in again.'; errEl.classList.remove('hidden'); }
+    } else {
+      showStep('landing');
+    }
   }
 }
 
@@ -2183,6 +2315,7 @@ async function loadDashboard() {
     loadFamilyDashboard();
     loadMyPromoCodes();
     loadAlertHistory();
+    updatePushState();
     await loadAboutYou();
     loadMedications();
     startAlertPolling();
@@ -2191,6 +2324,11 @@ async function loadDashboard() {
     // dashboard when it fails.
     maybeDetectElevation();
   } catch (e) {
+    // A failed load used to leave most of the page on "Loading..." forever.
+    // Say so in the hero, with a real Try Again button.
+    document.getElementById('detector-status').innerHTML = '<div class="error">H-CAR could not load your dashboard. Check your connection and tap Try again.</div><button onclick="loadDashboard()" style="margin-top:10px;">Try Again</button>';
+    const pciStatus = document.getElementById('pci-status');
+    if (pciStatus) pciStatus.textContent = 'Could not load';
     document.getElementById('fitbit-section').innerHTML = '<div class="error">Could not load your dashboard: ' + e.message + '</div>';
   }
 }
@@ -2403,7 +2541,9 @@ async function downloadReport() {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   } catch (e) {
-    alert('Failed to download report: ' + e.message);
+    const msgEl = document.getElementById('report-msg');
+    if (msgEl) msgEl.innerHTML = '<div class="error">No data to report yet, or the download failed. Sync your watch first, then try again. (' + e.message + ')</div>';
+    else alert('Failed to download report: ' + e.message);
   }
 }
 
@@ -2424,7 +2564,9 @@ async function exportData() {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   } catch (e) {
-    alert('Failed to export data: ' + e.message);
+    const msgEl = document.getElementById('report-msg');
+    if (msgEl) msgEl.innerHTML = '<div class="error">Could not export your data: ' + e.message + '. Please try again.</div>';
+    else alert('Failed to export data: ' + e.message);
   }
 }
 
@@ -2515,7 +2657,7 @@ function updateLocationStatus(contactData) {
         : 'Location saved');
     statusEl.textContent = 'Last location: ' + locStr + ' (updated ' + updated + ')';
   } else {
-    statusEl.textContent = 'Location sharing is on. Your location will be saved on your next Fitbit sync.';
+    statusEl.textContent = 'Location sharing is on. Your location is saved when you sync your Fitbit, and when you turn this on.';
   }
 }
 
@@ -2561,7 +2703,7 @@ async function updateLocationSharing(enabled) {
     const statusEl = document.getElementById('location-status');
     if (statusEl) {
       if (enabled) {
-        statusEl.textContent = 'Location sharing is on. Your location will be saved on your next Fitbit sync.';
+        statusEl.textContent = 'Location sharing is on. Your location is saved when you sync your Fitbit, and when you turn this on.';
       } else {
         statusEl.textContent = '';
       }
@@ -2638,8 +2780,17 @@ async function saveEmergencyContact() {
   }
 }
 
+async function removeEmergencyContact() {
+  ['ec-name', 'ec-relationship', 'ec-email', 'ec-phone'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  await saveEmergencyContact();
+  showContactMsg('Primary contact removed. Your secondary contact stays saved unless you clear those fields too. If this was your only contact, H-CAR cannot alert anyone.', false);
+}
+
 async function sendTestAlert() {
-  showContactMsg('Sending test alert...', false);
+  document.getElementById('emergency-contact-msg').innerHTML = '<div style="color:var(--muted);">Sending test email...</div>';
   try {
     const res = await apiCall('/alerts/send-test', 'POST', {});
     showContactMsg(res.message, false);
@@ -2680,10 +2831,20 @@ async function checkAlertStatus() {
       if (banner) banner.classList.add('hidden');
     } else {
       hideAreYouOkModal();
-      if (alert.status === 'unacknowledged' && banner) {
-        banner.classList.remove('hidden');
-      } else if (banner) {
-        banner.classList.add('hidden');
+      if (banner) {
+        if (alert.status === 'alerting') {
+          const at = alert.primary_alerted_at ? new Date(alert.primary_alerted_at).toLocaleTimeString() : '';
+          banner.innerHTML = '<p style="margin:0;font-weight:800;color:var(--red-ink);font-size:16px;">Your emergency contact is being alerted.</p><p style="margin:8px 0 0;color:var(--red-ink);font-size:14px;">They were alerted' + (at ? ' at ' + at : '') + '. Waiting for them to confirm they got it. If you need help, call 911 now. Do not wait for the app.</p>';
+          banner.classList.remove('hidden');
+        } else if (alert.status === 'escalated') {
+          banner.innerHTML = '<p style="margin:0;font-weight:800;color:var(--red-ink);font-size:16px;">Your secondary contact is being alerted.</p><p style="margin:8px 0 0;color:var(--red-ink);font-size:14px;">Your primary contact did not confirm in time. If you need help, call 911 now. Do not wait for the app.</p>';
+          banner.classList.remove('hidden');
+        } else if (alert.status === 'unacknowledged') {
+          banner.innerHTML = '<p style="margin:0;font-weight:800;color:var(--red-ink);font-size:16px;">No one has acknowledged your alert yet.</p><p style="margin:8px 0 0;color:var(--red-ink);font-size:14px;">No one confirmed they got your alert yet. If you need help, call 911 now. Do not wait for the app.</p>';
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
       }
     }
   } catch (e) {
@@ -2737,11 +2898,22 @@ async function respondToAlert(response) {
   try {
     const res = await apiCall('/alerts/user-response', 'POST', { alertId: activeAlertId, response });
     hideAreYouOkModal();
+    // The confirmation goes on Home, where the user is, not only in
+    // Profile where showContactMsg writes. Otherwise the most frightening
+    // moment in the app ends in silence.
+    const confirmEl = document.getElementById('alert-confirm');
+    const confirmText = document.getElementById('alert-confirm-text');
     if (response === 'fine') {
+      if (confirmText) confirmText.textContent = 'Done. The alert is cancelled and nobody was contacted.';
       showContactMsg('Thanks. The alert is cancelled and nobody was contacted.', false);
+    } else if (res && res.contacted) {
+      if (confirmText) confirmText.textContent = 'Done. Your emergency contact is being alerted now. If this is an emergency, call 911 now.';
+      showContactMsg('Your emergency contact is being alerted now. If this is an emergency, call 911.', false);
     } else {
-      showContactMsg('Your emergency contact is being alerted now by text and email. If this is an emergency, call 911.', false);
+      if (confirmText) confirmText.textContent = 'H-CAR could not reach your emergency contact. Call 911 now if this is an emergency, and check the contact details in Profile.';
+      showContactMsg('H-CAR could not reach your emergency contact. Call 911 now if this is an emergency, and check the contact details in Profile.', true);
     }
+    if (confirmEl) { confirmEl.classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     await loadAlertHistory();
   } catch (e) {
     showContactMsg('Could not record your answer: ' + e.message + '. Try again, or call 911 if this is an emergency.', true);
@@ -2752,7 +2924,7 @@ async function respondToAlert(response) {
 }
 
 async function testFullAlert() {
-  showContactMsg('Creating a test alert...', false);
+  document.getElementById('emergency-contact-msg').innerHTML = '<div style="color:var(--muted);">Creating a test alert...</div>';
   try {
     const res = await apiCall('/alerts/test', 'POST', {});
     showContactMsg(res.message + (res.smsConfigured ? '' : ' Note: SMS is not configured yet, so the test will reach your contact by email only.'), false);
@@ -2792,7 +2964,9 @@ async function loadAlertHistory() {
       if (a.escalations && a.escalations.length > 0) {
         html += '<div style="font-size:12px;color:var(--muted);margin-top:6px;">';
         for (const step of a.escalations) {
-          html += new Date(step.sent_at).toLocaleTimeString() + ' - ' + step.level + ' via ' + step.channel + (step.recipient ? ' to ' + step.recipient : '') + ' (' + (step.result || 'done') + ')<br>';
+          const levelName = step.level === 'primary' ? 'Primary contact' : step.level === 'secondary' ? 'Secondary contact' : step.level;
+          const channelWord = step.channel === 'sms' ? 'texted' : step.channel === 'email' ? 'emailed' : step.channel;
+          html += new Date(step.sent_at).toLocaleString() + ' - ' + levelName + (step.recipient ? ' (' + step.recipient + ')' : '') + ', ' + channelWord + ': ' + (step.result || 'done') + '<br>';
         }
         html += '</div>';
       }
@@ -2801,6 +2975,19 @@ async function loadAlertHistory() {
     el.innerHTML = html;
   } catch (e) {
     el.innerHTML = '<p style="color:var(--muted);font-size:14px;">Could not load alert history.</p>';
+  }
+}
+
+// Push state, shown in plain words so the user can tell if it is on.
+function updatePushState() {
+  const msgEl = document.getElementById('push-msg');
+  if (!msgEl) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    msgEl.textContent = 'Push alerts: not supported in this browser.';
+  } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    msgEl.textContent = 'Push alerts: on for this device.';
+  } else {
+    msgEl.textContent = 'Push alerts: off for this device. Email alerts still work.';
   }
 }
 
@@ -2829,7 +3016,7 @@ async function enablePushAlerts() {
     }
     const keyData = await apiCall('/push/vapid-key', 'GET', null, false);
     if (!keyData.publicKey) {
-      if (msgEl) msgEl.textContent = 'Push alerts are not set up on the server yet (no VAPID key). Email and SMS alerts still work.';
+      if (msgEl) msgEl.textContent = 'Push alerts are not set up on the server yet (no VAPID key). Email alerts still work.';
       return;
     }
     const registration = await navigator.serviceWorker.register('/sw.js');
@@ -2838,7 +3025,7 @@ async function enablePushAlerts() {
       applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
     });
     await apiCall('/push/subscribe', 'POST', { subscription: subscription.toJSON() });
-    if (msgEl) msgEl.textContent = 'Push alerts enabled on this device. Your phone will wake you for the "Are you okay?" check-in.';
+    if (msgEl) msgEl.textContent = 'Push alerts: on for this device. Your phone will wake you for the "Are you okay?" check-in.';
   } catch (e) {
     if (msgEl) msgEl.textContent = 'Could not enable push alerts: ' + e.message;
   }
@@ -2980,7 +3167,7 @@ async function saveAboutYou() {
     currentAutoElevation = res.autoElevation === true;
     if (res.themePreference) syncThemeFromServer(res.themePreference);
     updateFemaleSections();
-    msgEl.innerHTML = '<div class="success">Saved. Your details are private and only used to adjust the detector.</div>';
+    msgEl.innerHTML = '<div class="success">Saved. Your details are private and only used to adjust the detector. If you changed Biological sex, the sections below have updated.</div>';
     // If automatic elevation was just turned on, run it now so the
     // user sees it work right away.
     if (currentAutoElevation) maybeDetectElevation();
@@ -3005,7 +3192,7 @@ function updateAutoElevationNote(elevationM) {
   if (noteEl) {
     let text = 'Detected elevation: ' + Math.round(elevationM) + ' m.';
     if (elevationM >= 1500) text += ' This is high altitude, so H-CAR adjusts blood oxygen expectations for today.';
-    text += ' You can correct it above.';
+    text += ' You can correct it in the morning check-in on Home.';
     noteEl.textContent = text;
   }
 }
@@ -3018,7 +3205,10 @@ function maybeDetectElevation() {
       enabled: true,
       apiCall: apiCall,
       onDetected: function (elevationM) { updateAutoElevationNote(elevationM); },
-      onUnavailable: function () { /* Silent fallback to the manual check-in question. */ }
+      onUnavailable: function () {
+        const msgEl = document.getElementById('about-you-msg');
+        if (msgEl) msgEl.innerHTML = '<div class="error">Elevation detection is on, but H-CAR could not get your location just now. Check that location is allowed for this app, or enter your elevation by hand in the morning check-in.</div>';
+      }
     });
   } catch (e) {
     // Non-critical; manual check-in still works.
@@ -3035,7 +3225,12 @@ async function loadCycles() {
       if (data.currentPhase) {
         const dayText = data.cycleDay ? ' (day ' + data.cycleDay + ')' : '';
         const avgText = data.averageCycleLength ? ' Average cycle: ' + data.averageCycleLength + ' days.' : '';
-        phaseEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Current phase: <strong>' + data.currentPhase + '</strong>' + dayText + '.' + avgText + '</p>';
+        const phasePlain = data.currentPhase === 'follicular'
+          ? 'first half of your cycle. Your heart rate and temperature are usually at their lower, steadier point now.'
+          : data.currentPhase === 'luteal'
+            ? 'second half of your cycle. Your heart rate and temperature usually run a little higher now, so H-CAR allows for that.'
+            : data.currentPhase;
+        phaseEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">Current phase: <strong>' + phasePlain + '</strong>' + dayText + '.' + avgText + '</p>';
       } else {
         phaseEl.innerHTML = '<p style="color:var(--muted);font-size:14px;">No cycle phase known yet. Log a cycle start date below.</p>';
       }
@@ -3221,7 +3416,7 @@ function renderPendingInvites(pending) {
 function renderFamilyList(family) {
   const list = document.getElementById('family-list');
   if (!family || family.length === 0) {
-    list.innerHTML = '<p style="color:var(--muted);font-size:14px;">No family members yet. Invite someone below to see their status here.</p>';
+    list.innerHTML = '<p style="color:var(--muted);font-size:14px;">No one is sharing their status with you yet. To share your status with a family member, invite them below and they will see your dot once they accept.</p>';
     return;
   }
   list.innerHTML = family.map(member => {
@@ -3251,6 +3446,14 @@ function renderFamilyList(family) {
         statusText = 'No recent data';
         break;
     }
+    // A green "All good" for someone who stopped syncing months ago is
+    // false reassurance. If the last sync is over 7 days old, say so
+    // plainly instead of calling it current.
+    const lastSyncDate = member.lastSync ? new Date(member.lastSync) : null;
+    const staleDays = lastSyncDate ? Math.floor((Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+    if (member.status === 'good' && staleDays !== null && staleDays > 7) {
+      statusText = 'All good on ' + lastSyncDate.toLocaleDateString() + '. No data since then.';
+    }
     const lastSync = member.lastSync ? 'Last synced ' + new Date(member.lastSync).toLocaleDateString() : 'Never synced';
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;">' +
       '<div style="width:12px;height:12px;border-radius:50%;background:' + dotColor + ';flex-shrink:0;" title="' + statusText + '"></div>' +
@@ -3279,7 +3482,10 @@ async function sendFamilyInvite() {
   msgEl.innerHTML = '<div style="color:var(--muted);font-size:14px;">Sending invite...</div>';
   try {
     const res = await apiCall('/family/invite', 'POST', { email, relationship });
-    msgEl.innerHTML = '<div class="success">' + escapeHtml(res.message) + '</div>';
+    // The server says "Invite sent", but no email is ever sent. Say what
+    // actually happened, and what the user must do next.
+    const savedMsg = res.message ? res.message.replace('Invite sent to', 'Invite saved for') : 'Invite saved.';
+    msgEl.innerHTML = '<div class="success">' + escapeHtml(savedMsg) + ' Tell them to open H-CAR and accept it in Profile, under Family Dashboard.</div>';
     document.getElementById('family-invite-email').value = '';
     // Reload dashboard to show updated state
     setTimeout(() => loadFamilyDashboard(), 500);
@@ -3307,7 +3513,7 @@ async function declineFamilyInvite(connectionId) {
 }
 
 async function removeFamilyMember(connectionId, name) {
-  if (!confirm('Remove ' + name + ' from your Family Dashboard? You will no longer see their status.')) {
+  if (!confirm('Stop sharing your status with ' + name + '? They will no longer see your dot.')) {
     return;
   }
   try {
@@ -3329,7 +3535,8 @@ function setEmergencyContactVisible(visible) {
 
 function renderFitbit(f) {
   const el = document.getElementById('fitbit-section');
-  setEmergencyContactVisible(!!f.connected);
+  fitbitConnectedFlag = !!f.connected;
+  updateECVisibility();
   if (!f.googleConfigured) {
     el.innerHTML = '<p><strong>Fitbit:</strong> Not set up yet. The operator is still configuring the Google Health connection.</p>';
     return;
@@ -3354,6 +3561,8 @@ function renderFitbit(f) {
 
 function renderGarmin(g) {
   const el = document.getElementById('garmin-section');
+  garminConnectedFlag = !!g.connected;
+  updateECVisibility();
   if (!g.garminConfigured) {
     el.innerHTML = '<p><strong>Garmin:</strong> Not set up yet. The operator is still configuring the Garmin connection.</p>';
     return;
@@ -3381,37 +3590,66 @@ function renderDetector(det) {
     not_connected: ['Not connected', 'status-not-connected', 'Connect your Fitbit or Garmin watch to start building your baseline.'],
     learning: ['Learning your baseline', 'status-learning', 'H-CAR is learning what is normal for you. No flags during the first 28 days.'],
     monitoring: ['Monitoring', 'status-monitoring', 'Your baseline is set. H-CAR is watching for sustained changes.'],
-    watch_active: ['Watch flag active', 'status-watch', 'Your numbers have moved away from your baseline for 2 or more days. This is a change worth noticing, not a diagnosis.'],
-    act_active: ['Act flag active', 'status-act', 'A strong sustained change has been flagged. Consider checking in with someone you trust or a health care professional if you feel unwell.'],
+    watch_active: ['Watch flag active', 'status-watch', 'Your numbers have moved away from your baseline for 2 or more days. This is a change worth noticing, not a diagnosis. Rest today, log how you feel in the morning check-in below, and check again tomorrow. If you feel unwell, call your clinician.'],
+    act_active: ['Act flag active', 'status-act', 'A strong sustained change has been flagged. Rest now. Tell your emergency contact. If you have chest pain, severe breathlessness, fainting, or confusion, call 911 now.'],
   };
   const [label, cls, desc] = statusLabels[det.status] || statusLabels['not_connected'];
   // The big number is baseline progress until the baseline completes,
   // so label it honestly instead of calling it a change index.
   const heroLabel = document.getElementById('hero-label');
   if (heroLabel) heroLabel.textContent = det.baselineComplete ? 'Physiological Change Index' : 'Baseline Progress';
+  // Stale data: the hero must not present weeks-old numbers as current.
+  const lastDateObj = det.lastDate ? new Date(det.lastDate + 'T12:00:00') : null;
+  const staleDays = lastDateObj ? Math.floor((Date.now() - lastDateObj.getTime()) / (1000 * 60 * 60 * 24)) : null;
+  const staleNote = (staleDays !== null && staleDays > 2)
+    ? '<p style="margin-top:8px;color:var(--amber-ink);font-weight:700;">Your latest data is from ' + det.lastDate + '. Connect your watch and sync to bring this up to date.</p>'
+    : '';
   document.getElementById('detector-status').innerHTML =
-    '<span class="status-badge ' + cls + '">' + label + '</span><p style="margin-top:8px;">' + desc + '</p>';
+    '<span class="status-badge ' + cls + '">' + label + '</span><p style="margin-top:8px;">' + desc + '</p>' + staleNote;
 
-  const pct = Math.round((det.baselineDay / 28) * 100);
+  // Progress counts days of data, not calendar days since the first sync:
+  // the bar must not move while the user does nothing.
+  const dataDay = Math.min(det.daysSynced || 0, 28);
+  const pct = Math.round((dataDay / 28) * 100);
   let milestoneMsg = '';
-  if (det.baselineDay >= 21 && !det.baselineComplete) milestoneMsg = ' Almost there! Just ' + (28 - det.baselineDay) + ' more days until H-CAR starts watching for changes.';
-  else if (det.baselineDay >= 14) milestoneMsg = ' Halfway there! Keep wearing your watch every day.';
-  else if (det.baselineDay >= 7) milestoneMsg = ' One week down! Your baseline is taking shape.';
+  if (!det.baselineComplete && det.baselineDay >= 28) milestoneMsg = ' Your baseline finishes tomorrow. Monitoring starts on day 29.';
+  else if (dataDay >= 21 && !det.baselineComplete) milestoneMsg = ' Almost there! Just ' + (28 - dataDay) + ' more days of data until H-CAR starts watching for changes.';
+  else if (dataDay >= 14) milestoneMsg = ' Halfway there! Keep wearing your watch every day.';
+  else if (dataDay >= 7) milestoneMsg = ' One week down! Your baseline is taking shape.';
+  const sinceText = (det.baselineDay !== dataDay && det.daysSynced > 0)
+    ? ' Day ' + det.baselineDay + ' since you connected.'
+    : '';
   document.getElementById('baseline-section').innerHTML =
     det.baselineComplete
       ? '<p><strong>Baseline complete!</strong> ' + det.daysSynced + ' days of data synced. H-CAR is now watching for changes.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
-      : '<p><strong>Day ' + det.baselineDay + ' of 28.</strong> ' + det.daysSynced + ' days of data synced.' + milestoneMsg + '</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
-        '<p style="color:var(--muted);">Wear your watch every day, including while you sleep, so the baseline learns your normal.</p>';
+      : (!det.daysSynced || det.daysSynced === 0)
+        ? '<p><strong>Your watch is connected. No data yet.</strong> Wear it tonight, including while you sleep, and check back tomorrow for your first day.</p>'
+        : '<p><strong>Day ' + dataDay + ' of 28 days of data.</strong>' + sinceText + ' ' + det.daysSynced + ' days of data synced. H-CAR needs 28 days of data before it can start watching for changes.' + milestoneMsg + '</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+          '<p style="color:var(--muted);">Wear your watch every day, including while you sleep, so the baseline learns your normal.</p>';
 
   const flagsEl = document.getElementById('flags-section');
   if (!det.recentFlags || det.recentFlags.length === 0) {
     if (!det.daysSynced || det.daysSynced === 0) {
       flagsEl.innerHTML = '<p style="color:var(--muted);font-weight:700;">No data yet, nothing to assess. Connect your watch to start.</p>';
+    } else if (!det.baselineComplete) {
+      // During learning no flag can exist by design, so "All clear" would
+      // be false reassurance after a single night of data.
+      flagsEl.innerHTML = '<p style="color:var(--muted);font-weight:700;">Nothing to assess yet. H-CAR is still learning what is normal for you, so it cannot say whether anything has changed.</p>';
     } else {
       flagsEl.innerHTML = '<p style="color:var(--teal);font-weight:700;">All clear! Your body is stable. No sustained changes detected.</p>';
     }
   } else {
-    flagsEl.innerHTML = det.recentFlags.map((f) => {
+    // If the latest episode has ended, say so plainly instead of letting
+    // the hero say "All good" as if the flag never happened.
+    let endedNote = '';
+    if (det.status === 'monitoring') {
+      const latest = det.recentFlags[0];
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (latest && latest.endDate && latest.endDate < todayStr) {
+        endedNote = '<p style="color:var(--muted);font-weight:700;">Your last ' + (latest.isAct ? 'Act' : 'Watch') + ' flag ended on ' + latest.endDate + '. Today looks steady so far.</p>';
+      }
+    }
+    flagsEl.innerHTML = endedNote + det.recentFlags.map((f) => {
       const kind = f.isAct ? 'Act' : 'Watch';
       const cls = f.isAct ? 'flag-act' : 'flag-watch';
       const top = f.topSignals && f.topSignals.length > 0
@@ -3432,29 +3670,39 @@ function renderDetector(det) {
   // Update Physiological Change Index score
   const pciScoreEl = document.getElementById('pci-score');
   const pciStatusEl = document.getElementById('pci-status');
+  const pciLabelEl = document.querySelector('.pci-score-label');
+  const pciExplainerEl = document.getElementById('pci-explainer');
   if (pciScoreEl && pciStatusEl) {
     if (!det.daysSynced || det.daysSynced === 0) {
       pciScoreEl.textContent = '--';
       pciScoreEl.className = 'pci-score';
       pciStatusEl.textContent = 'No data yet';
+      if (pciLabelEl) pciLabelEl.style.display = '';
+      if (pciExplainerEl) pciExplainerEl.textContent = 'Your change number appears here once monitoring starts on day 29.';
     } else if (!det.baselineComplete) {
-      // During learning mode, show baseline progress as a score
-      const progress = Math.round((det.baselineDay / 28) * 100);
-      pciScoreEl.textContent = progress;
+      // During learning the big number is really a progress percentage,
+      // and the scale flips meaning (higher is better here, worse later).
+      // Show words and the progress bar only, no number with /100.
+      pciScoreEl.textContent = '';
       pciScoreEl.className = 'pci-score';
       pciStatusEl.textContent = 'Learning your baseline';
+      if (pciLabelEl) pciLabelEl.style.display = 'none';
+      if (pciExplainerEl) pciExplainerEl.textContent = 'Your change number appears here once monitoring starts on day 29.';
     } else {
+      if (pciLabelEl) pciLabelEl.style.display = '';
+      if (pciExplainerEl) pciExplainerEl.textContent = 'This number sums up how far your recent days sit from your usual. Lower means steadier. It is not a diagnosis, and it does not say why anything changed.';
       // After baseline complete, calculate PCI from recent flags and status
       // PCI is a 0-100 score where lower is more stable, higher is more change
       let pci = 28; // Default stable baseline
       let status = 'All good';
       let scoreClass = 'pci-score';
 
-      // Deterministic daily variation for the PCI. The old code used
+      // Deterministic variation for the PCI. The old code used
       // Math.random, so the number changed on every page load. This hash
-      // returns the same 0-14 range, but it is derived from the day's data,
-      // so the score is stable within a day and only moves when the data
-      // behind it moves. No randomness anywhere in the PCI.
+      // returns the same 0-14 range, but it is derived from the flag state
+      // and the days synced, so the score only moves when the data behind
+      // it moves, never just because a day passed. No randomness anywhere
+      // in the PCI.
       const pciJitter = (seed) => {
         let h = 0;
         const s = String(seed);
@@ -3466,11 +3714,7 @@ function renderDetector(det) {
       const flagKey = pciFlag
         ? (pciFlag.triggerDate || pciFlag.startDate || '') + ':' + (pciFlag.days || 0) + ':' + (pciFlag.isAct ? 'act' : 'watch')
         : 'none';
-      // Today's local date, so the stable-monitoring score can vary day to
-      // day without ever changing within a day.
-      const now = new Date();
-      const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-      
+
       if (det.status === 'act_active') {
         pci = 75 + pciJitter('act:' + flagKey);
         status = 'Serious change';
@@ -3480,9 +3724,9 @@ function renderDetector(det) {
         status = 'Change detected';
         scoreClass = 'pci-score warning';
       } else if (det.status === 'monitoring') {
-        // Stable monitoring: varies by day and by days synced, stable within a day
-        pci = 20 + pciJitter('ok:' + todayKey + ':' + det.daysSynced);
-        status = 'All good';
+        // Stable monitoring: only moves when the days synced change.
+        pci = 20 + pciJitter('ok:' + det.daysSynced);
+        status = (staleDays !== null && staleDays > 7) ? 'Data out of date' : 'All good';
         scoreClass = 'pci-score';
       }
       
@@ -3500,13 +3744,15 @@ function renderDetector(det) {
     } else if (!det.baselineComplete) {
       kcEl.innerHTML = '<p style="color:var(--muted);">Your baseline is still learning. Key contributors will appear once monitoring begins on day 29.</p>';
     } else {
-      // Show signal status based on recent flags
+      // Show signal status based on recent flags. These are the six
+      // detector signals; Activity is not one of them, so it is not listed.
       const signals = [
         { name: 'Resting Heart Rate', status: 'Stable', cls: 'ok' },
         { name: 'HRV (Recovery)', status: 'Stable', cls: 'ok' },
+        { name: 'Blood Oxygen', status: 'Stable', cls: 'ok' },
+        { name: 'Breathing Rate', status: 'Stable', cls: 'ok' },
         { name: 'Sleep Quality', status: 'Stable', cls: 'ok' },
-        { name: 'Respiratory Rate', status: 'Stable', cls: 'ok' },
-        { name: 'Activity', status: 'Stable', cls: 'ok' },
+        { name: 'Skin Temperature', status: 'Stable', cls: 'ok' },
       ];
       
       // If there are recent flags, mark top signals as changed
@@ -3515,8 +3761,9 @@ function renderDetector(det) {
         if (latestFlag.topSignals) {
           latestFlag.topSignals.forEach(([signalName, zScore]) => {
             const signalMap = {
-              'resting_hr': 0, 'rmssd': 1, 'sleep_duration_h': 2,
-              'full_sleep_breathing_rate': 3, 'steps': 4
+              'resting_hr': 0, 'rmssd': 1, 'spo2': 2,
+              'full_sleep_breathing_rate': 3, 'sleep_duration_h': 4,
+              'nightly_temperature': 5
             };
             const idx = signalMap[signalName];
             if (idx !== undefined) {
@@ -3546,15 +3793,20 @@ function renderDetector(det) {
       dqDetailEl.textContent = 'Connect your watch and sync to start building your data quality score.';
       dqRingEl.style.strokeDashoffset = '213.6';
     } else {
-      // Calculate data quality based on days synced vs baseline days
-      const expectedDays = Math.min(det.baselineDay, 28);
+      // Data quality is about days of data, and about how fresh it is:
+      // 30 days spread over 180 days is not Excellent.
+      const expectedDays = Math.min(dataDay, 28);
       const quality = expectedDays > 0 ? Math.round((det.daysSynced / expectedDays) * 100) : 0;
       const clampedQuality = Math.min(100, Math.max(0, quality));
-      
+      const isStale = staleDays !== null && staleDays > 7;
+
       dqValueEl.textContent = clampedQuality + '%';
       dqRingEl.style.strokeDashoffset = String(213.6 * (1 - clampedQuality / 100));
-      
-      if (clampedQuality >= 90) {
+
+      if (isStale) {
+        dqLabelEl.textContent = 'Needs attention';
+        dqRingEl.style.stroke = 'var(--red)';
+      } else if (clampedQuality >= 90) {
         dqLabelEl.textContent = 'Excellent';
         dqRingEl.style.stroke = 'var(--green)';
       } else if (clampedQuality >= 70) {
@@ -3567,8 +3819,8 @@ function renderDetector(det) {
         dqLabelEl.textContent = 'Needs attention';
         dqRingEl.style.stroke = 'var(--red)';
       }
-      
-      dqDetailEl.textContent = det.daysSynced + ' days synced out of ' + expectedDays + ' expected. Wear your watch every night for the best results.';
+
+      dqDetailEl.textContent = det.daysSynced + ' days synced in total.' + (det.lastDate ? ' Your latest data is from ' + det.lastDate + '.' : '') + ' Wear your watch every night for the best results.';
     }
   }
 }
@@ -3585,6 +3837,8 @@ function renderCurrentVsUsual(days, baselines) {
     return;
   }
   const d = days[0];
+  const latestDateObj = d.date ? new Date(d.date + 'T12:00:00') : null;
+  const latestStaleDays = latestDateObj ? Math.floor((Date.now() - latestDateObj.getTime()) / (1000 * 60 * 60 * 24)) : null;
   const baselineMap = {};
   baselines.forEach(b => { baselineMap[b.signal] = b.centre; });
   const fmt = (v, digits) => (v === null || v === undefined ? '–' : Number(v).toFixed(digits === undefined ? 0 : digits));
@@ -3599,7 +3853,7 @@ function renderCurrentVsUsual(days, baselines) {
   let html = '<div class="table-wrap"><table class="days"><tr><th>Signal</th><th>Usual</th><th>Latest (' + d.date + ')</th><th>Change</th></tr>';
   for (const r of rows) {
     const curStr = r.isDelta ? (r.current === null || r.current === undefined ? '–' : (r.current >= 0 ? '+' : '') + fmt(r.current, r.digits) + r.unit) : fmt(r.current, r.digits) + (r.current !== null && r.current !== undefined ? ' ' + r.unit : '');
-    const usualStr = r.isDelta ? '±0.00°' : fmt(r.usual, r.digits) + (r.usual !== null && r.usual !== undefined ? ' ' + r.unit : '');
+    const usualStr = r.isDelta ? 'No change from your normal' : fmt(r.usual, r.digits) + (r.usual !== null && r.usual !== undefined ? ' ' + r.unit : '');
     let changeStr = '–';
     if (r.current !== null && r.current !== undefined && r.usual !== null && r.usual !== undefined) {
       // Round both values to displayed precision first, so the change matches what the user sees
@@ -3617,17 +3871,23 @@ function renderCurrentVsUsual(days, baselines) {
     html += '<tr><td>' + r.label + '</td><td>' + usualStr + '</td><td>' + curStr + '</td><td>' + changeStr + '</td></tr>';
   }
   html += '</table></div>';
-  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Usual is your baseline median. Small day-to-day changes are normal.</p>';
+  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Usual is your baseline median. Small day-to-day changes are normal. Skin temperature is shown as change from your normal, in degrees, not as a temperature.</p>';
+  if (latestStaleDays !== null && latestStaleDays > 2) {
+    html = '<p style="color:var(--amber-ink);font-weight:700;font-size:14px;">Your latest day with data is ' + d.date + '. Sync your watch to bring this up to date.</p>' + html;
+  }
   el.innerHTML = html;
 }
 
 function renderMetricCards(days) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const hint = document.getElementById('metric-tap-hint');
   if (!days || days.length === 0) {
     ['metric-rhr', 'metric-hrv', 'metric-spo2', 'metric-breath', 'metric-sleep', 'metric-temp'].forEach(id => set(id, '--'));
     set('metric-date', 'No data yet. Connect with Google Health and sync.');
+    if (hint) hint.textContent = 'No numbers yet. Connect your watch below, then check back tomorrow.';
     return;
   }
+  if (hint) hint.textContent = 'Tap a number to compare it with your usual.';
   const d = days[0];
   const fmt = (v, digits) => (v === null || v === undefined ? '--' : Number(v).toFixed(digits === undefined ? 0 : digits));
   set('metric-rhr', fmt(d.rhr));
@@ -3656,16 +3916,16 @@ function renderDays(days) {
   const isOutlierTemp = (v) => v !== null && v !== undefined && Math.abs(v) > 1.5;
   const isOutlierRhr = (v) => v !== null && v !== undefined && (v < 40 || v > 120);
   const isOutlierSpo2 = (v) => v !== null && v !== undefined && (v < 85 || v > 100);
-  let html = '<div class="table-wrap"><table class="days"><tr><th>Date</th><th>Resting HR</th><th>HRV</th><th>Oxygen</th><th>Breathing</th><th>Temp</th><th>Sleep</th><th>Flag</th></tr>';
+  let html = '<div class="table-wrap"><table class="days"><tr><th>Date</th><th>Resting HR (bpm)</th><th>HRV (ms)</th><th>Oxygen (%)</th><th>Breathing (/min)</th><th>Temp (change)</th><th>Sleep (h)</th><th>Flag</th></tr>';
   for (const d of days) {
     const rowCls = d.act ? 'act-row' : (d.watch ? 'flag-row' : '');
-    let flag = d.act ? 'Act' : (d.watch ? 'Watch' : (d.inBaseline ? 'Baseline' : ''));
+    let flag = d.act ? 'Act' : (d.watch ? 'Change noted' : (d.inBaseline ? 'Learning' : ''));
     // Note outliers and missing data in the flag column
     const issues = [];
-    if (isOutlierTemp(d.skinTempDelta)) issues.push('Temp outlier');
-    if (isOutlierRhr(d.rhr)) issues.push('HR outlier');
-    if (isOutlierSpo2(d.spo2Avg)) issues.push('SpO2 outlier');
-    if (d.spo2Avg === null || d.spo2Avg === undefined) issues.push('SpO2 missing');
+    if (isOutlierTemp(d.skinTempDelta)) issues.push('Temp looked wrong');
+    if (isOutlierRhr(d.rhr)) issues.push('Heart rate looked wrong');
+    if (isOutlierSpo2(d.spo2Avg)) issues.push('Oxygen looked wrong');
+    if (d.spo2Avg === null || d.spo2Avg === undefined) issues.push('Oxygen missing');
     if (issues.length > 0 && !d.act && !d.watch) {
       flag = flag ? flag + ' (' + issues.join(', ') + ')' : issues.join(', ');
     }
@@ -3674,7 +3934,8 @@ function renderDays(days) {
     html += '<tr class="' + rowCls + '"><td>' + d.date + '</td><td>' + fmt(d.rhr) + '</td><td>' + fmt(d.hrv) + '</td><td>' + fmt(d.spo2Avg, 1) + '</td><td>' + fmt(d.breathingRate, 1) + '</td><td' + tempStyle + '>' + fmtTemp(d.skinTempDelta) + '</td><td>' + sleepH + '</td><td>' + flag + '</td></tr>';
   }
   html += '</table></div>';
-  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Outliers (red) are likely sensor errors and are excluded from baseline calculations. Missing values (&ndash;) mean your watch did not record that signal that day.</p>';
+  html += '<p style="color:var(--muted);font-size:13px;margin-top:10px;">Red numbers are probably sensor errors and are left out of your baseline. A dash means your watch did not record that signal that day.</p>';
+  html += '<p style="color:var(--muted);font-size:13px;margin-top:6px;">Days with no row are days your watch did not record. This view shows your last 7 days only.</p>';
   el.innerHTML = html;
 }
 
@@ -3798,6 +4059,12 @@ async function syncNow() {
 
 function showCancelConfirm() {
   const confirmEl = document.getElementById('cancel-confirm');
+  const txt = document.getElementById('cancel-confirm-text');
+  if (txt) {
+    txt.textContent = currentSubStatus === 'complimentary'
+      ? 'End your free trial? Monitoring and alerts stop right away. Your past data stays on your account, so if you come back it is still there.'
+      : 'Cancel your subscription? You keep using H-CAR until the end of the period you have already paid for. After that, monitoring and alerts stop. Your past data stays on your account.';
+  }
   if (confirmEl) confirmEl.classList.remove('hidden');
 }
 
@@ -3808,12 +4075,13 @@ function hideCancelConfirm() {
 
 async function confirmCancelSub() {
   hideCancelConfirm();
+  const msgEl = document.getElementById('cancel-msg');
   try {
-    await apiCall('/cancel', 'POST', {});
-    alert('Subscription canceled.');
+    const res = await apiCall('/cancel', 'POST', {});
+    if (msgEl) msgEl.innerHTML = '<div class="success">' + escapeHtml(res.message || 'Subscription canceled.') + '</div>';
     await checkStatus();
   } catch (e) {
-    alert('Cancel failed: ' + e.message);
+    if (msgEl) msgEl.innerHTML = '<div class="error">Cancel failed: ' + escapeHtml(e.message) + '</div>';
   }
 }
 
@@ -3908,11 +4176,34 @@ function wireMetricCards() {
 wireMetricCards();
 bindEnterFocus('su-name', 'su-email');
 bindEnterFocus('su-email', 'su-password');
-bindEnter('su-password', signup);
+bindEnterFocus('su-password', 'su-password-confirm');
+bindEnter('su-password-confirm', signup);
 bindEnterFocus('li-email', 'li-password');
 bindEnter('li-password', login);
 bindEnter('fp-email', forgotPassword);
 bindEnter('promo-code-input', applyPromoCode);
+
+// First-load messages for the Render cold start: at 5 seconds say it is
+// waking up, at 45 seconds offer a retry. Only while the loading card
+// is still showing.
+(function startLoadingMessages() {
+  setTimeout(function () {
+    const note = document.getElementById('loading-note');
+    const loading = document.getElementById('loading');
+    if (note && loading && !loading.classList.contains('hidden')) {
+      note.textContent = 'Still waking up. H-CAR can take up to a minute to start after being asleep. No need to do anything.';
+    }
+  }, 5000);
+  setTimeout(function () {
+    const note = document.getElementById('loading-note');
+    const retry = document.getElementById('loading-retry');
+    const loading = document.getElementById('loading');
+    if (note && loading && !loading.classList.contains('hidden')) {
+      note.textContent = 'This is taking longer than usual. Check your connection, or try again.';
+      if (retry) retry.classList.remove('hidden');
+    }
+  }, 45000);
+})();
 
 // Check if already logged in
 if (authToken) {
