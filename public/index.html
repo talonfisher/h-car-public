@@ -51,8 +51,8 @@
   --chart-amber-ink:#713F12; --chart-red-ink:#7A271A; --chart-red-soft:#FCA5A5;
   --radius:20px;
 }
-*{box-sizing:border-box} html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;line-height:1.6}
+*{box-sizing:border-box} html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;font-size:17px;line-height:1.6}
 a{color:var(--teal2)}
 .container{max-width:1800px;margin:0 auto;padding:0 20px}
 header{text-align:center;padding:40px 0 20px;position:relative}
@@ -68,15 +68,21 @@ h2{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(26px,3.4
 h3{margin:20px 0 10px;color:var(--ink);font-size:18px;font-weight:800}
 h4{margin:0 0 8px;font-size:15px;font-weight:800}
 input[type="text"], input[type="email"], input[type="password"]{width:100%;padding:13px 14px;margin:8px 0;border:1px solid var(--line);border-radius:12px;font-size:16px;font-family:Manrope,system-ui,sans-serif;background:var(--surface);color:var(--ink)}
-input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus{outline:3px solid var(--teal);outline-offset:2px;border-color:var(--teal)}
-button{width:100%;padding:14px 18px;background:var(--teal);color:#FFFFFF;border:0;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+input[type="date"], input[type="number"], select, textarea{padding:13px 14px;margin:8px 0;border:1px solid var(--line);border-radius:12px;font-size:16px;font-family:Manrope,system-ui,sans-serif;background:var(--surface);color:var(--ink)}
+::placeholder{color:var(--muted);opacity:1}
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="number"]:focus, select:focus, textarea:focus{outline:3px solid var(--teal);outline-offset:2px;border-color:var(--teal)}
+.field-label{display:block;font-size:14px;font-weight:700;color:var(--ink);margin:14px 0 2px}
+.input-hint{font-size:13px;color:var(--muted);margin:2px 0 0}
+button{width:100%;padding:14px 18px;min-height:44px;background:var(--teal);color:#FFFFFF;border:0;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:10px;font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s,background .15s,transform .1s}
 button:hover{opacity:.9;background:var(--teal-hover)}
+button:active{transform:scale(.98)}
+button:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 button:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;opacity:.6}
 button.secondary{background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
 button.secondary:hover{border-color:var(--teal)}
 .tabs{display:flex;margin-bottom:20px;border-bottom:2px solid var(--line)}
-.tab{flex:1;padding:12px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:700;color:var(--muted)}
-.tab.active{border-bottom-color:var(--teal);color:var(--ink);font-weight:800}
+.tab{flex:1;padding:12px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:700;color:var(--muted)}
+.tab.active{border-bottom-color:var(--teal);color:var(--ink);font-weight:800;background:var(--surface2)}
 .consent-section{margin:15px 0;padding:16px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;border-left:4px solid var(--red)}
 .consent-section h4{color:var(--red);margin-bottom:8px}
 .consent-section.normal{border-left-color:var(--teal)}
@@ -142,11 +148,11 @@ ul li{margin:8px 0}
 .stat-card .stat-num{font-family:"DM Serif Display",serif;font-size:32px;color:var(--teal);line-height:1}
 .stat-card .stat-label{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
 .nav-tabs{display:flex;gap:8px;margin:20px 0;justify-content:center}
-.nav-tab{padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
+.nav-tab{padding:10px 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
 .nav-tab.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.symptom-chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:13px;color:var(--muted)}
+.symptom-chip{padding:9px 14px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:13px;color:var(--muted)}
 .symptom-chip.selected{background:var(--teal);color:white;border-color:var(--teal)}
-.sensitivity-btn{padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
+.sensitivity-btn{padding:10px 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
 .sensitivity-btn.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 @media(max-width:640px){.container{padding:0 16px}.card{padding:20px}header h1{font-size:42px}.signal-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.learn-section{padding:16px}table.days{font-size:13px}table.days th, table.days td{padding:8px 6px}}
 
@@ -157,11 +163,11 @@ body.app-mode .logo-mark{width:40px;height:40px;font-size:20px;margin-bottom:6px
 body.app-mode header p{display:none}
 .dash-view{display:block}
 .dash-view.hidden{display:none}
-.section-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:16px 0;box-shadow:var(--shadow)}
+.section-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:16px 0;box-shadow:var(--shadow-sm)}
 .section-card h3{margin:0 0 8px}
 .section-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--teal2);margin:0 0 6px}
 .status-hero{background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--line);border-radius:var(--radius);padding:28px 22px;margin:16px 0;box-shadow:var(--shadow);text-align:center}
-.status-hero .hero-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--muted);margin:0 0 10px}
+.status-hero .hero-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--muted);margin:16px 0 10px}
 .status-hero .status-badge{font-size:15px;padding:10px 18px}
 .status-hero p{margin:8px 0 0}
 .status-hero .progress-bar{max-width:320px;margin:12px auto 0}
@@ -171,7 +177,9 @@ body.app-mode header p{display:none}
 .pci-score-label{font-size:13px;color:var(--muted);margin:0 0 8px}
 .pci-status{font-size:18px;font-weight:800;color:var(--ink);margin:8px 0}
 .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
-.metric-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center;box-shadow:var(--shadow-sm)}
+.metric-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center;box-shadow:var(--shadow-sm);cursor:pointer;transition:border-color .15s,transform .1s}
+.metric-card:hover{border-color:var(--teal)}
+.metric-card:active{transform:scale(.97)}
 .metric-card .m-value{font-family:"DM Serif Display",serif;font-size:26px;line-height:1.1;color:var(--ink)}
 .metric-card .m-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-top:6px}
 .metric-card .m-sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -187,11 +195,18 @@ body.app-mode header p{display:none}
 .data-quality-ring .dq-value{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:800;color:var(--ink)}
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--bg2);border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(0,0,0,.5);display:flex;justify-content:space-around;padding:8px 8px calc(10px + env(safe-area-inset-bottom))}
 .bottom-nav.hidden{display:none}
-button.nav-item{flex:1;max-width:120px;background:none;border:0;padding:6px 4px;margin:0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:Manrope,system-ui,sans-serif;width:auto;box-shadow:none}
+button.nav-item{flex:1;max-width:120px;background:none;border:0;padding:8px 4px;min-height:52px;margin:0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:Manrope,system-ui,sans-serif;width:auto;box-shadow:none}
 button.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-button.nav-item.active{color:var(--teal2)}
+button.nav-item.active{color:var(--teal2);background:var(--teal-soft)}
 body.has-bottom-nav{padding-bottom:220px}
 body.has-bottom-nav .footer{padding-bottom:240px}
+/* App mode: one focused column, so the dashboard reads like a phone app
+   even on a wide desktop screen. Landing and guide keep the wide layout. */
+body.app-mode .container{max-width:860px}
+body.app-mode .bottom-nav{max-width:860px}
+/* Loading spinner (CSS only, used on the first-paint loading card). */
+.spinner{width:36px;height:36px;margin:0 auto 16px;border:4px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 @media(min-width:641px){.bottom-nav{max-width:1800px;left:50%;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}}
 @media(max-width:640px){.metric-grid{grid-template-columns:repeat(2,1fr)}.section-card{padding:18px}.status-hero{padding:20px 16px}}
 </style>
@@ -206,6 +221,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 </header>
 
 <div id="loading" class="card" style="text-align:center;padding:60px 20px;">
+<div class="spinner" role="status" aria-label="Loading"></div>
 <p style="font-size:18px;color:var(--muted);">Loading H-CAR...</p>
 </div>
 <div id="landing" class="card hidden">
@@ -224,30 +240,37 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="tab" onclick="showTab('login', this)">Sign In</div>
 </div>
 <div id="signup-form">
-<input type="text" id="su-name" placeholder="Full name" required>
-<input type="email" id="su-email" placeholder="Email address" required>
+<label class="field-label" for="su-name">Full name</label>
+<input type="text" id="su-name" placeholder="Your full name" autocomplete="name" enterkeyhint="next" required>
+<label class="field-label" for="su-email">Email address</label>
+<input type="email" id="su-email" placeholder="you@example.com" autocomplete="email" enterkeyhint="next" required>
+<label class="field-label" for="su-password">Password</label>
+<p class="input-hint">At least 8 characters.</p>
 <div style="position:relative;">
-<input type="password" id="su-password" placeholder="Password (8+ characters)" required style="padding-right:70px;">
+<input type="password" id="su-password" placeholder="At least 8 characters" autocomplete="new-password" enterkeyhint="go" required style="padding-right:70px;">
 <button type="button" onclick="togglePassword('su-password', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
 </div>
 <button id="signup-btn" onclick="signup()">Create Account</button>
-<div id="su-error" class="error hidden"></div>
+<div id="su-error" class="error hidden" role="alert"></div>
 </div>
 <div id="login-form" class="hidden">
-<input type="email" id="li-email" placeholder="Email address" required>
+<label class="field-label" for="li-email">Email address</label>
+<input type="email" id="li-email" placeholder="you@example.com" autocomplete="email" enterkeyhint="next" required>
+<label class="field-label" for="li-password">Password</label>
 <div style="position:relative;">
-<input type="password" id="li-password" placeholder="Password" required style="padding-right:70px;">
+<input type="password" id="li-password" placeholder="Your password" autocomplete="current-password" enterkeyhint="go" required style="padding-right:70px;">
 <button type="button" onclick="togglePassword('li-password', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:6px 12px;font-size:13px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);">Show</button>
 </div>
 <button onclick="login()">Sign In</button>
-<div id="li-error" class="error hidden"></div>
+<div id="li-error" class="error hidden" role="alert"></div>
 <p style="margin-top:12px;text-align:center"><a href="#" onclick="showForgotPassword(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Forgot password?</a></p>
 </div>
 <div id="forgot-form" class="hidden">
 <p style="margin-bottom:12px;font-size:14px;color:var(--muted)">Enter your email address and we will send you a link to reset your password.</p>
-<input type="email" id="fp-email" placeholder="Email address" required>
+<label class="field-label" for="fp-email">Email address</label>
+<input type="email" id="fp-email" placeholder="you@example.com" autocomplete="email" enterkeyhint="send" required>
 <button onclick="forgotPassword()">Send Reset Link</button>
-<div id="fp-message" class="hidden" style="margin-top:12px;padding:12px;border-radius:12px;font-size:14px"></div>
+<div id="fp-message" class="hidden" role="status" style="margin-top:12px;padding:12px;border-radius:12px;font-size:14px"></div>
 <p style="margin-top:12px;text-align:center"><a href="#" onclick="showLoginForm(); return false;" style="color:var(--teal);text-decoration:underline;font-size:14px">Back to Sign In</a></p>
 </div>
 <h2 style="margin-top:28px;">What is H-CAR?</h2>
@@ -258,7 +281,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div id="learn-container" class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
 <h2 style="margin:0;font-size:24px;">H-CAR Guide</h2>
-<button onclick="closeGuide()" style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;line-height:1;padding:0;" title="Close guide">×</button>
+<button onclick="closeGuide()" style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;width:44px;height:44px;font-size:18px;cursor:pointer;line-height:1;padding:0;" title="Close guide">×</button>
 </div>
 <div class="nav-tabs" style="flex-wrap:wrap;">
 <div class="nav-tab active" onclick="showLearnTab('overview', this)">Overview</div>
@@ -1055,10 +1078,11 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <label><input type="checkbox" id="consent-agree"> I have read the summary above and agree to the H-CAR Terms of Service and Privacy Policy.</label>
 </div>
 <button id="consent-btn" onclick="submitConsent()" disabled>Start My Free Trial</button>
-<div id="consent-error" class="error hidden"></div>
+<div id="consent-error" class="error hidden" role="alert"></div>
 </div>
 
 <div id="payment-step" class="card hidden">
+<div id="payment-msg"></div>
 <div class="step-indicator"><div class="step done">1</div><div class="step done">2</div><div class="step active">3</div></div>
 <h2>Payment</h2>
 <div class="consent-section">
@@ -1082,7 +1106,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div id="card-container"></div>
 <button id="pay-btn" onclick="processPayment()">Subscribe - Free during trial</button>
 </div>
-<div id="pay-error" class="error hidden"></div>
+<div id="pay-error" class="error hidden" role="alert"></div>
 <div id="pay-success" class="success hidden"></div>
 </div>
 
@@ -1115,13 +1139,13 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 
 <div id="view-home" class="dash-view">
 <div class="status-hero">
-<p class="hero-label">Physiological Change Index</p>
+<div id="detector-status"><p>Loading status...</p></div>
+<p class="hero-label" id="hero-label">Physiological Change Index</p>
 <div id="pci-display">
 <div class="pci-score" id="pci-score">--</div>
 <div class="pci-score-label">/100</div>
 <div class="pci-status" id="pci-status">Loading...</div>
 </div>
-<div id="detector-status"><p>Loading status...</p></div>
 <div id="baseline-section"><p>Loading baseline...</p></div>
 </div>
 
@@ -1172,6 +1196,7 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <div class="metric-card" title="Total sleep time. Adults need 7-9 hours."><div class="m-value" id="metric-sleep">--</div><div class="m-label">Sleep</div><div class="m-sub">hours</div></div>
 <div class="metric-card" title="Skin temperature change from your normal. Small changes are normal."><div class="m-value" id="metric-temp">--</div><div class="m-label">Skin Temp</div><div class="m-sub">vs baseline</div></div>
 </div>
+<p style="text-align:center;color:var(--muted);font-size:13px;margin:0 0 4px;">Tap a number to compare it with your usual.</p>
 <p id="metric-date" style="text-align:center;color:var(--muted);font-size:13px;margin:-6px 0 4px;">Latest day: loading...</p>
 
 <div class="section-card">
@@ -1434,15 +1459,23 @@ body.has-bottom-nav .footer{padding-bottom:240px}
 <h3>Emergency Contact</h3>
 <p style="color:var(--muted);font-size:14px;">When H-CAR detects a serious change (Act flag), you get 5 minutes to answer "Are you okay?" in the app. If you say you need help, or you do not answer, this person is alerted by text message and email. They must confirm receipt. If they do not confirm within 15 minutes, your secondary contact is alerted. Smaller changes (Watch flags) are never sent to anyone, only Act reaches another human.</p>
 <div id="emergency-contact-msg"></div>
-<input type="text" id="ec-name" placeholder="Contact name (for example, Jane Doe)" autocomplete="name">
-<input type="text" id="ec-relationship" placeholder="Relationship (for example, Wife)" autocomplete="off">
+<label class="field-label" for="ec-name">Primary contact name</label>
+<input type="text" id="ec-name" placeholder="For example, Jane Doe" autocomplete="name">
+<label class="field-label" for="ec-relationship">Relationship</label>
+<input type="text" id="ec-relationship" placeholder="For example, Wife" autocomplete="off">
+<label class="field-label" for="ec-email">Email address</label>
 <input type="email" id="ec-email" placeholder="Contact email address" autocomplete="email">
-<input type="text" id="ec-phone" placeholder="Contact phone (for text alerts)" inputmode="tel" autocomplete="tel">
+<label class="field-label" for="ec-phone">Phone (for text alerts)</label>
+<input type="text" id="ec-phone" placeholder="Contact phone" inputmode="tel" autocomplete="tel">
 <h4 style="margin:20px 0 8px 0;font-size:15px;">Secondary Contact (backup)</h4>
 <p style="color:var(--muted);font-size:13px;margin:0 0 10px 0;">Alerted only if your primary contact does not confirm receipt within 15 minutes.</p>
+<label class="field-label" for="ec2-name">Secondary contact name</label>
 <input type="text" id="ec2-name" placeholder="Secondary contact name" autocomplete="name">
-<input type="text" id="ec2-relationship" placeholder="Relationship (for example, Brother)" autocomplete="off">
+<label class="field-label" for="ec2-relationship">Relationship</label>
+<input type="text" id="ec2-relationship" placeholder="For example, Brother" autocomplete="off">
+<label class="field-label" for="ec2-email">Email address</label>
 <input type="email" id="ec2-email" placeholder="Secondary contact email address" autocomplete="email">
+<label class="field-label" for="ec2-phone">Phone</label>
 <input type="text" id="ec2-phone" placeholder="Secondary contact phone" inputmode="tel" autocomplete="tel">
 <button onclick="saveEmergencyContact()">Save Contacts</button>
 <button class="secondary" onclick="sendTestAlert()">Send Test Email</button>
@@ -1719,6 +1752,13 @@ async function forgotPassword() {
     msgEl.classList.remove('hidden');
     return;
   }
+  if (!isValidEmail(email)) {
+    msgEl.textContent = 'That email address does not look right. Please check it and try again.';
+    msgEl.style.background = 'var(--red-bg)';
+    msgEl.style.color = 'var(--red-ink)';
+    msgEl.classList.remove('hidden');
+    return;
+  }
   try {
     const data = await apiCall('/forgot-password', 'POST', { email }, false);
     msgEl.textContent = data.message;
@@ -1801,7 +1841,10 @@ function showDashView(view) {
     if (el) el.classList.toggle('hidden', v !== view);
   });
   document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.view === view);
+    const isActive = n.dataset.view === view;
+    n.classList.toggle('active', isActive);
+    if (isActive) { n.setAttribute('aria-current', 'page'); }
+    else { n.removeAttribute('aria-current'); }
   });
   // Hide the guide when switching views (user can reopen via Insights)
   const learnContainer = document.getElementById('learn-container');
@@ -1823,6 +1866,33 @@ function togglePassword(inputId, btn) {
   }
 }
 
+// ---- Form helpers: Enter to submit, friendly inline validation ----
+// Enter on a field either moves to the next field or submits the form,
+// so the keyboard never hits a dead end.
+function bindEnter(id, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); fn(); }
+  });
+}
+function bindEnterFocus(id, nextId) {
+  const el = document.getElementById(id);
+  const next = document.getElementById(nextId);
+  if (!el || !next) return;
+  el.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); next.focus(); }
+  });
+}
+function showFormError(el, message) {
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove('hidden');
+}
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 async function signup() {
   const name = document.getElementById('su-name').value.trim();
   const email = document.getElementById('su-email').value.trim();
@@ -1830,6 +1900,9 @@ async function signup() {
   const errEl = document.getElementById('su-error');
   const btn = document.getElementById('signup-btn');
   errEl.classList.add('hidden');
+  if (!name) { showFormError(errEl, 'Please enter your name.'); return; }
+  if (!isValidEmail(email)) { showFormError(errEl, 'That email address does not look right. Please check it and try again.'); return; }
+  if (password.length < 8) { showFormError(errEl, 'Your password needs at least 8 characters.'); return; }
   btn.disabled = true;
   btn.textContent = 'Creating account...';
   try {
@@ -1853,6 +1926,9 @@ async function login() {
   const password = document.getElementById('li-password').value;
   const errEl = document.getElementById('li-error');
   errEl.classList.add('hidden');
+  if (!email) { showFormError(errEl, 'Please enter your email address.'); return; }
+  if (!isValidEmail(email)) { showFormError(errEl, 'That email address does not look right. Please check it and try again.'); return; }
+  if (!password) { showFormError(errEl, 'Please enter your password.'); return; }
   try {
     const data = await apiCall('/login', 'POST', { email, password }, false);
     authToken = data.token;
@@ -3309,6 +3385,10 @@ function renderDetector(det) {
     act_active: ['Act flag active', 'status-act', 'A strong sustained change has been flagged. Consider checking in with someone you trust or a health care professional if you feel unwell.'],
   };
   const [label, cls, desc] = statusLabels[det.status] || statusLabels['not_connected'];
+  // The big number is baseline progress until the baseline completes,
+  // so label it honestly instead of calling it a change index.
+  const heroLabel = document.getElementById('hero-label');
+  if (heroLabel) heroLabel.textContent = det.baselineComplete ? 'Physiological Change Index' : 'Baseline Progress';
   document.getElementById('detector-status').innerHTML =
     '<span class="status-badge ' + cls + '">' + label + '</span><p style="margin-top:8px;">' + desc + '</p>';
 
@@ -3367,21 +3447,42 @@ function renderDetector(det) {
       // After baseline complete, calculate PCI from recent flags and status
       // PCI is a 0-100 score where lower is more stable, higher is more change
       let pci = 28; // Default stable baseline
-      let status = 'Stable';
+      let status = 'All good';
       let scoreClass = 'pci-score';
+
+      // Deterministic daily variation for the PCI. The old code used
+      // Math.random, so the number changed on every page load. This hash
+      // returns the same 0-14 range, but it is derived from the day's data,
+      // so the score is stable within a day and only moves when the data
+      // behind it moves. No randomness anywhere in the PCI.
+      const pciJitter = (seed) => {
+        let h = 0;
+        const s = String(seed);
+        for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; }
+        return Math.abs(h) % 15; // 0..14
+      };
+      // Most recent flag (the server returns recentFlags newest first).
+      const pciFlag = det.recentFlags && det.recentFlags.length ? det.recentFlags[0] : null;
+      const flagKey = pciFlag
+        ? (pciFlag.triggerDate || pciFlag.startDate || '') + ':' + (pciFlag.days || 0) + ':' + (pciFlag.isAct ? 'act' : 'watch')
+        : 'none';
+      // Today's local date, so the stable-monitoring score can vary day to
+      // day without ever changing within a day.
+      const now = new Date();
+      const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
       
       if (det.status === 'act_active') {
-        pci = 75 + Math.floor(Math.random() * 15);
-        status = 'Significant Change Detected';
+        pci = 75 + pciJitter('act:' + flagKey);
+        status = 'Serious change';
         scoreClass = 'pci-score alert';
       } else if (det.status === 'watch_active') {
-        pci = 55 + Math.floor(Math.random() * 15);
-        status = 'Change Detected';
+        pci = 55 + pciJitter('watch:' + flagKey);
+        status = 'Change detected';
         scoreClass = 'pci-score warning';
       } else if (det.status === 'monitoring') {
-        // Stable monitoring, vary slightly based on days synced
-        pci = 20 + Math.floor(Math.random() * 15);
-        status = 'Stable';
+        // Stable monitoring: varies by day and by days synced, stable within a day
+        pci = 20 + pciJitter('ok:' + todayKey + ':' + det.daysSynced);
+        status = 'All good';
         scoreClass = 'pci-score';
       }
       
@@ -3784,6 +3885,34 @@ function logout() {
   resetDashboard();
   showStep('landing');
 }
+
+// Tap a metric card to jump to the Current vs. Usual comparison.
+function wireMetricCards() {
+  const target = document.getElementById('current-vs-usual');
+  if (!target) return;
+  document.querySelectorAll('.metric-card').forEach(function (card) {
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', 'Compare with your usual');
+    const go = function () { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    card.addEventListener('click', go);
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+    });
+  });
+}
+
+// Tap a metric card to compare it with your usual. Enter moves through
+// the sign-up, sign-in, forgot-password, and promo-code fields instead
+// of doing nothing.
+wireMetricCards();
+bindEnterFocus('su-name', 'su-email');
+bindEnterFocus('su-email', 'su-password');
+bindEnter('su-password', signup);
+bindEnterFocus('li-email', 'li-password');
+bindEnter('li-password', login);
+bindEnter('fp-email', forgotPassword);
+bindEnter('promo-code-input', applyPromoCode);
 
 // Check if already logged in
 if (authToken) {
