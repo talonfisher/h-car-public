@@ -14,6 +14,7 @@ const detector = require('./detector');
 const cycle = require('./cycle');
 const context = require('./context');
 const googleHealth = require('./google-health');
+const gmailSend = require('./gmail-send');
 const garminHealth = require('./garmin-health');
 const alertEngine = require('./alert-engine');
 const axios = require('axios');
@@ -1817,27 +1818,52 @@ function getMailer() {
   return mailer;
 }
 
-async function sendEmail(to, subject, text) {
+// SMTP send, kept as the fallback path. Returns { sent, reason } and
+// never throws. The Gmail API is the primary sender (see sendEmail):
+// this host cannot reach smtp.gmail.com:587 at all (connection timeout),
+// so SMTP is only useful if the hosting network ever changes.
+async function sendViaSmtp(to, subject, text) {
   const transport = getMailer();
   if (!transport) return { sent: false, reason: 'email is not configured on the server (SMTP settings missing)' };
   try {
-    console.log('Sending email to ' + to + ' with subject: ' + subject);
+    console.log('Sending email to ' + to + ' via SMTP with subject: ' + subject);
     await transport.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
       subject,
       text,
     });
-    console.log('Email sent successfully to ' + to);
-    return { sent: true };
+    console.log('Email sent successfully via SMTP to ' + to);
+    return { sent: true, via: 'smtp' };
   } catch (e) {
-    console.error('Email send failed to ' + to + ':', e.message);
+    console.error('Email send failed via SMTP to ' + to + ':', e.message);
     console.error('SMTP error details:', e);
-    lastEmailError = { at: new Date().toISOString(), to, reason: e.message };
     // Reset mailer so next attempt will recreate it (in case of transient connection issues)
     mailer = null;
-    return { sent: false, reason: 'email send failed: ' + e.message };
+    return { sent: false, reason: 'SMTP send failed: ' + e.message };
   }
+}
+
+// Primary email sender. Tries the Gmail API first (HTTPS, which this
+// host can reach), then SMTP as a fallback. The result is always the
+// real outcome: a failure reports BOTH attempts, never a bare "sent".
+// Callers (test alert, Act alerts, password reset) rely on this honesty.
+async function sendEmail(to, subject, text) {
+  if (gmailSend.isGmailApiConfigured()) {
+    const apiResult = await gmailSend.sendViaGmailApi(to, subject, text);
+    if (apiResult.sent) return { sent: true, via: 'gmail-api', id: apiResult.id };
+    const smtpResult = await sendViaSmtp(to, subject, text);
+    if (smtpResult.sent) return { sent: true, via: 'smtp' };
+    const reason =
+      'email send failed (Gmail API: ' + apiResult.reason + '; SMTP fallback: ' + smtpResult.reason + ')';
+    lastEmailError = { at: new Date().toISOString(), to, reason };
+    return { sent: false, reason };
+  }
+  const smtpResult = await sendViaSmtp(to, subject, text);
+  if (!smtpResult.sent) {
+    lastEmailError = { at: new Date().toISOString(), to, reason: smtpResult.reason };
+  }
+  return smtpResult;
 }
 
 // ---- SMS alerts (Twilio) ----
@@ -2740,7 +2766,26 @@ app.get('/api/admin/smtp-status', requireAdminKey, async (req, res) => {
       verify = { checked: true, ok: false, error: 'email transport could not be created (SMTP settings missing)' };
     }
   }
+  // Gmail API (primary sender) diagnostic, same endpoint so all email
+  // health lives in one place. getProfile sends no email and returns no
+  // tokens. When the Gmail API is configured, `sender` is 'gmail-api'.
+  const gmailApi = {
+    configured: gmailSend.isGmailApiConfigured(),
+    sender: gmailSend.gmailSenderAddress(),
+    refreshTokenSet: !!process.env.GMAIL_REFRESH_TOKEN,
+    verify: { checked: false, ok: false, error: null, email: null },
+  };
+  if (gmailApi.configured) {
+    try {
+      const profile = await gmailSend.verifyGmailApi();
+      gmailApi.verify = { checked: true, ok: true, error: null, email: profile.emailAddress || null };
+    } catch (e) {
+      gmailApi.verify = { checked: true, ok: false, error: e.message, email: null };
+    }
+  }
   res.json({
+    sender: gmailApi.configured ? 'gmail-api' : 'smtp',
+    gmailApi,
     configured,
     host,
     port,
@@ -2752,6 +2797,83 @@ app.get('/api/admin/smtp-status', requireAdminKey, async (req, res) => {
     lastEmailError,
     smsConfigured: isSmsConfigured(),
   });
+});
+
+// ---- Gmail API one-time setup (admin key) ----
+// Email goes through the Gmail API now, because this host cannot reach
+// smtp.gmail.com:587. The API needs a refresh token for Talon's Google
+// account with ONLY the gmail.send scope. This is a one-time flow:
+//
+//   1. GET /api/admin/gmail-auth-url (admin key) -> Google consent URL.
+//      Before this works, the redirect URI below must be added to the
+//      "H-CAR Web Client" OAuth client in Google Cloud Console
+//      (APIs & Services > Credentials > Authorized redirect URIs).
+//   2. Open the URL, sign in as talonfisher66@gmail.com, consent to
+//      sending mail only. Google redirects here.
+//   3. This page shows the refresh token ONCE. Paste it into the Render
+//      env var GMAIL_REFRESH_TOKEN on the h-car service and redeploy.
+//      The token is never logged and never stored anywhere else.
+//
+// The consent URL is guarded by the admin key, and the callback is
+// guarded by a random single-use state (10 minutes) issued with that
+// URL, so only the person who requested the URL can see the token.
+
+// GET /api/admin/gmail-auth-url - step 1: get the Google consent URL.
+app.get('/api/admin/gmail-auth-url', requireAdminKey, async (req, res) => {
+  if (!googleHealth.isConfigured()) {
+    return res.status(503).json({ error: 'Google OAuth client is not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).' });
+  }
+  const state = gmailSend.createGmailAuthState();
+  res.json({
+    authUrl: gmailSend.getGmailAuthUrl(state),
+    redirectUri: gmailSend.gmailRedirectUri(),
+    scope: gmailSend.GMAIL_SEND_SCOPE,
+    account: gmailSend.gmailSenderAddress(),
+    expiresInSeconds: 600,
+    note: 'Open authUrl, sign in as ' + gmailSend.gmailSenderAddress() + ' and consent to sending mail only. The link is good for 10 minutes; the refresh token is shown once on the callback page. If Google shows an unverified-app warning for the new scope, use Advanced to proceed: it is Talon\'s own app.',
+  });
+});
+
+// GET /api/admin/gmail-auth-callback - step 2: Google redirects here
+// after consent. Exchanges the code, confirms the account is the H-CAR
+// sender account, then shows the refresh token once. Plain HTML on
+// purpose: this is an operator page, not part of the app.
+app.get('/api/admin/gmail-auth-callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  const page = (title, body) =>
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + title + '</title>' +
+    '<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 16px;line-height:1.5}input{width:100%;padding:10px;font-family:monospace}button{padding:10px 16px;margin-top:10px;cursor:pointer}.warn{background:#fff4e5;border:1px solid #e6a700;padding:12px}</style></head>' +
+    '<body><h1>' + title + '</h1>' + body + '</body></html>';
+  if (error) {
+    return res.status(400).send(page('Gmail setup failed', '<p>Google refused consent: ' + String(error).replace(/</g, '&lt;') + '</p><p>Request a fresh link from GET /api/admin/gmail-auth-url and try again.</p>'));
+  }
+  if (!code || !state || !gmailSend.consumeGmailAuthState(state)) {
+    return res.status(400).send(page('Gmail setup link invalid or expired', '<p>This link is single-use and good for 10 minutes. Request a fresh one from GET /api/admin/gmail-auth-url (admin key) and complete the consent promptly.</p>'));
+  }
+  try {
+    const tokens = await gmailSend.exchangeGmailCode(code);
+    if (!tokens.refresh_token) {
+      return res.status(400).send(page('No refresh token issued', '<p>Google did not return a refresh token. This happens when consent was already granted without offline access. Request a fresh link and make sure the consent screen is shown again (the URL forces it).</p>'));
+    }
+    // Confirm the account is the H-CAR sender account before showing
+    // anything. A wrong account here would send H-CAR mail as someone else.
+    const profile = await gmailSend.getGmailProfile(tokens);
+    const expected = gmailSend.gmailSenderAddress();
+    if ((profile.emailAddress || '').toLowerCase() !== expected.toLowerCase()) {
+      return res.status(400).send(page('Wrong Google account', '<p>This setup is for ' + expected + ', but the account that just consented is ' + String(profile.emailAddress || 'unknown').replace(/</g, '&lt;') + '. Sign in with the right account and request a fresh link.</p>'));
+    }
+    // Show the token once. It is never logged and never stored by the
+    // server; the parent pastes it into the Render env var.
+    const token = tokens.refresh_token;
+    return res.send(page('Gmail is ready to connect', '<p>Consent worked for <strong>' + expected + '</strong>. Copy this refresh token and paste it into Render as the <strong>GMAIL_REFRESH_TOKEN</strong> env var on the h-car service, then redeploy. This page will not show it again.</p>' +
+      '<div class="warn"><strong>Keep this token private.</strong> Anyone with it can send mail as ' + expected + '.</div>' +
+      '<p><input id="tok" type="text" readonly value="' + String(token).replace(/"/g, '&quot;') + '"></p>' +
+      '<p><button onclick="document.getElementById(\'tok\').select();document.execCommand(\'copy\')">Copy token</button></p>' +
+      '<p>After redeploying, verify with GET /api/admin/smtp-status (admin key): <strong>sender</strong> should read <strong>gmail-api</strong> and <strong>gmailApi.verify.ok</strong> should be true. Then tap "Send Test Email" in the app.</p>'));
+  } catch (e) {
+    console.error('Gmail auth callback error:', e.message);
+    return res.status(500).send(page('Gmail setup failed', '<p>Could not finish the Google exchange: ' + String(e.message).replace(/</g, '&lt;') + '</p><p>Request a fresh link from GET /api/admin/gmail-auth-url and try again.</p>'));
+  }
 });
 
 // Trial overview for the operator. Per-user rows carry user IDs only,
