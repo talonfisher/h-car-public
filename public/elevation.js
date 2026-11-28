@@ -188,19 +188,23 @@
 
   // At most one detection attempt per day in a page session. A failed
   // attempt still counts, so a denied permission does not re-prompt
-  // on every dashboard load. The manual check-in question is the
-  // fallback for that day.
+  // on every dashboard load. An explicit user action (saving Profile
+  // with the toggle on) passes force: true and always tries, so the
+  // user sees the result right away instead of a silent no-op when
+  // an earlier background attempt already used up the day.
   var lastAttemptDate = null;
 
   // Runs one automatic detection and records it when it is new enough
-  // to matter. Options: { enabled, apiCall, storage, todayStr, fetchFn,
-  // geolocation, onDetected(elevationM, recorded), onUnavailable() }.
-  // Never throws. Does nothing when disabled.
+  // to matter. Options: { enabled, force, apiCall, storage, todayStr,
+  // fetchFn, geolocation, onDetected(elevationM, recorded),
+  // onUnavailable() }. Never throws. Does nothing when disabled.
+  // With force: true the once-per-day guard is skipped, so a save in
+  // Profile always attempts the lookup and reports the outcome.
   async function autoDetectElevation(options) {
     var opts = options || {};
     if (!opts.enabled) return null;
     var todayStr = opts.todayStr || new Date().toISOString().split('T')[0];
-    if (lastAttemptDate === todayStr) return null;
+    if (!opts.force && lastAttemptDate === todayStr) return null;
     lastAttemptDate = todayStr;
     var elevationM = await detectElevationNow({ fetchFn: opts.fetchFn, geolocation: opts.geolocation });
     if (elevationM === null) {

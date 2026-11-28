@@ -71,6 +71,18 @@ input[type="text"], input[type="email"], input[type="password"]{width:100%;paddi
 input[type="date"], input[type="number"], select, textarea{padding:13px 14px;margin:8px 0;border:1px solid var(--line);border-radius:12px;font-size:16px;font-family:Manrope,system-ui,sans-serif;background:var(--surface);color:var(--ink)}
 ::placeholder{color:var(--muted);opacity:1}
 input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="number"]:focus, select:focus, textarea:focus{outline:3px solid var(--teal);outline-offset:2px;border-color:var(--teal)}
+/* A password the browser fills in from a saved login must look like one
+   typed by hand. Chrome otherwise paints its own autofill background
+   and text colour, which turns the Sign In password field into a solid
+   dark bar while the typed Sign Up fields show normal dots. Force the
+   theme surface and ink so a filled field renders exactly like a typed one. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus{
+  -webkit-box-shadow:0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color:var(--ink);
+  caret-color:var(--ink);
+}
 .field-label{display:block;font-size:14px;font-weight:700;color:var(--ink);margin:14px 0 2px}
 .input-hint{font-size:13px;color:var(--muted);margin:2px 0 0}
 button{width:100%;padding:14px 18px;min-height:44px;background:var(--teal);color:#FFFFFF;border:0;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:10px;font-family:Manrope,system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s,background .15s,transform .1s}
@@ -1444,14 +1456,14 @@ body.app-mode .bottom-nav{max-width:860px}
 </div>
 <button onclick="logPregnancy()">Log Pregnancy</button>
 </div>
-<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">H-CAR counts weeks from this date. If your pregnancy has ended, delete the entry above so H-CAR stops adjusting for it.</p>
+<p style="color:var(--muted);font-size:13px;margin:8px 0 0 0;">H-CAR counts weeks from this date. If your pregnancy has ended, set the end date on the entry below so H-CAR stops adjusting for it. You can still delete the entry if it was logged by mistake.</p>
 <div id="pregnancy-list" style="margin-top:12px;"></div>
 </div>
 
 <div class="section-card" id="medication-card">
 <p class="section-eyebrow">Medications</p>
 <h3>Medications</h3>
-<p style="color:var(--muted);font-size:14px;">Log medications you take, with the date you started. If you stop one, delete it here. H-CAR keeps a note of it next to any flags for 14 days after you start it, so you can see what changed at the same time. H-CAR does not predict medication effects or give medication advice.</p>
+<p style="color:var(--muted);font-size:14px;">Log medications you take, with the date you started. If you stop one, set the stop date on the entry below. H-CAR keeps a note of it next to any flags for 14 days after you start it, so you can see what changed at the same time. H-CAR does not predict medication effects or give medication advice.</p>
 <div id="medication-msg"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
 <div style="flex:1;min-width:160px;">
@@ -3169,8 +3181,10 @@ async function saveAboutYou() {
     updateFemaleSections();
     msgEl.innerHTML = '<div class="success">Saved. Your details are private and only used to adjust the detector. If you changed Biological sex, the sections below have updated.</div>';
     // If automatic elevation was just turned on, run it now so the
-    // user sees it work right away.
-    if (currentAutoElevation) maybeDetectElevation();
+    // user sees it work right away. Force the attempt even if one
+    // already ran today, so a failed lookup still shows the error
+    // in Profile instead of saving silently.
+    if (currentAutoElevation) maybeDetectElevation(true);
   } catch (e) {
     msgEl.innerHTML = '<div class="error">Could not save: ' + e.message + '</div>';
   }
@@ -3197,12 +3211,13 @@ function updateAutoElevationNote(elevationM) {
   }
 }
 
-function maybeDetectElevation() {
+function maybeDetectElevation(force) {
   try {
     if (!currentAutoElevation) return;
     if (typeof HCAR_Elevation === 'undefined' || !HCAR_Elevation.autoDetectElevation) return;
     HCAR_Elevation.autoDetectElevation({
       enabled: true,
+      force: !!force,
       apiCall: apiCall,
       onDetected: function (elevationM) { updateAutoElevationNote(elevationM); },
       onUnavailable: function () {
@@ -3292,9 +3307,16 @@ async function loadPregnancies() {
     }
     listEl.innerHTML = pregnancies.map(p => {
       const dueText = p.due_date ? ' Due ' + p.due_date + '.' : '';
+      const endText = p.end_date ? ' Ended ' + p.end_date + '.' : '';
       const statusText = p.status && p.status !== 'active' ? ' (' + p.status + ')' : '';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;">' +
-        '<div style="flex:1;"><strong>' + p.start_date + '</strong>' + dueText + statusText + '</div>' +
+      const endControl = p.end_date ? '' :
+        '<span style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+        '<label style="font-size:13px;color:var(--muted);">End date</label>' +
+        '<input type="date" id="preg-end-' + p.id + '" style="padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;">' +
+        '<button class="secondary" onclick="setPregnancyEndDate(' + p.id + ')" style="padding:6px 12px;font-size:13px;">Mark as ended</button></span>';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:150px;"><strong>' + p.start_date + '</strong>' + dueText + endText + statusText + '</div>' +
+        endControl +
         '<button class="secondary" onclick="deletePregnancy(' + p.id + ')" style="padding:6px 12px;font-size:13px;">Delete</button>' +
         '</div>';
     }).join('');
@@ -3333,6 +3355,23 @@ async function deletePregnancy(id) {
   }
 }
 
+async function setPregnancyEndDate(id) {
+  const msgEl = document.getElementById('pregnancy-msg');
+  const input = document.getElementById('preg-end-' + id);
+  const endDate = input ? input.value : '';
+  if (!endDate) {
+    msgEl.innerHTML = '<div class="error">Please pick an end date first.</div>';
+    return;
+  }
+  try {
+    await apiCall('/pregnancy/' + id, 'PUT', { end_date: endDate });
+    msgEl.innerHTML = '<div class="success">Pregnancy marked as ended on ' + escapeHtml(endDate) + '.</div>';
+    await loadPregnancies();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not save the end date: ' + e.message + '</div>';
+  }
+}
+
 async function loadMedications() {
   const listEl = document.getElementById('medication-list');
   if (!listEl) return;
@@ -3346,8 +3385,14 @@ async function loadMedications() {
     listEl.innerHTML = meds.map(m => {
       const doseText = m.dosage ? ' (' + escapeHtml(m.dosage) + ')' : '';
       const endText = m.end_date ? ' to ' + m.end_date : '';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;">' +
-        '<div style="flex:1;"><strong>' + escapeHtml(m.name) + '</strong>' + doseText + '<br><span style="font-size:13px;color:var(--muted);">From ' + m.start_date + endText + '</span></div>' +
+      const endControl = m.end_date ? '' :
+        '<span style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+        '<label style="font-size:13px;color:var(--muted);">Stop date</label>' +
+        '<input type="date" id="med-end-' + m.id + '" style="padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;">' +
+        '<button class="secondary" onclick="setMedicationEndDate(' + m.id + ')" style="padding:6px 12px;font-size:13px;">Mark as stopped</button></span>';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:8px 0;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:150px;"><strong>' + escapeHtml(m.name) + '</strong>' + doseText + '<br><span style="font-size:13px;color:var(--muted);">From ' + m.start_date + endText + '</span></div>' +
+        endControl +
         '<button class="secondary" onclick="deleteMedication(' + m.id + ')" style="padding:6px 12px;font-size:13px;">Delete</button>' +
         '</div>';
     }).join('');
@@ -3392,6 +3437,23 @@ async function deleteMedication(id) {
   }
 }
 
+async function setMedicationEndDate(id) {
+  const msgEl = document.getElementById('medication-msg');
+  const input = document.getElementById('med-end-' + id);
+  const endDate = input ? input.value : '';
+  if (!endDate) {
+    msgEl.innerHTML = '<div class="error">Please pick a stop date first.</div>';
+    return;
+  }
+  try {
+    await apiCall('/medication/' + id, 'PUT', { end_date: endDate });
+    msgEl.innerHTML = '<div class="success">Medication marked as stopped on ' + escapeHtml(endDate) + '.</div>';
+    await loadMedications();
+  } catch (e) {
+    msgEl.innerHTML = '<div class="error">Could not save the stop date: ' + e.message + '</div>';
+  }
+}
+
 function renderPendingInvites(pending) {
   const section = document.getElementById('family-pending-section');
   const list = document.getElementById('family-pending-list');
@@ -3428,6 +3490,13 @@ function renderFamilyList(family) {
         dotColor = 'var(--green)';
         statusText = 'All good';
         break;
+      case 'stale':
+        // The server already decided this member is stale (last sync
+        // over 7 days ago). Amber, not green, and the check below
+        // fills in the date text.
+        dotColor = 'var(--amber)';
+        statusText = 'No recent data';
+        break;
       case 'watch':
         dotColor = 'var(--amber)';
         statusText = 'Watch - change detected';
@@ -3451,7 +3520,7 @@ function renderFamilyList(family) {
     // plainly instead of calling it current.
     const lastSyncDate = member.lastSync ? new Date(member.lastSync) : null;
     const staleDays = lastSyncDate ? Math.floor((Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
-    if (member.status === 'good' && staleDays !== null && staleDays > 7) {
+    if ((member.status === 'good' || member.status === 'stale') && staleDays !== null && staleDays > 7) {
       statusText = 'All good on ' + lastSyncDate.toLocaleDateString() + '. No data since then.';
     }
     const lastSync = member.lastSync ? 'Last synced ' + new Date(member.lastSync).toLocaleDateString() : 'Never synced';
@@ -3623,7 +3692,9 @@ function renderDetector(det) {
     det.baselineComplete
       ? '<p><strong>Baseline complete!</strong> ' + det.daysSynced + ' days of data synced. H-CAR is now watching for changes.</p><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>'
       : (!det.daysSynced || det.daysSynced === 0)
-        ? '<p><strong>Your watch is connected. No data yet.</strong> Wear it tonight, including while you sleep, and check back tomorrow for your first day.</p>'
+        ? (det.status && det.status !== 'not_connected'
+          ? '<p><strong>Your watch is connected. No data yet.</strong> Wear it tonight, including while you sleep, and check back tomorrow for your first day.</p>'
+          : '<p><strong>No numbers yet.</strong> Connect your watch below, then check back tomorrow.</p>')
         : '<p><strong>Day ' + dataDay + ' of 28 days of data.</strong>' + sinceText + ' ' + det.daysSynced + ' days of data synced. H-CAR needs 28 days of data before it can start watching for changes.' + milestoneMsg + '</p><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
           '<p style="color:var(--muted);">Wear your watch every day, including while you sleep, so the baseline learns your normal.</p>';
 
@@ -4151,7 +4222,33 @@ function logout() {
   if (alertCountdownTimer) clearInterval(alertCountdownTimer);
   hideAreYouOkModal();
   resetDashboard();
+  // Leave the sign-in and sign-up forms empty, so the next person to
+  // use this device does not see the previous account's name, email,
+  // or password dots still filled in.
+  clearAuthForms();
   showStep('landing');
+}
+
+// Empty every auth form field and put password fields back to masked
+// with their Show buttons reset, so a signed-out form is blank.
+function clearAuthForms() {
+  ['su-name', 'su-email', 'su-password', 'su-password-confirm', 'li-email', 'li-password', 'fp-email'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['su-password', 'su-password-confirm', 'li-password'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.type = 'password';
+    const btn = el.parentElement ? el.parentElement.querySelector('button') : null;
+    if (btn) btn.textContent = 'Show';
+  });
+  ['su-error', 'li-error'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+  });
+  const fpMsg = document.getElementById('fp-message');
+  if (fpMsg) { fpMsg.textContent = ''; fpMsg.classList.add('hidden'); }
 }
 
 // Tap a metric card to jump to the Current vs. Usual comparison.
