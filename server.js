@@ -1261,16 +1261,24 @@ app.post('/api/alerts/send-test', authenticateToken, async (req, res) => {
       '',
       'H-CAR (https://h-car.onrender.com)',
     ].join('\n');
-    // Send email in background, do not wait for it (prevents SMTP timeouts from blocking the response)
-    sendEmail(user.emergency_contact_email, subject, text).then(result => {
-      if (!result.sent) {
-        console.error('Test alert email failed for ' + user.emergency_contact_email + ': ' + result.reason);
-      } else {
-        console.log('Test alert sent to ' + user.emergency_contact_email);
-      }
-    }).catch(err => {
+    // Await the send: this endpoint IS a delivery test, so the answer
+    // must be the real outcome. The old fire-and-forget version replied
+    // "Test alert sent" before the mail server had answered, which is
+    // how two failed tests looked successful. The transport has short
+    // timeouts (10s connect, 20s socket), so a dead SMTP server fails
+    // fast instead of hanging this request.
+    let result;
+    try {
+      result = await sendEmail(user.emergency_contact_email, subject, text);
+    } catch (err) {
       console.error('Test alert email error:', err);
-    });
+      return res.status(502).json({ error: 'Test alert email failed: ' + err.message });
+    }
+    if (!result.sent) {
+      console.error('Test alert email failed for ' + user.emergency_contact_email + ': ' + result.reason);
+      return res.status(502).json({ error: 'Test alert email failed: ' + result.reason });
+    }
+    console.log('Test alert sent to ' + user.emergency_contact_email);
     res.json({ message: 'Test alert sent to ' + user.emergency_contact_email + '.' });
   } catch (err) {
     console.error('Test alert error:', err);
@@ -1771,6 +1779,11 @@ function describeTopSignals(topSignals) {
 
 let mailer = null;
 
+// Most recent SMTP failure, for the admin diagnostic endpoint
+// (GET /api/admin/smtp-status). Holds only the error text and time,
+// never credentials.
+let lastEmailError = null;
+
 function getMailer() {
   if (mailer) return mailer;
   const host = process.env.SMTP_HOST;
@@ -1794,6 +1807,12 @@ function getMailer() {
     port,
     secure: process.env.SMTP_SECURE === 'true' || port === 465,
     auth: { user, pass },
+    // Fail fast instead of hanging: the default socket timeout is 10
+    // minutes, which once left a test alert looking "sent" while the
+    // connection was still hanging in the background.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
   return mailer;
 }
@@ -1814,6 +1833,7 @@ async function sendEmail(to, subject, text) {
   } catch (e) {
     console.error('Email send failed to ' + to + ':', e.message);
     console.error('SMTP error details:', e);
+    lastEmailError = { at: new Date().toISOString(), to, reason: e.message };
     // Reset mailer so next attempt will recreate it (in case of transient connection issues)
     mailer = null;
     return { sent: false, reason: 'email send failed: ' + e.message };
@@ -2687,6 +2707,51 @@ app.post('/api/admin/process-alerts', requireAdminKey, async (req, res) => {
     console.error('Process-alerts error:', err);
     res.status(500).json({ error: 'Failed to process alerts' });
   }
+});
+
+// SMTP delivery diagnostic for the operator. Sends NO email: it
+// reports whether the SMTP settings are present and runs
+// transport.verify() against the live mail server, so a wrong app
+// password or a missing setting shows up here with the server's exact
+// error instead of failing silently in the background. The password
+// is never returned, only whether it is set.
+app.get('/api/admin/smtp-status', requireAdminKey, async (req, res) => {
+  const host = process.env.SMTP_HOST || null;
+  const user = process.env.SMTP_USER || null;
+  const passSet = !!process.env.SMTP_PASS;
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  const from = process.env.SMTP_FROM || null;
+  const configured = !!(host && user && passSet);
+  let verify = { checked: false, ok: false, error: null };
+  if (configured) {
+    const transport = getMailer();
+    if (transport) {
+      try {
+        await Promise.race([
+          transport.verify(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP verify timed out after 15s')), 15000)),
+        ]);
+        verify = { checked: true, ok: true, error: null };
+      } catch (e) {
+        verify = { checked: true, ok: false, error: e.message };
+        lastEmailError = { at: new Date().toISOString(), to: null, reason: e.message };
+      }
+    } else {
+      verify = { checked: true, ok: false, error: 'email transport could not be created (SMTP settings missing)' };
+    }
+  }
+  res.json({
+    configured,
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true' || port === 465,
+    user,
+    passSet,
+    from,
+    verify,
+    lastEmailError,
+    smsConfigured: isSmsConfigured(),
+  });
 });
 
 // Trial overview for the operator. Per-user rows carry user IDs only,

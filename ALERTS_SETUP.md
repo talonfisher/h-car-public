@@ -51,6 +51,25 @@ Without it, escalations still happen: the sweep runs on server startup
 and on every alert-status check (every 30 seconds while any user has
 the app open), so the worst case is a delay while the server sleeps.
 
+## 4. Diagnosing email delivery
+
+If test emails or password resets never arrive, do NOT guess: ask the
+server what is wrong.
+
+- GET `https://h-car.onrender.com/api/admin/smtp-status`
+- Header: `x-admin-key: <ADMIN_SYNC_KEY>`
+
+It sends no email. It reports whether SMTP_HOST, SMTP_USER and
+SMTP_PASS are set, and runs a live check against the mail server
+(`verify.ok` plus the server's exact error when it fails). Common
+results: "Username and Password not accepted" means the Gmail app
+password in Render is wrong or has spaces in it, generate a fresh one
+in the Google account (Security, 2-Step Verification, App passwords)
+and paste it without spaces. "Email alerts disabled" means a setting
+is missing in Render. The "Send Test Email" button in Profile now
+waits for the real result and shows the failure reason instead of
+claiming it was sent.
+
 ## How the flow works
 
 1. An Act flag fires. The user gets 5 minutes to answer "Are you
