@@ -1692,18 +1692,29 @@ app.get('/api/family/dashboard', authenticateToken, async (req, res) => {
         if (daysSynced < 28) {
           status = 'learning';
         } else {
-          // Check most recent episode (if any, within last 14 days)
-          // end_date is TEXT in YYYY-MM-DD format, compare as date
-          const recentEpisode = await dbGet(
-            `SELECT is_act, end_date FROM episodes
-             WHERE user_id = $1 AND end_date >= TO_CHAR(CURRENT_DATE - INTERVAL '14 days', 'YYYY-MM-DD')
-             ORDER BY end_date DESC LIMIT 1`,
-            [memberId]
-          );
-          if (recentEpisode) {
-            status = recentEpisode.is_act ? 'act' : 'watch';
+          // A member who stopped syncing is not "all good" any more.
+          // Over 7 days since the last sync means stale, using the
+          // same whole-day count as the client display.
+          const lastDate = lastSyncDate ? new Date(lastSyncDate) : null;
+          const staleDays = lastDate
+            ? Math.floor((Date.now() - lastDate.getTime()) / 86400000)
+            : null;
+          if (staleDays !== null && staleDays > 7) {
+            status = 'stale';
           } else {
-            status = 'good';
+            // Check most recent episode (if any, within last 14 days)
+            // end_date is TEXT in YYYY-MM-DD format, compare as date
+            const recentEpisode = await dbGet(
+              `SELECT is_act, end_date FROM episodes
+               WHERE user_id = $1 AND end_date >= TO_CHAR(CURRENT_DATE - INTERVAL '14 days', 'YYYY-MM-DD')
+               ORDER BY end_date DESC LIMIT 1`,
+              [memberId]
+            );
+            if (recentEpisode) {
+              status = recentEpisode.is_act ? 'act' : 'watch';
+            } else {
+              status = 'good';
+            }
           }
         }
       }
@@ -3294,6 +3305,55 @@ app.delete('/api/pregnancy/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/pregnancy/:id - Set the end date (and status) of a pregnancy
+// already logged. Body: { end_date (optional, YYYY-MM-DD, on or after
+//         start_date; null clears it),
+//         status (optional, 'active', 'completed', or 'ended') }
+// Setting an end date marks the pregnancy ended unless a status is
+// given. Clearing the end date marks it active again unless a status
+// is given. Re-runs the detector, as the change affects expectations.
+app.put('/api/pregnancy/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid pregnancy id' });
+    const { end_date, status } = req.body || {};
+    const existing = await dbGet(
+      'SELECT id, start_date, due_date, end_date, status FROM pregnancies WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    if (!existing) return res.status(404).json({ error: 'Pregnancy not found' });
+    const startStr = toDateStr(existing.start_date);
+    let newEnd = toDateStr(existing.end_date);
+    let newStatus = existing.status;
+    if (end_date !== undefined && end_date !== null && end_date !== '') {
+      if (!isValidDateStr(end_date) || end_date < startStr) {
+        return res.status(400).json({ error: 'end_date must be a valid date on or after start_date' });
+      }
+      newEnd = end_date;
+      newStatus = 'ended';
+    } else if (end_date === null) {
+      newEnd = null;
+      newStatus = 'active';
+    }
+    if (status !== undefined && status !== null && status !== '') {
+      if (!['active', 'completed', 'ended'].includes(status)) {
+        return res.status(400).json({ error: "status must be active, completed, or ended" });
+      }
+      newStatus = status;
+    }
+    const row = await dbGet(
+      `UPDATE pregnancies SET end_date = $1, status = $2 WHERE id = $3 AND user_id = $4
+       RETURNING id, start_date, due_date, end_date, status`,
+      [newEnd, newStatus, id, req.user.id]
+    );
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true, pregnancy: { id: row.id, start_date: toDateStr(row.start_date), due_date: toDateStr(row.due_date), end_date: toDateStr(row.end_date), status: row.status } });
+  } catch (err) {
+    console.error('Update pregnancy error:', err);
+    res.status(500).json({ error: 'Failed to update pregnancy' });
+  }
+});
+
 // POST /api/medication - Log a medication.
 // Body: { name (required), start_date (required, YYYY-MM-DD, not in
 //         future), end_date (optional), dosage (optional text),
@@ -3364,6 +3424,43 @@ app.delete('/api/medication/:id', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Delete medication error:', err);
     res.status(500).json({ error: 'Failed to delete medication' });
+  }
+});
+
+// PUT /api/medication/:id - Set (or clear) the stop date of a
+// medication already logged. Body: { end_date (optional, YYYY-MM-DD,
+//         on or after start_date; null clears it) }
+// Re-runs the detector, as the change affects expectations.
+app.put('/api/medication/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid medication id' });
+    const { end_date } = req.body || {};
+    const existing = await dbGet(
+      'SELECT id, name, start_date, end_date FROM medications WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    if (!existing) return res.status(404).json({ error: 'Medication not found' });
+    const startStr = toDateStr(existing.start_date);
+    let newEnd = toDateStr(existing.end_date);
+    if (end_date !== undefined && end_date !== null && end_date !== '') {
+      if (!isValidDateStr(end_date) || end_date < startStr) {
+        return res.status(400).json({ error: 'end_date must be a valid date on or after start_date' });
+      }
+      newEnd = end_date;
+    } else if (end_date === null) {
+      newEnd = null;
+    }
+    const row = await dbGet(
+      `UPDATE medications SET end_date = $1 WHERE id = $2 AND user_id = $3
+       RETURNING id, name, start_date, end_date, dosage, notes`,
+      [newEnd, id, req.user.id]
+    );
+    await runDetectorForUser(req.user.id);
+    res.json({ ok: true, medication: { id: row.id, name: row.name, start_date: toDateStr(row.start_date), end_date: toDateStr(row.end_date), dosage: row.dosage, notes: row.notes } });
+  } catch (err) {
+    console.error('Update medication error:', err);
+    res.status(500).json({ error: 'Failed to update medication' });
   }
 });
 
@@ -3709,7 +3806,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
 
     // Get user's recent data
     const latestEpisode = await dbGet(
-      `SELECT start_date, end_date, days, is_act, peak_composite, top_signals
+      `SELECT start_date, end_date, days, is_act, trigger_date, peak_composite, top_signals
        FROM episodes WHERE user_id = $1 ORDER BY start_date DESC LIMIT 1`,
       [req.user.id]
     );
@@ -3736,15 +3833,10 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       return v.toFixed(decimals) + suffix;
     };
 
-    // Helper to say "today" or "yesterday" based on the date
-    const dayWord = (dateStr) => {
-      if (!dateStr) return 'your most recent day';
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-      if (dateStr === today) return 'today';
-      if (dateStr === yesterday) return 'yesterday';
-      return 'on ' + dateStr;
-    };
+    // Always name the date. Never call a day "today" or "yesterday":
+    // the server runs in UTC and cannot know the user's local date,
+    // and a stale day must never be dressed up as yesterday.
+    const onDate = (dateStr) => (dateStr ? 'on ' + dateStr : 'on your most recent day');
 
     // Resting heart rate questions
     if ((q.includes('resting') || q.includes('heart rate') || q.includes('rhr') || q.includes('pulse')) && !q.includes('baseline')) {
@@ -3752,7 +3844,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have a resting heart rate reading for your most recent day. Make sure your Fitbit is synced.';
       } else {
         const base = baselineMap['resting_hr'];
-        let text = `Your resting heart rate ${dayWord(latest.date)} (${latest.date}) was ${Math.round(latest.rhr)} bpm.`;
+        let text = `Your resting heart rate ${onDate(latest.date)} was ${Math.round(latest.rhr)} bpm.`;
         if (base) {
           const diff = latest.rhr - base;
           const dir = diff > 0 ? 'above' : diff < 0 ? 'below' : 'at';
@@ -3771,7 +3863,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have an HRV reading for your most recent day. HRV measures how much your heart rate varies between beats, higher usually means better recovery.';
       } else {
         const base = baselineMap['rmssd'];
-        let text = `Your HRV ${dayWord(latest.date)} (${latest.date}) was ${Math.round(latest.hrv)} ms. HRV measures recovery, higher is generally better.`;
+        let text = `Your HRV ${onDate(latest.date)} was ${Math.round(latest.hrv)} ms. HRV measures recovery, higher is generally better.`;
         if (base) {
           const diff = latest.hrv - base;
           const pct = Math.round((diff / base) * 100);
@@ -3802,7 +3894,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have a blood oxygen reading for your most recent day.';
       } else {
         const base = baselineMap['spo2'];
-        let text = `Your average blood oxygen ${dayWord(latest.date)} was ${latest.spo2_avg.toFixed(1)}%.`;
+        let text = `Your average blood oxygen ${onDate(latest.date)} was ${latest.spo2_avg.toFixed(1)}%.`;
         if (latest.spo2_min !== null) text += ` Your lowest was ${latest.spo2_min.toFixed(1)}%.`;
         if (base) text += ` Your usual baseline is ${base.toFixed(1)}%.`;
         answer = text;
@@ -3812,7 +3904,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
         answer = 'I don\'t have a breathing rate reading for your most recent day.';
       } else {
         const base = baselineMap['full_sleep_breathing_rate'];
-        let text = `Your breathing rate ${dayWord(latest.date)} was ${latest.breathing_rate.toFixed(1)} breaths per minute.`;
+        let text = `Your breathing rate ${onDate(latest.date)} was ${latest.breathing_rate.toFixed(1)} breaths per minute.`;
         if (base) text += ` Your usual baseline is ${base.toFixed(1)} per minute.`;
         answer = text;
       }
@@ -3820,7 +3912,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       if (!latest || latest.skin_temp_delta === null) {
         answer = 'I don\'t have a skin temperature reading for your most recent day.';
       } else {
-        let text = `Your skin temperature ${dayWord(latest.date)} was ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees from your usual.`;
+        let text = `Your skin temperature ${onDate(latest.date)} was ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees from your usual.`;
         if (Math.abs(latest.skin_temp_delta) < 0.3) text += ' That is within your normal range.';
         else if (latest.skin_temp_delta > 0) text += ' That is slightly elevated.';
         else text += ' That is slightly below your normal.';
@@ -3830,7 +3922,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       if (!latest) {
         answer = 'I don\'t have any data yet. Connect your Fitbit and sync to start building your baseline.';
       } else {
-        const parts = [`Here is your most recent data from ${latest.date}:`];
+        const parts = [`Here is your most recent day of data, ${latest.date}:`];
         if (latest.rhr !== null) parts.push(`Resting heart rate: ${Math.round(latest.rhr)} bpm`);
         if (latest.hrv !== null) parts.push(`HRV: ${Math.round(latest.hrv)} ms`);
         if (latest.spo2_avg !== null) parts.push(`Blood oxygen: ${latest.spo2_avg.toFixed(1)}%`);
@@ -3841,6 +3933,16 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
           parts.push(`Sleep: ${h}h ${m}m`);
         }
         if (latest.skin_temp_delta !== null) parts.push(`Skin temp change: ${latest.skin_temp_delta >= 0 ? '+' : ''}${latest.skin_temp_delta.toFixed(2)} degrees`);
+        // If the question was about yesterday and the latest day is
+        // clearly older than that, say so. The newest day that could
+        // still be the user's yesterday is two UTC days ago (local
+        // time runs up to 8 hours behind UTC), so only flag older days.
+        if (q.includes('yesterday') || q.includes('last night')) {
+          const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
+          if (latest.date < twoDaysAgo) {
+            parts.push('That is older than yesterday, so I do not have yesterday yet. Sync your Fitbit to bring it up to date.');
+          }
+        }
         answer = parts.join(' ');
       }
     } else if (q.includes('alert') || q.includes('flag') || q.includes('why')) {
@@ -3876,7 +3978,19 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       if (totalDays === 0) {
         answer = 'I don\'t have any data yet. Connect your Fitbit and sync to start building your baseline. H-CAR needs 28 days of data to learn what is normal for you.';
       } else if (daysWithGaps === 0) {
-        answer = `Your recent data is complete. All ${totalDays} of the last ${totalDays} days have 3 or more signals. H-CAR can score your data reliably.`;
+        // Scoring only starts once the 28-day baseline is complete.
+        // A complete week during learning is good progress, not proof
+        // the data can be scored yet.
+        const dayCount = await dbGet(
+          'SELECT COUNT(DISTINCT date) as count FROM daily_summaries WHERE user_id = $1',
+          [req.user.id]
+        );
+        const daysSynced = parseInt(dayCount?.count || 0);
+        if (daysSynced < 28) {
+          answer = `Your recent data is complete. All ${totalDays} of the last ${totalDays} days have 3 or more signals. Scoring starts once monitoring starts, after your 28-day baseline is complete (you are on day ${daysSynced} of 28).`;
+        } else {
+          answer = `Your recent data is complete. All ${totalDays} of the last ${totalDays} days have 3 or more signals. H-CAR can score your data reliably.`;
+        }
       } else {
         answer = `In the last ${totalDays} days, ${daysWithGaps} days had fewer than 3 signals. On those days, H-CAR could not score your data because there was not enough information. This is usually because your Fitbit was not worn, did not sync, or the battery died. Missing data is never filled in, H-CAR only works with what it actually measured.`;
       }
@@ -3884,7 +3998,53 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
       if (!latestEpisode) {
         answer = 'You have no active alerts. Keep wearing your Fitbit, keep logging symptoms if you notice anything, and H-CAR will keep watching. If you feel unwell, seek professional medical care, do not wait for an app.';
       } else if (latestEpisode.is_act) {
-        answer = 'You have a recent Act flag. This is a sustained change that H-CAR considers significant. Consider resting, logging your symptoms, and contacting your clinician if you feel unwell. If you have severe symptoms like chest pain, severe breathlessness, fainting, or confusion, call emergency services immediately. Your emergency contact has been alerted by email.';
+        // Never claim the emergency contact was alerted unless the
+        // alert records show it. The new system logs every step in
+        // alert_escalations; the old email-only system recorded sent
+        // mail in alerts_sent (failures were never recorded there,
+        // so a row there means it went out).
+        let emailSent = false;
+        let smsSent = false;
+        let alertRow = null;
+        if (latestEpisode.trigger_date) {
+          alertRow = await dbGet(
+            `SELECT id, status FROM alerts
+             WHERE user_id = $1 AND is_test = 0 AND trigger_date = $2
+             ORDER BY created_at DESC LIMIT 1`,
+            [req.user.id, latestEpisode.trigger_date]
+          );
+          if (alertRow) {
+            const steps = await dbAll(
+              `SELECT channel, result FROM alert_escalations
+               WHERE alert_id = $1 AND level = 'primary'`,
+              [alertRow.id]
+            );
+            emailSent = steps.some((s) => s.channel === 'email' && s.result === 'sent');
+            smsSent = steps.some((s) => s.channel === 'sms' && s.result === 'sent');
+          }
+          if (!emailSent) {
+            const legacy = await dbGet(
+              'SELECT 1 AS x FROM alerts_sent WHERE user_id = $1 AND trigger_date = $2',
+              [req.user.id, latestEpisode.trigger_date]
+            );
+            if (legacy) emailSent = true;
+          }
+        }
+        let alertText;
+        if (emailSent) {
+          alertText = 'Your emergency contact has been alerted by email.';
+        } else if (alertRow && alertRow.status === 'cancelled_by_user') {
+          alertText = 'You answered that you were fine when H-CAR asked, so no alert went out to your emergency contact for this flag.';
+        } else if (alertRow && alertRow.status === 'awaiting_user') {
+          alertText = 'H-CAR is still waiting for you to answer "Are you okay?" No alert has gone out yet.';
+        } else if (smsSent) {
+          alertText = 'Your emergency contact was alerted by text message, but the email did not go out.';
+        } else if (alertRow) {
+          alertText = 'No alert reached your emergency contact for this flag. If you need help, contact them yourself or call emergency services.';
+        } else {
+          alertText = 'No alert went out to your emergency contact for this flag. If you need help, contact them yourself or call emergency services.';
+        }
+        answer = `Your most recent Act flag was from ${latestEpisode.start_date} to ${latestEpisode.end_date} (${latestEpisode.days} days). This is a sustained change that H-CAR considers significant. Consider resting, logging your symptoms, and contacting your clinician if you feel unwell. If you have severe symptoms like chest pain, severe breathlessness, fainting, or confusion, call emergency services immediately. ${alertText}`;
       } else {
         answer = 'You have a recent Watch flag. This is a change worth noticing, but not an emergency. Rest, hydrate, log your symptoms, and re-check tomorrow. If it continues or worsens, consider contacting your clinician.';
       }
@@ -3919,7 +4079,7 @@ app.post('/api/assistant/ask', authenticateToken, async (req, res) => {
     } else {
       // Default response - try to give a helpful summary with real numbers
       if (latest) {
-        const parts = ['Here is a quick summary of your latest data:'];
+        const parts = ['Here is a quick summary of your latest data, from ' + latest.date + ':'];
         if (latest.rhr !== null) parts.push(`Resting heart rate ${Math.round(latest.rhr)} bpm`);
         if (latest.hrv !== null) parts.push(`HRV ${Math.round(latest.hrv)} ms`);
         if (latest.sleep_minutes !== null) {

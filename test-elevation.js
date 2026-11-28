@@ -324,6 +324,34 @@ async function run() {
     assert.strictEqual(unavailable, true);
   });
 
+  await check('a forced call runs again on the same day and reports failure', async () => {
+    const storage = fakeStorage();
+    let unavailable = 0;
+    const apiCall = async () => { return { ok: true }; };
+    const opts = {
+      enabled: true,
+      apiCall: apiCall,
+      storage: storage,
+      todayStr: '2026-12-02',
+      geolocation: fakeGeoFail(),
+      fetchFn: fakeFetchOk({ elevation: [850] }),
+      onUnavailable: () => { unavailable += 1; }
+    };
+    // First call consumes the day's attempt and reports the failure.
+    const first = await elevation.autoDetectElevation(opts);
+    assert.strictEqual(first, null);
+    assert.strictEqual(unavailable, 1);
+    // A plain second call is a silent no-op: the once-per-day guard.
+    const second = await elevation.autoDetectElevation(opts);
+    assert.strictEqual(second, null);
+    assert.strictEqual(unavailable, 1);
+    // A forced call (saving Profile with the toggle on) tries again
+    // and reports the failure, so the error reaches the user.
+    const third = await elevation.autoDetectElevation(Object.assign({}, opts, { force: true }));
+    assert.strictEqual(third, null);
+    assert.strictEqual(unavailable, 2);
+  });
+
   await check('full flow does nothing when the opt-in is off', async () => {
     let calls = 0;
     const apiCall = async () => { calls += 1; return { ok: true }; };
